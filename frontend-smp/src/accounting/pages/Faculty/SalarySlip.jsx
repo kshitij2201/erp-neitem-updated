@@ -37,7 +37,7 @@ export default function SalarySlip() {
       "Content-Type": "application/json",
     };
 
-    fetch("http://localhost:4000/api/faculty", {
+    fetch("http://142.93.177.150:4000/api/faculty", {
       headers: authHeaders,
     })
       .then((res) => {

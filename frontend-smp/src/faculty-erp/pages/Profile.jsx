@@ -70,7 +70,7 @@ const UserProfile = ({ userData }) => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch("http://localhost:4000/api/auth/profile", {
+        const response = await fetch("http://142.93.177.150:4000/api/auth/profile", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -180,7 +180,7 @@ const UserProfile = ({ userData }) => {
     setPasswordLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:4000/api/auth/change-password",
+        "http://142.93.177.150:4000/api/auth/change-password",
         {
           method: "POST",
           headers: {

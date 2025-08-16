@@ -41,7 +41,7 @@ const Signup = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:4000/api/auth/signup",
+        "http://142.93.177.150:4000/api/auth/signup",
         {
           name: formData.name,
           email: formData.email,

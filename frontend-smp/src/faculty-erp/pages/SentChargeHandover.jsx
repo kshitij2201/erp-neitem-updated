@@ -17,7 +17,7 @@ export default function SentChargeHandover() {
     try {
       const token = userData?.token || localStorage.getItem("authToken");
       const res = await axios.get(
-        `http://localhost:4000/api/tasks/sent/${employeeId}`,
+        `http://142.93.177.150:4000/api/tasks/sent/${employeeId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setRequests(res.data || []);

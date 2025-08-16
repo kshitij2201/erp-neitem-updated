@@ -24,7 +24,7 @@ export default function FacultyDataInPrincipal() {
         setLoading(true);
         setError(null);
         const response = await fetch(
-          "http://localhost:4000/api/faculty/faculties?limit=1000",
+          "http://142.93.177.150:4000/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }
@@ -56,7 +56,7 @@ export default function FacultyDataInPrincipal() {
       } catch (err) {
         console.error("Fetch faculties error:", err);
         setError(
-          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at http://localhost:4000.`
+          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at http://142.93.177.150:4000.`
         );
         setLoading(false);
       }

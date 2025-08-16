@@ -56,8 +56,8 @@ export default function UnifiedAnalytics() {
 
       // Only fetch from APIs that exist, use mock data for others
       const [students, faculty] = await Promise.allSettled([
-        safeFetch("http://localhost:4000/api/students", []),
-        safeFetch("http://localhost:4000/api/faculty/faculties", []),
+        safeFetch("http://142.93.177.150:4000/api/students", []),
+        safeFetch("http://142.93.177.150:4000/api/faculty/faculties", []),
       ]);
 
       const studentData = students.status === "fulfilled" ? students.value : [];

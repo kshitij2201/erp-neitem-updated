@@ -89,7 +89,7 @@ const Download = () => {
     setLoading(true);
     try {
       const res = await fetchWithRetry(
-        "http://localhost:4000/api/superadmin/students",
+        "http://142.93.177.150:4000/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }

@@ -22,7 +22,7 @@ export default function Scholarship() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const res = await axios.get("http://localhost:4000/api/students", {
+      const res = await axios.get("http://142.93.177.150:4000/api/students", {
         params: { search: searchTerm },
         headers,
       });
@@ -57,7 +57,7 @@ export default function Scholarship() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await axios.post(
-        `http://localhost:4000/api/scholarships/${selectedStudent._id}`,
+        `http://142.93.177.150:4000/api/scholarships/${selectedStudent._id}`,
         {
           amount: Number(scholarshipAmount),
           details: scholarshipDetails,

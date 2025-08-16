@@ -36,7 +36,7 @@ const NotificationCenter = () => {
   const fetchAlerts = async () => {
     try {
       const response = await fetch(
-        "http://localhost:4000/api/payments/analytics?period=1"
+        "http://142.93.177.150:4000/api/payments/analytics?period=1"
       );
       if (response.ok) {
         const data = await response.json();
@@ -78,7 +78,7 @@ const NotificationCenter = () => {
     // Check for failed payments in last 5 minutes
     try {
       const response = await fetch(
-        "http://localhost:4000/api/payments/history?status=Failed&period=1"
+        "http://142.93.177.150:4000/api/payments/history?status=Failed&period=1"
       );
       if (response.ok) {
         const failedPayments = await response.json();

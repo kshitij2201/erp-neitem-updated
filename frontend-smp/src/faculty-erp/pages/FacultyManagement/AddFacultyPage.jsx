@@ -487,7 +487,7 @@ const FacultyRegistrationForm = () => {
 
       // 1. Register Faculty
       const facultyResponse = await fetch(
-        "http://localhost:4000/api/faculty/register",
+        "http://142.93.177.150:4000/api/faculty/register",
         {
           method: "POST",
           body: formDataToSubmit,
@@ -508,7 +508,7 @@ const FacultyRegistrationForm = () => {
         type: formData.type,
       };
 
-      const salaryResponse = await fetch("http://localhost:4000/api/salary", {
+      const salaryResponse = await fetch("http://142.93.177.150:4000/api/salary", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

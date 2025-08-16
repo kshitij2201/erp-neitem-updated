@@ -16,7 +16,7 @@ export default function SalarySlipPage({ userData }) {
     const fetchRecords = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:4000/api/salary?employeeId=${employeeId}`
+          `http://142.93.177.150:4000/api/salary?employeeId=${employeeId}`
         );
 
         const data = Array.isArray(response.data) ? response.data : [];

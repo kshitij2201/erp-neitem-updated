@@ -377,13 +377,13 @@ export default function Ledger() {
 
     // Fetch ledger data and fee heads in parallel
     Promise.all([
-      fetch("http://localhost:4000/api/ledger", { headers }).then((res) => {
+      fetch("http://142.93.177.150:4000/api/ledger", { headers }).then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
         return res.json();
       }),
-      fetch("http://localhost:4000/api/fee-heads", { headers }).then((res) => {
+      fetch("http://142.93.177.150:4000/api/fee-heads", { headers }).then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }

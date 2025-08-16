@@ -143,7 +143,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:4000/api/dashboard/hod-todos?status=${
+        `http://142.93.177.150:4000/api/dashboard/hod-todos?status=${
           todoFilter === "all" ? "" : todoFilter
         }`,
         {
@@ -186,7 +186,7 @@ export default function HodDashboard() {
       }
 
       const response = await fetch(
-        "http://localhost:4000/api/dashboard/hod-todos",
+        "http://142.93.177.150:4000/api/dashboard/hod-todos",
         {
           method: "POST",
           headers: {
@@ -227,7 +227,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:4000/api/dashboard/hod-todos/${todoId}`,
+        `http://142.93.177.150:4000/api/dashboard/hod-todos/${todoId}`,
         {
           method: "PUT",
           headers: {
@@ -259,7 +259,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:4000/api/dashboard/hod-todos/${todoId}`,
+        `http://142.93.177.150:4000/api/dashboard/hod-todos/${todoId}`,
         {
           method: "DELETE",
           headers: {
@@ -325,7 +325,7 @@ export default function HodDashboard() {
         }
 
         const response = await fetch(
-          "http://localhost:4000/api/dashboard/hod-stats",
+          "http://142.93.177.150:4000/api/dashboard/hod-stats",
           {
             headers: {
               Authorization: `Bearer ${token}`,

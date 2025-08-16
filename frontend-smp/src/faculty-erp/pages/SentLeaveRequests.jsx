@@ -10,7 +10,7 @@ const SentLeaveRequests = ({ employeeId }) => {
     if (!employeeId) return;
     setLoading(true);
     axios
-      .get(`http://localhost:4000/api/leave/my-leaves/${employeeId}`)
+      .get(`http://142.93.177.150:4000/api/leave/my-leaves/${employeeId}`)
       .then((res) => {
         console.log("Leave API response:", res.data);
         setLeaves(res.data.leaves || []);

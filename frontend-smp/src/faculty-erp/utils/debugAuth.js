@@ -50,7 +50,7 @@ function debugAuth() {
   if (finalToken) {
     console.log("🧪 Testing token with API call...");
 
-    fetch("http://localhost:4000/api/students?limit=1", {
+    fetch("http://142.93.177.150:4000/api/students?limit=1", {
       headers: {
         Authorization: `Bearer ${finalToken}`,
         "Content-Type": "application/json",
@@ -73,7 +73,7 @@ function debugAuth() {
       })
       .catch((error) => {
         console.log("❌ Network error:", error.message);
-        console.log("💡 Check if backend is running on http://localhost:4000");
+        console.log("💡 Check if backend is running on http://142.93.177.150:4000");
       });
   } else {
     console.log("❌ No token available for testing");

@@ -293,7 +293,7 @@ function Dashboard({ userData, onLogout }) {
 
       fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://localhost:4000"
+          import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
         }/api/dashboard/stats`
       )
         .then((res) => res.json())
@@ -370,7 +370,7 @@ function Dashboard({ userData, onLogout }) {
           const token = localStorage.getItem("authToken");
           const response = await fetch(
             `${
-              import.meta.env.VITE_API_URL || "http://localhost:4000"
+              import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
             }/api/dashboard/teaching-stats`,
             {
               headers: {

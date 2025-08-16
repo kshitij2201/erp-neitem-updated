@@ -21,7 +21,7 @@ export default function ChargeHandoverApp() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("http://localhost:4000/api/tasks", {
+      const response = await axios.get("http://142.93.177.150:4000/api/tasks", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const allTasks = response.data.data || response.data || [];
@@ -86,7 +86,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `http://localhost:4000/api/tasks/${id}${endpoint}`,
+        `http://142.93.177.150:4000/api/tasks/${id}${endpoint}`,
         {
           decision: "approved",
           approverId: approverId,
@@ -133,7 +133,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `http://localhost:4000/api/tasks/${id}${endpoint}`,
+        `http://142.93.177.150:4000/api/tasks/${id}${endpoint}`,
         {
           decision: "rejected",
           approverId: approverId,

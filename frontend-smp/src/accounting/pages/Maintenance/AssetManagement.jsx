@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE_URL = "http://localhost:4000/api/maintenance";
+const API_BASE_URL = "http://142.93.177.150:4000/api/maintenance";
 
 export default function AssetManagement() {
   const [assets, setAssets] = useState([]);

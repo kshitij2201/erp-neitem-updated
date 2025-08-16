@@ -30,7 +30,7 @@ export default function SalarySlip() {
 
   useEffect(() => {
     // Fetch faculty list
-    fetch("http://localhost:4000/api/faculty")
+    fetch("http://142.93.177.150:4000/api/faculty")
       .then((res) => res.json())
       .then((data) => {
         setFaculty(data?.data || data || []);
@@ -71,7 +71,7 @@ export default function SalarySlip() {
 
     // Fetch salary records
     fetch(
-      `http://localhost:4000/api/faculty/salary?name=${encodeURIComponent(
+      `http://142.93.177.150:4000/api/faculty/salary?name=${encodeURIComponent(
         facultyName
       )}&year=${selectedYear}`
     )
@@ -136,7 +136,7 @@ export default function SalarySlip() {
 
       // Fetch from the backend server with full URL
       const response = await fetch(
-        `http://localhost:4000/api/income-tax/faculty/${employeeId}`
+        `http://142.93.177.150:4000/api/income-tax/faculty/${employeeId}`
       );
 
       if (response.ok) {
@@ -236,7 +236,7 @@ export default function SalarySlip() {
 
     // Fetch salary records directly from salaries collection
     fetch(
-      `http://localhost:4000/api/faculty/salary?name=${encodeURIComponent(
+      `http://142.93.177.150:4000/api/faculty/salary?name=${encodeURIComponent(
         searchEmployeeName
       )}&month=${searchMonth}&year=${searchYear}`
     )

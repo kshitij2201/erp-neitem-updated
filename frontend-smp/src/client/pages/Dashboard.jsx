@@ -18,7 +18,7 @@ const Dashboard = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("");
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  const API_URL = import.meta.env.VITE_API_URL || "http://142.93.177.150:4000";
 
   useEffect(() => {
     // Get student data from localStorage (set during login)

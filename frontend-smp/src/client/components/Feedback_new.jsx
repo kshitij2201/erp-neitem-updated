@@ -4,7 +4,7 @@ import axios from "axios";
 const Feedback = () => {
   const enrollmentNumber = "123456";
   const departmentId = "6852ab60ca2bd4d95fc9dd23";
-  const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+  const API_URL = import.meta.env.REACT_APP_API_URL || "http://142.93.177.150:4000";
 
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState("");

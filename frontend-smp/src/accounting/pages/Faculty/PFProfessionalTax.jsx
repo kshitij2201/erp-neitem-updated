@@ -79,7 +79,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `http://localhost:4000/api/income-tax?${params}`,
+        `http://142.93.177.150:4000/api/income-tax?${params}`,
         { headers }
       );
       if (response.ok) {
@@ -96,7 +96,7 @@ const PFProfessionalTax = () => {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await fetch("http://localhost:4000/api/salary", {
+      const response = await fetch("http://142.93.177.150:4000/api/salary", {
         headers,
       });
       if (response.ok) {
@@ -118,7 +118,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
       if (searchTerm) params.append("employeeName", searchTerm);
 
-      const response = await fetch(`http://localhost:4000/api/pf?${params}`, {
+      const response = await fetch(`http://142.93.177.150:4000/api/pf?${params}`, {
         headers,
       });
       if (response.ok) {
@@ -140,7 +140,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `http://localhost:4000/api/pf/stats/dashboard?${params}`
+        `http://142.93.177.150:4000/api/pf/stats/dashboard?${params}`
       );
       if (response.ok) {
         const stats = await response.json();
@@ -227,8 +227,8 @@ const PFProfessionalTax = () => {
     e.preventDefault();
     try {
       const url = editingRecord
-        ? `http://localhost:4000/api/pf/${editingRecord._id}`
-        : "http://localhost:4000/api/pf";
+        ? `http://142.93.177.150:4000/api/pf/${editingRecord._id}`
+        : "http://142.93.177.150:4000/api/pf";
 
       const method = editingRecord ? "PUT" : "POST";
 
@@ -280,7 +280,7 @@ const PFProfessionalTax = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
-        const response = await fetch(`http://localhost:4000/api/pf/${id}`, {
+        const response = await fetch(`http://142.93.177.150:4000/api/pf/${id}`, {
           method: "DELETE",
         });
 
@@ -324,7 +324,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `http://localhost:4000/api/pf/export/csv?${params}`
+        `http://142.93.177.150:4000/api/pf/export/csv?${params}`
       );
       if (response.ok) {
         const blob = await response.blob();
@@ -352,7 +352,7 @@ const PFProfessionalTax = () => {
     ) {
       try {
         const response = await fetch(
-          "http://localhost:4000/api/pf/bulk-create",
+          "http://142.93.177.150:4000/api/pf/bulk-create",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -421,7 +421,7 @@ const PFProfessionalTax = () => {
         };
 
         const response = await fetch(
-          `http://localhost:4000/api/income-tax/${existingIncomeTax._id}`,
+          `http://142.93.177.150:4000/api/income-tax/${existingIncomeTax._id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -454,7 +454,7 @@ const PFProfessionalTax = () => {
           notes: `Auto-created from PF record on ${new Date().toLocaleDateString()}`,
         };
 
-        const response = await fetch("http://localhost:4000/api/income-tax", {
+        const response = await fetch("http://142.93.177.150:4000/api/income-tax", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newIncomeTaxData),

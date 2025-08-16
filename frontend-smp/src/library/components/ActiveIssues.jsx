@@ -9,7 +9,7 @@ const ActiveIssues = () => {
     const fetchActiveIssues = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:4000/api/issues/active"
+          "http://142.93.177.150:4000/api/issues/active"
         );
         setIssues(response.data);
       } catch (error) {

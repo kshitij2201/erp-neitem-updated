@@ -55,7 +55,7 @@ const EventCalendar = () => {
   const fetchEvents = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:4000/api/superadmin/events",
+        "http://142.93.177.150:4000/api/superadmin/events",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -98,7 +98,7 @@ const EventCalendar = () => {
 
     try {
       await axios.post(
-        "http://localhost:4000/api/superadmin/events",
+        "http://142.93.177.150:4000/api/superadmin/events",
         newEvent,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -119,7 +119,7 @@ const EventCalendar = () => {
   // Delete event
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:4000/api/superadmin/events/${id}`, {
+      await axios.delete(`http://142.93.177.150:4000/api/superadmin/events/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchEvents();
@@ -148,7 +148,7 @@ const EventCalendar = () => {
 
     try {
       await axios.put(
-        `http://localhost:4000/api/superadmin/events/${editingId}`,
+        `http://142.93.177.150:4000/api/superadmin/events/${editingId}`,
         {
           ...editedEvent,
           startTime: editedEvent.startTime

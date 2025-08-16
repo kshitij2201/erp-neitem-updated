@@ -47,7 +47,7 @@ const BusMonitor = () => {
         }
 
         const studentResponse = await axios.get(
-          `http://localhost:4000/api/students/${userId}`,
+          `http://142.93.177.150:4000/api/students/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

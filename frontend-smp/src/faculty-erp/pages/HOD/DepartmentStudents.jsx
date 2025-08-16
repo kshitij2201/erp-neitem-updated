@@ -97,7 +97,7 @@ const DepartmentStudents = ({ userData }) => {
       }
 
       const response = await axios.get(
-        `http://localhost:4000/api/faculty/students-attendance/department/${encodeURIComponent(
+        `http://142.93.177.150:4000/api/faculty/students-attendance/department/${encodeURIComponent(
           userDepartment
         )}`,
         {

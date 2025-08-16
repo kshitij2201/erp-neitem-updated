@@ -109,7 +109,7 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("http://localhost:4000/api/students", {
+      const response = await axios.get("http://142.93.177.150:4000/api/students", {
         headers,
       });
 
@@ -135,7 +135,7 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("http://localhost:4000/api/fee-heads", {
+      const response = await axios.get("http://142.93.177.150:4000/api/fee-heads", {
         headers,
       });
       // Remove duplicates based on title and sort in ascending order
@@ -166,7 +166,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "http://localhost:4000/api/payments?limit=50",
+        "http://142.93.177.150:4000/api/payments?limit=50",
         { headers }
       );
       setRecentPayments(response.data);
@@ -188,7 +188,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://localhost:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+        `http://142.93.177.150:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
         { headers }
       );
       setPendingFees(response.data || []);
@@ -206,7 +206,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const paymentsResponse = await axios.get(
-        `http://localhost:4000/api/payments?studentId=${studentId}`,
+        `http://142.93.177.150:4000/api/payments?studentId=${studentId}`,
         { headers }
       );
       const payments = paymentsResponse.data || [];
@@ -362,7 +362,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.post(
-        "http://localhost:4000/api/payments",
+        "http://142.93.177.150:4000/api/payments",
         paymentData,
         { headers }
       );

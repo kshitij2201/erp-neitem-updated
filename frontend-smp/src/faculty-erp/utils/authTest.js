@@ -25,7 +25,7 @@ const testAuth = async () => {
   try {
     console.log("🚀 Testing API call with authentication...");
 
-    const response = await fetch("http://localhost:4000/api/students?limit=5", {
+    const response = await fetch("http://142.93.177.150:4000/api/students?limit=5", {
       headers: {
         Authorization: `Bearer ${activeToken}`,
         "Content-Type": "application/json",
@@ -53,7 +53,7 @@ const testAuth = async () => {
   } catch (error) {
     console.log("❌ Network error:", error.message);
     console.log(
-      "💡 Suggestion: Check if the backend server is running on http://localhost:4000"
+      "💡 Suggestion: Check if the backend server is running on http://142.93.177.150:4000"
     );
   }
 };

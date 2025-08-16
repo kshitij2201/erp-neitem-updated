@@ -51,7 +51,7 @@ const CCClassStudents = ({ userData }) => {
       }
 
       const response = await fetch(
-        "http://localhost:4000/api/faculty/get-cc-class-students",
+        "http://142.93.177.150:4000/api/faculty/get-cc-class-students",
         {
           method: "GET",
           headers: {

@@ -17,7 +17,7 @@ export default function Audit() {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await fetch(
-      `http://localhost:4000/api/audit?${params.toString()}`,
+      `http://142.93.177.150:4000/api/audit?${params.toString()}`,
       { headers }
     );
     const data = await res.json();
@@ -32,7 +32,7 @@ export default function Audit() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await fetch(
-        "http://localhost:4000/api/audit/stats/overview",
+        "http://142.93.177.150:4000/api/audit/stats/overview",
         { headers }
       );
       const data = await res.json();

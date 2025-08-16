@@ -38,7 +38,7 @@ const UnifiedLogin = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+        import.meta.env.REACT_APP_API_URL || "http://142.93.177.150:4000";
 
       const response = await axios.post(`${API_URL}/api/student/auth/login`, {
         studentId: studentId.trim(),

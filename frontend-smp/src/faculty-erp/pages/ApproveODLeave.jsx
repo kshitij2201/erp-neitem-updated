@@ -37,7 +37,7 @@ export default function ApproveODLeave() {
       if (userRole.toLowerCase() === "hod") {
         // For HOD, get all leaves from their department
         const response = await axios.get(
-          `http://localhost:4000/api/leave/hod/${encodeURIComponent(
+          `http://142.93.177.150:4000/api/leave/hod/${encodeURIComponent(
             userDepartment
           )}`,
           {
@@ -48,7 +48,7 @@ export default function ApproveODLeave() {
       } else if (userRole.toLowerCase() === "principal") {
         // For Principal, get all leaves that need principal approval
         const response = await axios.get(
-          `http://localhost:4000/api/leave/principal/all`,
+          `http://142.93.177.150:4000/api/leave/principal/all`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -57,7 +57,7 @@ export default function ApproveODLeave() {
       } else {
         // For regular faculty, get all leaves to see their own
         const response = await axios.get(
-          "http://localhost:4000/api/leave/all",
+          "http://142.93.177.150:4000/api/leave/all",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -136,8 +136,8 @@ export default function ApproveODLeave() {
 
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `http://localhost:4000/api/leave/hod/${id}`
-          : `http://localhost:4000/api/leave/principal/${id}`;
+          ? `http://142.93.177.150:4000/api/leave/hod/${id}`
+          : `http://142.93.177.150:4000/api/leave/principal/${id}`;
 
       const payload =
         userRole.toLowerCase() === "hod"
@@ -188,8 +188,8 @@ export default function ApproveODLeave() {
 
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `http://localhost:4000/api/leave/hod/${id}`
-          : `http://localhost:4000/api/leave/principal/${id}`;
+          ? `http://142.93.177.150:4000/api/leave/hod/${id}`
+          : `http://142.93.177.150:4000/api/leave/principal/${id}`;
 
       const payload =
         userRole.toLowerCase() === "hod"

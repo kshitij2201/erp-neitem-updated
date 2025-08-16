@@ -30,7 +30,7 @@ const TeachingAnnouncements = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "http://localhost:4000/api/auth/profile",
+            "http://142.93.177.150:4000/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -59,7 +59,7 @@ const TeachingAnnouncements = () => {
         ? `?department=${encodeURIComponent(userDepartment)}`
         : "";
       const res = await axios.get(
-        `http://localhost:4000/api/announcements/non_teaching_staff${queryParams}`
+        `http://142.93.177.150:4000/api/announcements/non_teaching_staff${queryParams}`
       );
       setAnnouncements(res.data.reverse()); // latest first
     } catch (err) {

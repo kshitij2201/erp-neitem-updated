@@ -89,12 +89,12 @@ const MyBus = () => {
     try {
       // Fetch current bus location from /api/buses
       const busResponse = await fetch(
-        `http://localhost:4000/api/buses/${busId}`
+        `http://142.93.177.150:4000/api/buses/${busId}`
       );
 
       // Fetch bus schedule data from /api/schedules
       const scheduleResponse = await fetch(
-        `http://localhost:4000/api/schedules/bus/${busId}`
+        `http://142.93.177.150:4000/api/schedules/bus/${busId}`
       );
 
       if (busResponse.ok) {

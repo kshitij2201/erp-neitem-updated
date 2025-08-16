@@ -114,7 +114,7 @@ const AnnouncementForm = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "http://localhost:4000/api/auth/profile",
+            "http://142.93.177.150:4000/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -183,7 +183,7 @@ const AnnouncementForm = () => {
       };
 
       await axios.post(
-        "http://localhost:4000/api/announcements",
+        "http://142.93.177.150:4000/api/announcements",
         announcementData
       );
       setMessage({
@@ -229,7 +229,7 @@ const AnnouncementForm = () => {
       );
 
       const res = await axios.get(
-        `http://localhost:4000/api/announcements/${currentDashboard}${queryParams}`
+        `http://142.93.177.150:4000/api/announcements/${currentDashboard}${queryParams}`
       );
       setAnnouncements(res.data);
       setLoading(false);

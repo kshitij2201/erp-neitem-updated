@@ -20,7 +20,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 const api = axios.create({
-  baseURL: "http://localhost:4000/api",
+  baseURL: "http://142.93.177.150:4000/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",

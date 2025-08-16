@@ -203,7 +203,7 @@ const DocumentManagementDashboard = () => {
       }
 
       const res = await axios.get(
-        "http://localhost:4000/api/superadmin/students",
+        "http://142.93.177.150:4000/api/superadmin/students",
         {
           params,
           headers: getAuthHeaders(),
@@ -262,7 +262,7 @@ const DocumentManagementDashboard = () => {
     }
     try {
       const studentRes = await axios.get(
-        `http://localhost:4000/api/superadmin/students/${studentData._id}`,
+        `http://142.93.177.150:4000/api/superadmin/students/${studentData._id}`,
         {
           headers: getAuthHeaders(),
         }
@@ -341,7 +341,7 @@ const DocumentManagementDashboard = () => {
       // First try to register the certificate with the backend
       try {
         await axios.post(
-          `http://localhost:4000/api/superadmin/students/generate-certificate/${studentData._id}`,
+          `http://142.93.177.150:4000/api/superadmin/students/generate-certificate/${studentData._id}`,
           {
             type: "BC",
             purpose: "Academic purpose",

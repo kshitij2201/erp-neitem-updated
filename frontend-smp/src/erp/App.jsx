@@ -56,7 +56,7 @@ const PrivateRoute = ({ children, roles }) => {
   });
 
   const API = axios.create({
-    baseURL: "http://localhost:4000/api",
+    baseURL: "http://142.93.177.150:4000/api",
     withCredentials: true,
   });
 

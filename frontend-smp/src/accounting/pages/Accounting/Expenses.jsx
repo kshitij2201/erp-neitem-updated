@@ -42,7 +42,7 @@ export default function Expenses() {
           token ? "Present" : "Missing"
         );
 
-        const res = await axios.get("http://localhost:4000/api/expenses", {
+        const res = await axios.get("http://142.93.177.150:4000/api/expenses", {
           params: { search: searchTerm },
           headers,
         });
@@ -63,7 +63,7 @@ export default function Expenses() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const res = await axios.get(
-          "http://localhost:4000/api/expenses/total",
+          "http://142.93.177.150:4000/api/expenses/total",
           { headers }
         );
         setTotalExpenses(res.data?.total || 0);
@@ -161,7 +161,7 @@ export default function Expenses() {
       console.log("Headers being sent:", headers);
 
       const response = await axios.post(
-        "http://localhost:4000/api/expenses",
+        "http://142.93.177.150:4000/api/expenses",
         payload,
         { headers }
       );
@@ -179,7 +179,7 @@ export default function Expenses() {
       });
 
       // Refetch expenses
-      const res = await axios.get("http://localhost:4000/api/expenses", {
+      const res = await axios.get("http://142.93.177.150:4000/api/expenses", {
         params: { search: searchTerm },
         headers,
       });
@@ -187,7 +187,7 @@ export default function Expenses() {
 
       // Refetch total
       const totalRes = await axios.get(
-        "http://localhost:4000/api/expenses/total",
+        "http://142.93.177.150:4000/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -236,7 +236,7 @@ export default function Expenses() {
       console.log("Updating expense status:", { id, status });
       // Send both status and action to backend for audit clarity
       const response = await axios.patch(
-        `http://localhost:4000/api/expenses/${id}/status`,
+        `http://142.93.177.150:4000/api/expenses/${id}/status`,
         { status, action: status },
         { headers }
       );
@@ -270,7 +270,7 @@ export default function Expenses() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      await axios.delete(`http://localhost:4000/api/expenses/${id}`, {
+      await axios.delete(`http://142.93.177.150:4000/api/expenses/${id}`, {
         headers,
       });
 
@@ -279,7 +279,7 @@ export default function Expenses() {
 
       // Refetch total since we deleted an expense
       const totalRes = await axios.get(
-        "http://localhost:4000/api/expenses/total",
+        "http://142.93.177.150:4000/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -357,7 +357,7 @@ export default function Expenses() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://localhost:4000/api/expenses/export/${format}`,
+        `http://142.93.177.150:4000/api/expenses/export/${format}`,
         {
           responseType: "blob",
           params: { headerInfo: JSON.stringify(headerInfo) },

@@ -32,7 +32,7 @@ const StudentManagement = () => {
       // First test if the API is accessible
       console.log("Testing API connection...");
       const testResponse = await fetch(
-        "http://localhost:4000/api/superadmin/students/test",
+        "http://142.93.177.150:4000/api/superadmin/students/test",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -64,7 +64,7 @@ const StudentManagement = () => {
       // Now fetch the actual students
       console.log("Fetching students...");
       const response = await fetch(
-        "http://localhost:4000/api/superadmin/students",
+        "http://142.93.177.150:4000/api/superadmin/students",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -163,7 +163,7 @@ const StudentManagement = () => {
     try {
       const action = currentStatus ? "disable" : "enable";
       const response = await fetch(
-        `http://localhost:4000/api/superadmin/students/${studentId}/toggle-access`,
+        `http://142.93.177.150:4000/api/superadmin/students/${studentId}/toggle-access`,
         {
           method: "PATCH",
           headers: {

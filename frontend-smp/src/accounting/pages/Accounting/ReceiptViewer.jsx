@@ -19,7 +19,7 @@ const ReceiptViewer = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://localhost:4000/api/payments/receipt/${receiptNumber}`,
+        `http://142.93.177.150:4000/api/payments/receipt/${receiptNumber}`,
         { headers }
       );
       setReceipt(response.data);

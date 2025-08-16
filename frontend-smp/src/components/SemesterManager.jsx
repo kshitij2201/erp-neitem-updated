@@ -27,8 +27,8 @@ const SemesterManager = () => {
       setLoading(true);
       try {
         const [semesterRes, subjectRes] = await Promise.all([
-          axios.get("http://localhost:4000/api/superadmin/semesters"),
-          axios.get("http://localhost:4000/api/superadmin/subjects"),
+          axios.get("http://142.93.177.150:4000/api/superadmin/semesters"),
+          axios.get("http://142.93.177.150:4000/api/superadmin/subjects"),
         ]);
         setSemesters(semesterRes.data);
         setSubjects(subjectRes.data);
@@ -81,7 +81,7 @@ const SemesterManager = () => {
     setLoading(true);
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/superadmin/semesters",
+        "http://142.93.177.150:4000/api/superadmin/semesters",
         {
           number: Number(newSemester.number),
           subjectIds: newSemester.subjectIds,
@@ -121,7 +121,7 @@ const SemesterManager = () => {
     setLoading(true);
     try {
       const res = await axios.put(
-        `http://localhost:4000/api/superadmin/semesters/${editingSemester._id}`,
+        `http://142.93.177.150:4000/api/superadmin/semesters/${editingSemester._id}`,
         {
           number: Number(editingSemester.number),
           subjectIds: editingSemester.subjectIds,
@@ -147,7 +147,7 @@ const SemesterManager = () => {
     setLoading(true);
     try {
       await axios.delete(
-        `http://localhost:4000/api/superadmin/semesters/${semesterId}`
+        `http://142.93.177.150:4000/api/superadmin/semesters/${semesterId}`
       );
       setSemesters(semesters.filter((semester) => semester._id !== semesterId));
       setError("");
