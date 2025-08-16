@@ -25,7 +25,7 @@ const Login = () => {
 
     try {
       // Use the general auth endpoint for all roles
-      const endpoint = "http://142.93.177.150:4000/api/auth/login";
+      const endpoint = "https://erpbackend.tarstech.in/api/auth/login";
       // Only send email and password, let backend determine user's actual role
       const requestBody = { email, password };
 

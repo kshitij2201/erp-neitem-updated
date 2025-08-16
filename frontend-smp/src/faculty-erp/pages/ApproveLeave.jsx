@@ -57,7 +57,7 @@ export default function ApproveLeave() {
       if (userRole.toLowerCase() === "hod") {
         // For HOD, get all leaves from their department
         const response = await axios.get(
-          `http://142.93.177.150:4000/api/leave/hod/${encodeURIComponent(
+          `https://erpbackend.tarstech.in/api/leave/hod/${encodeURIComponent(
             userDepartment
           )}`,
           {
@@ -68,7 +68,7 @@ export default function ApproveLeave() {
       } else if (userRole.toLowerCase() === "principal") {
         // For Principal, get all leaves that require principal approval
         const response = await axios.get(
-          `http://142.93.177.150:4000/api/leave/principal/all`,
+          `https://erpbackend.tarstech.in/api/leave/principal/all`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -86,7 +86,7 @@ export default function ApproveLeave() {
       } else {
         // For regular faculty, get all leaves to see their own
         const response = await axios.get(
-          "http://142.93.177.150:4000/api/leave/all",
+          "https://erpbackend.tarstech.in/api/leave/all",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -318,8 +318,8 @@ export default function ApproveLeave() {
       const { type, id, requestData } = confirmAction;
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `http://142.93.177.150:4000/api/leave/hod/${id}`
-          : `http://142.93.177.150:4000/api/leave/principal/${id}`;
+          ? `https://erpbackend.tarstech.in/api/leave/hod/${id}`
+          : `https://erpbackend.tarstech.in/api/leave/principal/${id}`;
 
       const decision = type === "approve" ? "Approved" : "Rejected";
       const defaultComment =

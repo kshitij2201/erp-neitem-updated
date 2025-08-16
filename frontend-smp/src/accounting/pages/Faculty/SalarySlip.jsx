@@ -37,7 +37,7 @@ export default function SalarySlip() {
       "Content-Type": "application/json",
     };
 
-    fetch("http://142.93.177.150:4000/api/faculty", {
+    fetch("https://erpbackend.tarstech.in/api/faculty", {
       headers: authHeaders,
     })
       .then((res) => {

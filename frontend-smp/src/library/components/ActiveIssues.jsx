@@ -9,7 +9,7 @@ const ActiveIssues = () => {
     const fetchActiveIssues = async () => {
       try {
         const response = await axios.get(
-          "http://142.93.177.150:4000/api/issues/active"
+          "https://erpbackend.tarstech.in/api/issues/active"
         );
         setIssues(response.data);
       } catch (error) {

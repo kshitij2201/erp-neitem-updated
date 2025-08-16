@@ -62,7 +62,7 @@ export default function Insurance() {
           delete params[key];
         }
       });
-      const response = await axios.get("http://142.93.177.150:4000/api/insurance", {
+      const response = await axios.get("https://erpbackend.tarstech.in/api/insurance", {
         params,
         headers,
       });
@@ -83,7 +83,7 @@ export default function Insurance() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("http://142.93.177.150:4000/api/students", {
+      const response = await axios.get("https://erpbackend.tarstech.in/api/students", {
         headers,
       });
       setStudents(response.data);
@@ -102,7 +102,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "http://142.93.177.150:4000/api/insurance/stats",
+        "https://erpbackend.tarstech.in/api/insurance/stats",
         { headers }
       );
       setStats(response.data);
@@ -123,12 +123,12 @@ export default function Insurance() {
 
       if (editingPolicy) {
         await axios.put(
-          `http://142.93.177.150:4000/api/insurance/${editingPolicy._id}`,
+          `https://erpbackend.tarstech.in/api/insurance/${editingPolicy._id}`,
           formData,
           { headers }
         );
       } else {
-        await axios.post("http://142.93.177.150:4000/api/insurance", formData, {
+        await axios.post("https://erpbackend.tarstech.in/api/insurance", formData, {
           headers,
         });
       }
@@ -171,7 +171,7 @@ export default function Insurance() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        await axios.delete(`http://142.93.177.150:4000/api/insurance/${id}`, {
+        await axios.delete(`https://erpbackend.tarstech.in/api/insurance/${id}`, {
           headers,
         });
         fetchPolicies();
@@ -192,7 +192,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       await axios.patch(
-        `http://142.93.177.150:4000/api/insurance/${id}/payment`,
+        `https://erpbackend.tarstech.in/api/insurance/${id}/payment`,
         {
           paymentStatus,
           lastPaymentDate:
@@ -216,7 +216,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       await axios.patch(
-        `http://142.93.177.150:4000/api/insurance/${id}/status`,
+        `https://erpbackend.tarstech.in/api/insurance/${id}/status`,
         { status },
         { headers }
       );

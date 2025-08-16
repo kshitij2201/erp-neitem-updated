@@ -40,7 +40,7 @@ const AdvancedAnalytics = ({ analytics, timeRange = 30 }) => {
 
       // Fetch additional trend data for charts
       const response = await fetch(
-        `http://142.93.177.150:4000/api/payments/analytics?period=${period}&includeDaily=true`,
+        `https://erpbackend.tarstech.in/api/payments/analytics?period=${period}&includeDaily=true`,
         { headers }
       );
       if (response.ok) {

@@ -117,7 +117,7 @@ const AllBuses = () => {
           err.message.includes("Network Error")
         ) {
           setError(
-            "Cannot connect to server. Please check if the backend is running on http://142.93.177.150:4000"
+            "Cannot connect to server. Please check if the backend is running on https://erpbackend.tarstech.in"
           );
         } else {
           setError(`Failed to fetch bus information: ${err.message}`);

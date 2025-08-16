@@ -31,7 +31,7 @@ export default function ApproveODLeave() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("http://142.93.177.150:4000/api/leave/all", {
+      const response = await axios.get("https://erpbackend.tarstech.in/api/leave/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const allLeaves = response.data || [];
@@ -92,8 +92,8 @@ export default function ApproveODLeave() {
 
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `http://142.93.177.150:4000/api/leave/hod/${id}`
-          : `http://142.93.177.150:4000/api/leave/principal/${id}`;
+          ? `https://erpbackend.tarstech.in/api/leave/hod/${id}`
+          : `https://erpbackend.tarstech.in/api/leave/principal/${id}`;
 
       const payload =
         userRole.toLowerCase() === "hod"
@@ -144,8 +144,8 @@ export default function ApproveODLeave() {
 
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `http://142.93.177.150:4000/api/leave/hod/${id}`
-          : `http://142.93.177.150:4000/api/leave/principal/${id}`;
+          ? `https://erpbackend.tarstech.in/api/leave/hod/${id}`
+          : `https://erpbackend.tarstech.in/api/leave/principal/${id}`;
 
       const payload =
         userRole.toLowerCase() === "hod"

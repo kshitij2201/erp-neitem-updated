@@ -94,21 +94,21 @@ export default function PrincipalDashboard() {
           pendingApprovalsRes,
           timetablesRes,
         ] = await Promise.all([
-          fetch("http://142.93.177.150:4000/api/superadmin/faculties/all", {
+          fetch("https://erpbackend.tarstech.in/api/superadmin/faculties/all", {
             headers,
           }),
-          fetch("http://142.93.177.150:4000/api/superadmin/students/all", {
+          fetch("https://erpbackend.tarstech.in/api/superadmin/students/all", {
             headers,
           }),
-          fetch("http://142.93.177.150:4000/api/superadmin/departments/all", {
+          fetch("https://erpbackend.tarstech.in/api/superadmin/departments/all", {
             headers,
           }),
           fetch(
-            "http://142.93.177.150:4000/api/dashboard/principal-pending-approvals",
+            "https://erpbackend.tarstech.in/api/dashboard/principal-pending-approvals",
             { headers }
           ),
           fetch(
-            "http://142.93.177.150:4000/api/dashboard/principal-all-timetables",
+            "https://erpbackend.tarstech.in/api/dashboard/principal-all-timetables",
             {
               headers,
             }
@@ -140,7 +140,7 @@ export default function PrincipalDashboard() {
         // Try to fetch todos separately with error handling
         try {
           const todosRes = await fetch(
-            "http://142.93.177.150:4000/api/dashboard/principal-todos-demo",
+            "https://erpbackend.tarstech.in/api/dashboard/principal-todos-demo",
             { headers }
           );
           if (todosRes.ok && isMounted) {
@@ -264,7 +264,7 @@ export default function PrincipalDashboard() {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        "http://142.93.177.150:4000/api/dashboard/principal-todos-demo",
+        "https://erpbackend.tarstech.in/api/dashboard/principal-todos-demo",
         {
           method: "POST",
           headers: {
@@ -304,7 +304,7 @@ export default function PrincipalDashboard() {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://142.93.177.150:4000/api/dashboard/principal-todos-demo/${id}`,
+        `https://erpbackend.tarstech.in/api/dashboard/principal-todos-demo/${id}`,
         {
           method: "PUT",
           headers: {
@@ -339,7 +339,7 @@ export default function PrincipalDashboard() {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://142.93.177.150:4000/api/dashboard/principal-todos-demo/${id}`,
+        `https://erpbackend.tarstech.in/api/dashboard/principal-todos-demo/${id}`,
         {
           method: "DELETE",
           headers: {

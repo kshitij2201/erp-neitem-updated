@@ -465,7 +465,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
         }/api/faculty/assign-cc`,
         {
           method: "POST",
@@ -541,7 +541,7 @@ export default function DepartmentFaculty({ userData }) {
         try {
           const updatedAssignmentsResponse = await fetch(
             `${
-              import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+              import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
             }/api/faculty/cc-assignments?department=${encodeURIComponent(
               deptName
             )}`,
@@ -575,7 +575,7 @@ export default function DepartmentFaculty({ userData }) {
         console.log("[AssignCC] Refreshing faculty data...");
         const facultyResponse = await fetch(
           `${
-            import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+            import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
           }/api/faculty/department/${encodeURIComponent(
             userDepartment || department
           )}`,
@@ -626,7 +626,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
         }/api/faculty-subject/assign-faculty-subject`,
         {
           method: "POST",
@@ -678,7 +678,7 @@ export default function DepartmentFaculty({ userData }) {
       // Optionally, refetch faculties to update subjectsTaught
       const facultyResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
         }/api/faculty/faculties?department=${encodeURIComponent(department)}`,
         {
           headers: {
@@ -729,7 +729,7 @@ export default function DepartmentFaculty({ userData }) {
       const department = userData?.department || assignment.department;
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
         }/api/faculty/delete-cc-assignment`,
         {
           method: "POST",
@@ -772,7 +772,7 @@ export default function DepartmentFaculty({ userData }) {
       // Refresh CC assignments
       const updatedAssignmentsResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "http://142.93.177.150:4000"
+          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
         }/api/faculty/cc-assignments?department=${encodeURIComponent(
           department
         )}`,
@@ -1469,7 +1469,7 @@ export default function DepartmentFaculty({ userData }) {
                                           await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "http://142.93.177.150:4000"
+                                              "https://erpbackend.tarstech.in"
                                             }/api/faculty-subject/remove-faculty-subject`,
                                             {
                                               method: "DELETE",
@@ -1493,7 +1493,7 @@ export default function DepartmentFaculty({ userData }) {
                                           const response = await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "http://142.93.177.150:4000"
+                                              "https://erpbackend.tarstech.in"
                                             }/api/faculty/faculties?department=${encodeURIComponent(
                                               department
                                             )}`,

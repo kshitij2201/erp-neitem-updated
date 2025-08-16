@@ -157,7 +157,7 @@ export default function ApplyODLeave({ userData }) {
       if (approvalLetter) formData.append("approvalLetter", approvalLetter);
 
       const response = await axios.post(
-        "http://142.93.177.150:4000/api/leave/odleave/apply",
+        "https://erpbackend.tarstech.in/api/leave/odleave/apply",
         formData,
         {
           headers: {

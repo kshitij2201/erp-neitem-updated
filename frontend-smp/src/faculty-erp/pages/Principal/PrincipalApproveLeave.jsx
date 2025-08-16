@@ -38,7 +38,7 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
       try {
         setLoading(true);
         const response = await axios.get(
-          `http://142.93.177.150:4000/api/leave/principal/all`,
+          `https://erpbackend.tarstech.in/api/leave/principal/all`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
@@ -127,7 +127,7 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
       }
 
       const response = await axios.put(
-        `http://142.93.177.150:4000/api/leave/principal/${decision.leaveId}`,
+        `https://erpbackend.tarstech.in/api/leave/principal/${decision.leaveId}`,
         {
           principalEmployeeId,
           decision: decision.decision,
@@ -144,7 +144,7 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
 
       // Refresh leaves
       const leavesResponse = await axios.get(
-        `http://142.93.177.150:4000/api/leave/principal/all`,
+        `https://erpbackend.tarstech.in/api/leave/principal/all`,
         {
           headers: {
             Authorization: `Bearer ${userData.token}`,

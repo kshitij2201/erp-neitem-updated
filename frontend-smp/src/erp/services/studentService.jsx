@@ -1,5 +1,5 @@
 import axios from "axios";
-const API = axios.create({ baseURL: "http://142.93.177.150:4000/api" });
+const API = axios.create({ baseURL: "https://erpbackend.tarstech.in/api" });
 
 export const getAllStudents = async () => {
   try {

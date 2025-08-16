@@ -15,7 +15,7 @@ import html2canvas from "html2canvas"; // Static import
 
 // Now connected to real MongoDB data with fallback to mock data
 // Fetches real book data from MongoDB Atlas cluster
-const API_URL = "http://142.93.177.150:4000/api/books";
+const API_URL = "https://erpbackend.tarstech.in/api/books";
 
 const BookList = () => {
   const { isAuthenticated } = useContext(AuthContext);

@@ -4,7 +4,7 @@ import axios from "axios";
 const Feedback = () => {
   const enrollmentNumber = "123456";
   const departmentId = "Computer Science"; // Use department name instead of ObjectId
-  const API_URL = import.meta.env.REACT_APP_API_URL || "http://142.93.177.150:4000";
+  const API_URL = import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
 
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState("");

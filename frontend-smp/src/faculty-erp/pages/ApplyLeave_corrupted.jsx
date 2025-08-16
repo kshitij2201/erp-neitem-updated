@@ -155,7 +155,7 @@ const ApplyLeave = ({ userData }) => {
 
     try {
       const response = await axios.post(
-        "http://142.93.177.150:4000/api/leave/apply",
+        "https://erpbackend.tarstech.in/api/leave/apply",
         formData
       );
       setMessage(response.data.message);

@@ -15,7 +15,7 @@ const FacultyList = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://142.93.177.150:4000/api/faculty/faculties"
+        "https://erpbackend.tarstech.in/api/faculty/faculties"
       );
       console.log("Faculty API Response:", response.data);
 
@@ -158,7 +158,7 @@ const FacultyList = () => {
 
           try {
             const borrowedResponse = await axios.get(
-              `http://142.93.177.150:4000/api/issues/borrowed-books`,
+              `https://erpbackend.tarstech.in/api/issues/borrowed-books`,
               {
                 params: {
                   borrowerId: borrowerId,
@@ -185,7 +185,7 @@ const FacultyList = () => {
           // Also check history for additional/more recent transactions
           try {
             const historyResponse = await axios.get(
-              `http://142.93.177.150:4000/api/issues/history`,
+              `https://erpbackend.tarstech.in/api/issues/history`,
               {
                 params: {
                   employeeId: borrowerId,

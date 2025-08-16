@@ -89,7 +89,7 @@ const IncomeTax = () => {
       if (searchTerm) params.append("employeeName", searchTerm);
 
       const response = await fetch(
-        `http://142.93.177.150:4000/api/income-tax?${params}`
+        `https://erpbackend.tarstech.in/api/income-tax?${params}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -107,7 +107,7 @@ const IncomeTax = () => {
   const fetchDashboardStats = async () => {
     try {
       const response = await fetch(
-        "http://142.93.177.150:4000/api/income-tax/stats/dashboard"
+        "https://erpbackend.tarstech.in/api/income-tax/stats/dashboard"
       );
       if (response.ok) {
         const data = await response.json();
@@ -134,7 +134,7 @@ const IncomeTax = () => {
   const fetchTaxSlabs = async () => {
     try {
       const response = await fetch(
-        "http://142.93.177.150:4000/api/income-tax/info/tax-slabs"
+        "https://erpbackend.tarstech.in/api/income-tax/info/tax-slabs"
       );
       if (response.ok) {
         const data = await response.json();
@@ -164,7 +164,7 @@ const IncomeTax = () => {
 
   const fetchSalaryData = async () => {
     try {
-      const response = await fetch("http://142.93.177.150:4000/api/faculty/salary");
+      const response = await fetch("https://erpbackend.tarstech.in/api/faculty/salary");
       if (response.ok) {
         const data = await response.json();
         setSalaryData(data);
@@ -223,8 +223,8 @@ const IncomeTax = () => {
 
     try {
       const url = editingRecord
-        ? `http://142.93.177.150:4000/api/income-tax/${editingRecord._id}`
-        : "http://142.93.177.150:4000/api/income-tax";
+        ? `https://erpbackend.tarstech.in/api/income-tax/${editingRecord._id}`
+        : "https://erpbackend.tarstech.in/api/income-tax";
 
       const method = editingRecord ? "PUT" : "POST";
 
@@ -321,7 +321,7 @@ const IncomeTax = () => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         const response = await fetch(
-          `http://142.93.177.150:4000/api/income-tax/${id}`,
+          `https://erpbackend.tarstech.in/api/income-tax/${id}`,
           {
             method: "DELETE",
           }
@@ -389,7 +389,7 @@ const IncomeTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `http://142.93.177.150:4000/api/income-tax/export/csv?${params}`
+        `https://erpbackend.tarstech.in/api/income-tax/export/csv?${params}`
       );
       if (response.ok) {
         const blob = await response.blob();
@@ -422,7 +422,7 @@ const IncomeTax = () => {
       const selectedFacultyName = salarySlipEmployee;
 
       // Fetch faculty data
-      const facultyRes = await fetch("http://142.93.177.150:4000/api/faculty");
+      const facultyRes = await fetch("https://erpbackend.tarstech.in/api/faculty");
       const facultyData = await facultyRes.json();
       const facultyMember = facultyData.find(
         (f) => f.personalInfo?.fullName === selectedFacultyName
@@ -435,7 +435,7 @@ const IncomeTax = () => {
 
       // Fetch salary records
       const salaryRes = await fetch(
-        `http://142.93.177.150:4000/api/faculty/salary?name=${encodeURIComponent(
+        `https://erpbackend.tarstech.in/api/faculty/salary?name=${encodeURIComponent(
           selectedFacultyName
         )}&year=${salarySlipYear}`
       );
@@ -458,7 +458,7 @@ const IncomeTax = () => {
 
       // Fetch income tax data
       const incomeTaxRes = await fetch(
-        `http://142.93.177.150:4000/api/income-tax?employeeName=${encodeURIComponent(
+        `https://erpbackend.tarstech.in/api/income-tax?employeeName=${encodeURIComponent(
           selectedFacultyName
         )}`
       );

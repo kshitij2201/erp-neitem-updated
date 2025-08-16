@@ -58,7 +58,7 @@ export default function AddPayment() {
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get('http://142.93.177.150:4000/api/students');
+      const response = await axios.get('https://erpbackend.tarstech.in/api/students');
       // Sort students by name in ascending order
       const sortedStudents = response.data.sort((a, b) => {
         const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
@@ -74,7 +74,7 @@ export default function AddPayment() {
 
   const fetchFeeHeads = async () => {
     try {
-      const response = await axios.get('http://142.93.177.150:4000/api/fee-heads');
+      const response = await axios.get('https://erpbackend.tarstech.in/api/fee-heads');
       // Remove duplicates based on title and sort in ascending order
       const uniqueFeeHeads = response.data.filter((head, index, self) => 
         index === self.findIndex(h => h.title.toLowerCase() === head.title.toLowerCase())
@@ -91,7 +91,7 @@ export default function AddPayment() {
 
   const fetchRecentPayments = async () => {
     try {
-      const response = await axios.get('http://142.93.177.150:4000/api/payments?limit=50');
+      const response = await axios.get('https://erpbackend.tarstech.in/api/payments?limit=50');
       setRecentPayments(response.data);
     } catch (err) {
       console.error('Error fetching recent payments:', err);
@@ -105,7 +105,7 @@ export default function AddPayment() {
     }
     
     try {
-      const response = await axios.get(`http://142.93.177.150:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`);
+      const response = await axios.get(`https://erpbackend.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`);
       setPendingFees(response.data || []);
     } catch (err) {
       console.error('Error fetching pending fees:', err);
@@ -121,7 +121,7 @@ export default function AddPayment() {
     }
     
     try {
-      const response = await axios.get(`http://142.93.177.150:4000/api/students/${studentId}/semester-fees/${semester}?academicYear=${formData.academicYear}`);
+      const response = await axios.get(`https://erpbackend.tarstech.in/api/students/${studentId}/semester-fees/${semester}?academicYear=${formData.academicYear}`);
       setSemesterFees(response.data || []);
     } catch (err) {
       console.error('Error fetching semester fees:', err);
@@ -133,7 +133,7 @@ export default function AddPayment() {
   const calculatePendingFees = async (studentId) => {
     try {
       // Get student's payment history
-      const paymentsResponse = await axios.get(`http://142.93.177.150:4000/api/payments?studentId=${studentId}`);
+      const paymentsResponse = await axios.get(`https://erpbackend.tarstech.in/api/payments?studentId=${studentId}`);
       const payments = paymentsResponse.data || [];
       
       // Calculate pending fees based on fee heads and payments
@@ -167,7 +167,7 @@ export default function AddPayment() {
   const calculateSemesterFees = async (studentId, semester) => {
     try {
       // Get student's payment history for specific semester
-      const paymentsResponse = await axios.get(`http://142.93.177.150:4000/api/payments?studentId=${studentId}&semester=${semester}`);
+      const paymentsResponse = await axios.get(`https://erpbackend.tarstech.in/api/payments?studentId=${studentId}&semester=${semester}`);
       const payments = paymentsResponse.data || [];
       
       // Calculate semester fees based on fee heads and payments
@@ -300,7 +300,7 @@ export default function AddPayment() {
         }
       }
 
-      const response = await axios.post('http://142.93.177.150:4000/api/payments', paymentData);
+      const response = await axios.post('https://erpbackend.tarstech.in/api/payments', paymentData);
 
       if (response.data) {
         let paymentTypeText = '';

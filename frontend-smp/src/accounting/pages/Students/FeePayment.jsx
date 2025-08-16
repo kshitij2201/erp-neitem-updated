@@ -17,7 +17,7 @@ export default function FeePayment() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const localRes = await axios.get("http://142.93.177.150:4000/api/students", {
+        const localRes = await axios.get("https://erpbackend.tarstech.in/api/students", {
           headers,
         });
         const studentList = localRes.data;
@@ -48,7 +48,7 @@ export default function FeePayment() {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
             const feeRes = await axios.get(
-              `http://142.93.177.150:4000/api/fee-heads/applicable/${student._id}`,
+              `https://erpbackend.tarstech.in/api/fee-heads/applicable/${student._id}`,
               { headers }
             );
             const heads = feeRes.data;

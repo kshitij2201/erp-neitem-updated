@@ -81,7 +81,7 @@ const StudentManagementDashboard = () => {
         ? `?admissionType=${admissionTypeFilter}`
         : "";
       const res = await axios.get(
-        `http://142.93.177.150:4000/api/students${query}`,
+        `https://erpbackend.tarstech.in/api/students${query}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -103,7 +103,7 @@ const StudentManagementDashboard = () => {
       setLoadingCastes(true);
       try {
         const res = await axios.get(
-          "http://142.93.177.150:4000/api/superadmin/castes",
+          "https://erpbackend.tarstech.in/api/superadmin/castes",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -130,22 +130,22 @@ const StudentManagementDashboard = () => {
       try {
         const [streamRes, departmentRes, semesterRes, subjectRes] =
           await Promise.all([
-            axios.get("http://142.93.177.150:4000/api/streams", {
+            axios.get("https://erpbackend.tarstech.in/api/streams", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
             }),
-            axios.get("http://142.93.177.150:4000/api/superadmin/departments", {
+            axios.get("https://erpbackend.tarstech.in/api/superadmin/departments", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
             }),
-            axios.get("http://142.93.177.150:4000/api/superadmin/semesters", {
+            axios.get("https://erpbackend.tarstech.in/api/superadmin/semesters", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
             }),
-            axios.get("http://142.93.177.150:4000/superadmin/api/subjects", {
+            axios.get("https://erpbackend.tarstech.in/superadmin/api/subjects", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
@@ -190,7 +190,7 @@ const StudentManagementDashboard = () => {
         setLoading(true);
         try {
           const res = await axios.get(
-            `http://142.93.177.150:4000/api/students/subjects/${formData.semester}/${formData.department}`,
+            `https://erpbackend.tarstech.in/api/students/subjects/${formData.semester}/${formData.department}`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -336,7 +336,7 @@ const StudentManagementDashboard = () => {
 
       if (editingId) {
         await axios.put(
-          `http://142.93.177.150:4000/api/students/${editingId}`,
+          `https://erpbackend.tarstech.in/api/students/${editingId}`,
           data,
           {
             headers: {
@@ -348,7 +348,7 @@ const StudentManagementDashboard = () => {
         alert("Student updated successfully!");
         setEditingId(null);
       } else {
-        await axios.post("http://142.93.177.150:4000/api/students", data, {
+        await axios.post("https://erpbackend.tarstech.in/api/students", data, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
             "Content-Type": "multipart/form-data",
@@ -377,7 +377,7 @@ const StudentManagementDashboard = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this student?")) {
       try {
-        await axios.delete(`http://142.93.177.150:4000/api/students/${id}`, {
+        await axios.delete(`https://erpbackend.tarstech.in/api/students/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
           },
@@ -393,7 +393,7 @@ const StudentManagementDashboard = () => {
   const handlePromote = async (id) => {
     try {
       const response = await axios.put(
-        `http://142.93.177.150:4000/api/students/promote/${id}`,
+        `https://erpbackend.tarstech.in/api/students/promote/${id}`,
         {},
         {
           headers: {
@@ -413,7 +413,7 @@ const StudentManagementDashboard = () => {
   const openBacklogModal = async (studentId) => {
     try {
       const res = await axios.get(
-        `http://142.93.177.150:4000/api/students/${studentId}`,
+        `https://erpbackend.tarstech.in/api/students/${studentId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -426,7 +426,7 @@ const StudentManagementDashboard = () => {
       if (semesterId && student.department?._id) {
         try {
           const subjectsRes = await axios.get(
-            `http://142.93.177.150:4000/api/students/subjects/${semesterId}/${student.department._id}`,
+            `https://erpbackend.tarstech.in/api/students/subjects/${semesterId}/${student.department._id}`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -484,7 +484,7 @@ const StudentManagementDashboard = () => {
     if (semesterId && backlogModal.departmentId) {
       try {
         const res = await axios.get(
-          `http://142.93.177.150:4000/api/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `https://erpbackend.tarstech.in/api/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -567,7 +567,7 @@ const StudentManagementDashboard = () => {
         );
         if (!existingBacklog) {
           await axios.post(
-            `http://142.93.177.150:4000/api/students/${studentId}/add-backlog`,
+            `https://erpbackend.tarstech.in/api/students/${studentId}/add-backlog`,
             { subjectIds: [subjectId], semesterId },
             {
               headers: {
@@ -586,7 +586,7 @@ const StudentManagementDashboard = () => {
         );
         if (backlog) {
           await axios.put(
-            `http://142.93.177.150:4000/api/students/${studentId}/update-backlog/${backlog._id}`,
+            `https://erpbackend.tarstech.in/api/students/${studentId}/update-backlog/${backlog._id}`,
             { status: "Completed" },
             {
               headers: {
@@ -598,7 +598,7 @@ const StudentManagementDashboard = () => {
       }
 
       await axios.put(
-        `http://142.93.177.150:4000/api/students/${studentId}`,
+        `https://erpbackend.tarstech.in/api/students/${studentId}`,
         { semesterRecords: updatedSemesterRecords },
         {
           headers: {
@@ -610,7 +610,7 @@ const StudentManagementDashboard = () => {
       alert(`Subject status updated to ${status}!`);
       fetchStudents();
       const res = await axios.get(
-        `http://142.93.177.150:4000/api/students/${studentId}`,
+        `https://erpbackend.tarstech.in/api/students/${studentId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -697,7 +697,7 @@ const StudentManagementDashboard = () => {
     const handleDownload = async () => {
       try {
         const res = await axios.get(
-          "http://142.93.177.150:4000/api/students/export",
+          "https://erpbackend.tarstech.in/api/students/export",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,

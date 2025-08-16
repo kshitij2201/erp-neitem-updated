@@ -62,7 +62,7 @@ export default function ApplyChargeHandoverForm() {
     const fetchFacultyList = async () => {
       try {
         const res = await fetch(
-          "http://142.93.177.150:4000/api/faculty/faculties?limit=1000"
+          "https://erpbackend.tarstech.in/api/faculty/faculties?limit=1000"
         );
         const data = await res.json();
         setFacultyList(
@@ -87,7 +87,7 @@ export default function ApplyChargeHandoverForm() {
           return;
         }
 
-        const response = await fetch("http://142.93.177.150:4000/api/auth/profile", {
+        const response = await fetch("https://erpbackend.tarstech.in/api/auth/profile", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -201,7 +201,7 @@ export default function ApplyChargeHandoverForm() {
       delete payload.handoverReason;
       console.log("Payload being submitted:", payload);
 
-      await axios.post("http://142.93.177.150:4000/api/tasks", payload, {
+      await axios.post("https://erpbackend.tarstech.in/api/tasks", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuccess(true);
@@ -401,7 +401,7 @@ export default function ApplyChargeHandoverForm() {
                             setReceiverId(id);
                             if (id) {
                               const res = await fetch(
-                                `http://142.93.177.150:4000/api/faculty/faculties?facultyId=${id}`
+                                `https://erpbackend.tarstech.in/api/faculty/faculties?facultyId=${id}`
                               );
                               const data = await res.json();
                               const faculty = Array.isArray(
