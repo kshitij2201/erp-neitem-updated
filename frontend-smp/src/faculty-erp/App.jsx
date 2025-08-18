@@ -181,6 +181,11 @@ const App = () => {
         }`}
       >
         <Routes>
+          {/* Redirect legacy or external /cc-dashboard to faculty-erp route */}
+          <Route
+            path="/cc-dashboard"
+            element={<Navigate to="/faculty-erp/cc-dashboard" />}
+          />
           <Route
             path="/"
             element={

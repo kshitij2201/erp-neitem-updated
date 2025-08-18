@@ -130,7 +130,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
   const getDashboardRoute = (role) => {
     if (role === "HOD" || role === "hod") return "/faculty-erp/hod-dashboard";
     if (role === "principal") return "/faculty-erp/principal-dashboard";
-    if (role === "cc") return "/cc-dashboard";
+    if (role === "cc") return "/faculty-erp/cc-dashboard";
     return "/faculty-erp";
   };
 
@@ -356,7 +356,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
           {
             title: "CC Functions",
             icon: <Award size={20} />,
-            href: `/cc-dashboard/${userData._id}`,
+            href: `/faculty-erp/cc-dashboard/${userData._id}`,
             routeName: "cc_dashboard",
             isSection: true,
             sectionTitle: "Additional Functions",

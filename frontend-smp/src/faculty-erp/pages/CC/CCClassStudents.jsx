@@ -202,7 +202,7 @@ const CCClassStudents = ({ userData }) => {
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => navigate("/cc-dashboard")}
+                onClick={() => navigate("/faculty-erp/cc-dashboard")}
                 className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ChevronLeft size={24} />

@@ -15,11 +15,11 @@ const ProtectedRoute = ({ children, isAuthenticated, userRole, routeName }) => {
   if (routeName && !rolePermissions[userRole]?.includes(routeName)) {
     const dashboardUrl =
       userRole === "principal"
-        ? "/principal-dashboard"
+        ? "/faculty-erp/principal-dashboard"
         : userRole === "HOD" || userRole === "hod"
-        ? "/hod-dashboard"
+        ? "/faculty-erp/hod-dashboard"
         : userRole === "cc"
-        ? "/cc-dashboard"
+        ? "/faculty-erp/cc-dashboard"
         : "/faculty-erp/dashboard";
 
     return (
