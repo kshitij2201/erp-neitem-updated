@@ -188,7 +188,8 @@ export default function PrincipalDashboard() {
         const allDepartments = departmentsData.departmentList || [];
 
         // Create real department-wise data by merging faculty and student data
-        const departmentWiseData = allDepartments.map((dept) => {
+        // then deduplicate/merge entries with the same department name (summing counts)
+        const departmentWiseDataRaw = allDepartments.map((dept) => {
           const facultyCount =
             facultiesData.departmentWise?.find((f) => f.name === dept.name)
               ?.count || 0;
@@ -202,6 +203,22 @@ export default function PrincipalDashboard() {
             Students: studentCount,
           };
         });
+
+        // Reduce to unique departments by name, summing Faculties and Students
+        const departmentWiseData = Object.values(
+          departmentWiseDataRaw.reduce((acc, curr) => {
+            const key = String(curr.name).trim();
+            if (!acc[key]) {
+              acc[key] = { ...curr };
+            } else {
+              acc[key].Faculties =
+                (acc[key].Faculties || 0) + (curr.Faculties || 0);
+              acc[key].Students =
+                (acc[key].Students || 0) + (curr.Students || 0);
+            }
+            return acc;
+          }, {})
+        );
 
         // Set the counts only if component is still mounted
         if (isMounted) {
