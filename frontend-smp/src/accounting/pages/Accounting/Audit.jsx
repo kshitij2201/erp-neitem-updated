@@ -33,7 +33,9 @@ export default function Audit() {
 
       const res = await fetch(
         "https://erpbackend.tarstech.in/api/audit/stats/overview",
-        { headers }
+        {
+          headers,
+        }
       );
       const data = await res.json();
       if (data.actionStats) {

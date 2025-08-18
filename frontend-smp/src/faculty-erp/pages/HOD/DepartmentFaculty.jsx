@@ -64,10 +64,14 @@ export default function DepartmentFaculty({ userData }) {
     }`,
   ];
   const yearOptions = [
-    { value: "1", label: "1st Year" },
-    { value: "2", label: "2nd Year" },
-    { value: "3", label: "3rd Year" },
-    { value: "4", label: "4th Year" },
+    { value: "1", label: "1st Semester" },
+    { value: "2", label: "2nd Semester" },
+    { value: "3", label: "3rd Semester" },
+    { value: "4", label: "4th Semester" },
+    { value: "5", label: "5th Semester" },
+    { value: "6", label: "6th Semester" },
+    { value: "7", label: "7th Semester" },
+    { value: "8", label: "8th Semester" },
   ];
   const sections = ["A", "B", "C", "D"];
 
@@ -465,7 +469,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/assign-cc`,
         {
           method: "POST",
@@ -541,7 +545,7 @@ export default function DepartmentFaculty({ userData }) {
         try {
           const updatedAssignmentsResponse = await fetch(
             `${
-              import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+              import.meta.env.VITE_API_URL || "http://localhost:4000"
             }/api/faculty/cc-assignments?department=${encodeURIComponent(
               deptName
             )}`,
@@ -575,7 +579,7 @@ export default function DepartmentFaculty({ userData }) {
         console.log("[AssignCC] Refreshing faculty data...");
         const facultyResponse = await fetch(
           `${
-            import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+            import.meta.env.VITE_API_URL || "http://localhost:4000"
           }/api/faculty/department/${encodeURIComponent(
             userDepartment || department
           )}`,
@@ -626,7 +630,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty-subject/assign-faculty-subject`,
         {
           method: "POST",
@@ -678,7 +682,7 @@ export default function DepartmentFaculty({ userData }) {
       // Optionally, refetch faculties to update subjectsTaught
       const facultyResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/faculties?department=${encodeURIComponent(department)}`,
         {
           headers: {
@@ -729,7 +733,7 @@ export default function DepartmentFaculty({ userData }) {
       const department = userData?.department || assignment.department;
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/delete-cc-assignment`,
         {
           method: "POST",
@@ -772,7 +776,7 @@ export default function DepartmentFaculty({ userData }) {
       // Refresh CC assignments
       const updatedAssignmentsResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/cc-assignments?department=${encodeURIComponent(
           department
         )}`,
@@ -1116,7 +1120,9 @@ export default function DepartmentFaculty({ userData }) {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-medium">Year:</span>
+                      <span className="text-slate-500 font-medium">
+                        Semester:
+                      </span>
                       <span className="text-slate-700 font-semibold">
                         {assignment.semester}
                       </span>
@@ -1469,7 +1475,7 @@ export default function DepartmentFaculty({ userData }) {
                                           await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "https://erpbackend.tarstech.in"
+                                              "http://localhost:4000"
                                             }/api/faculty-subject/remove-faculty-subject`,
                                             {
                                               method: "DELETE",
@@ -1493,7 +1499,7 @@ export default function DepartmentFaculty({ userData }) {
                                           const response = await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "https://erpbackend.tarstech.in"
+                                              "http://localhost:4000"
                                             }/api/faculty/faculties?department=${encodeURIComponent(
                                               department
                                             )}`,
@@ -1962,14 +1968,14 @@ export default function DepartmentFaculty({ userData }) {
                     </div>
                     <div className="space-y-2">
                       <label className="block text-sm font-bold text-slate-700 uppercase tracking-wide">
-                        Select Year (for Session: {currentAcademicYear})
+                        Select SEMESTER (for Session: {currentAcademicYear})
                       </label>
                       <select
                         value={selectedYearGroup}
                         onChange={(e) => setSelectedYearGroup(e.target.value)}
                         className="w-full border border-slate-300 p-4 rounded-xl bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium shadow-sm"
                       >
-                        <option value="">Select Year</option>
+                        <option value="">Select SEMESTER</option>
                         {yearOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}

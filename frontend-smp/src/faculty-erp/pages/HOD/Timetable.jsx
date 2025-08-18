@@ -665,9 +665,12 @@ export default function TimetableSimple({ userData }) {
   const loadConflictingFaculties = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get("https://erpbackend.tarstech.in/api/timetable", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/timetable",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       const allTimetables = response.data || [];
 
       const conflicts = {};
@@ -1189,14 +1192,17 @@ export default function TimetableSimple({ userData }) {
     setLoading(true);
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get("https://erpbackend.tarstech.in/api/timetable", {
-        params: {
-          department: ccAssignment.department,
-        },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/timetable",
+        {
+          params: {
+            department: ccAssignment.department,
+          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       console.log("Load timetable response:", response.data);
 

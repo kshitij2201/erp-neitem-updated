@@ -87,13 +87,16 @@ export default function ApplyChargeHandoverForm() {
           return;
         }
 
-        const response = await fetch("https://erpbackend.tarstech.in/api/auth/profile", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          "https://erpbackend.tarstech.in/api/auth/profile",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (response.ok) {
           const userData = await response.json();
@@ -193,6 +196,8 @@ export default function ApplyChargeHandoverForm() {
         senderId, // Add senderId to payload
         receiverName,
         receiverId: receiverId,
+        receiverEmployeeId:
+          formData.receiverEmployeeId || selectedReceiver?.employeeId,
         reason: formData.handoverReason,
         handoverStartDate: startDate,
         handoverEndDate: endDate,
@@ -205,7 +210,7 @@ export default function ApplyChargeHandoverForm() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuccess(true);
-      setTimeout(() => navigate("/dashboard/approveChargeHandover"), 2000);
+      setTimeout(() => navigate("/faculty-erp/dashboard"), 2000);
     } catch (err) {
       setError(
         err.response?.data?.message || err.message || "Submission failed"

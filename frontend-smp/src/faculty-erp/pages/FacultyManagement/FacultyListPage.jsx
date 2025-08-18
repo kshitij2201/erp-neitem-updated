@@ -67,7 +67,9 @@ export default function FacultyDashboard() {
           );
         }
         const data = await response.json();
-        const facultyData = Array.isArray(data.data.faculties) ? data.data.faculties : [];
+        const facultyData = Array.isArray(data.data.faculties)
+          ? data.data.faculties
+          : [];
         if (!Array.isArray(facultyData)) {
           throw new Error(
             "Invalid data format: Expected an array of faculties"
@@ -78,7 +80,7 @@ export default function FacultyDashboard() {
       } catch (err) {
         console.error("Fetch faculties error:", err);
         setError(
-          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at https://erpbackend.tarstech.in.`
+          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at http://localhost:4000.`
         );
         setLoading(false);
       }
@@ -357,6 +359,8 @@ export default function FacultyDashboard() {
       }
       setShowAssignForm(false);
       setAssignMode("none");
+      setViewMode("dashboard"); // Add this line to redirect back to main dashboard
+      setSelectedFaculty(null); // Clear selected faculty
       setFormData({
         reason: "",
         createdDate: new Date().toISOString().split("T")[0],
@@ -399,6 +403,8 @@ export default function FacultyDashboard() {
         )
       );
       // Optionally update HOD history here
+      setViewMode("dashboard"); // Redirect back to main dashboard
+      setSelectedFaculty(null); // Clear selected faculty
       alert("HOD removed successfully");
     } catch (err) {
       console.error("Remove HOD error:", err);
@@ -442,6 +448,8 @@ export default function FacultyDashboard() {
         },
       ]);
 
+      setViewMode("dashboard"); // Redirect back to main dashboard
+      setSelectedFaculty(null); // Clear selected faculty
       alert("Principal removed successfully");
     } catch (err) {
       console.error("Remove Principal error:", err);

@@ -16,18 +16,41 @@ export default function ChargeHandoverApp() {
   const employeeId = userData?.employeeId || "";
   const token = userData?.token || localStorage.getItem("authToken");
 
+  // Helper function to check if user is non-HOD (faculty, cc, teaching, etc.)
+  const isNonHOD = () => {
+    return userRole.toLowerCase() !== "hod";
+  };
+
   // Fetch both received and sent requests
   const fetchRequests = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("https://erpbackend.tarstech.in/api/tasks", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/tasks",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       const allTasks = response.data.data || response.data || [];
       console.log("Fetched tasks:", allTasks);
       console.log("User role:", userRole);
       console.log("User department:", userData?.department);
+      console.log("Current User ID:", currentUserId);
+      console.log("Employee ID:", employeeId);
+      console.log("Full userData:", userData);
+
+      // Debug: Check what receiverId values exist in tasks
+      console.log(
+        "All receiverId values in tasks:",
+        allTasks.map((task) => ({
+          id: task._id,
+          receiverId: task.receiverId,
+          receiverEmployeeId: task.receiverEmployeeId,
+          receiverName: task.receiverName,
+          status: task.status,
+        }))
+      );
 
       // Filter requests based on user role and workflow
       if (userRole.toLowerCase() === "hod") {
@@ -37,12 +60,47 @@ export default function ChargeHandoverApp() {
         );
         console.log("HOD received requests:", receivedData);
         setReceivedRequests(receivedData);
-      } else if (userRole.toLowerCase() === "teaching") {
-        // Faculty should see ALL requests where they are the receiver to track full workflow
-        const receivedData = allTasks.filter(
-          (task) => task.receiverId === currentUserId
-        );
-        console.log("Faculty received requests:", receivedData);
+      } else {
+        // All other roles (teaching, cc, faculty, etc.) should see requests where they are the receiver
+        const receivedData = allTasks.filter((task) => {
+          // Try multiple matching strategies
+          const receiverIdMatch =
+            task.receiverId === currentUserId || task.receiverId === employeeId;
+          const receiverEmployeeIdMatch =
+            task.receiverEmployeeId === currentUserId ||
+            task.receiverEmployeeId === employeeId;
+          const receiverNameMatch =
+            userData?.firstName &&
+            userData?.lastName &&
+            task.receiverName &&
+            task.receiverName
+              .toLowerCase()
+              .includes(userData.firstName.toLowerCase()) &&
+            task.receiverName
+              .toLowerCase()
+              .includes(userData.lastName.toLowerCase());
+
+          const isReceiver =
+            receiverIdMatch || receiverEmployeeIdMatch || receiverNameMatch;
+
+          console.log(`Task ${task._id} receiver check for ${userRole}:`, {
+            taskReceiverId: task.receiverId,
+            taskReceiverEmployeeId: task.receiverEmployeeId,
+            taskReceiverName: task.receiverName,
+            currentUserId,
+            employeeId,
+            userFirstName: userData?.firstName,
+            userLastName: userData?.lastName,
+            userRole,
+            receiverIdMatch,
+            receiverEmployeeIdMatch,
+            receiverNameMatch,
+            isReceiver,
+          });
+
+          return isReceiver;
+        });
+        console.log(`${userRole} received requests:`, receivedData);
         setReceivedRequests(receivedData);
       }
 
@@ -63,6 +121,13 @@ export default function ChargeHandoverApp() {
 
   useEffect(() => {
     fetchRequests();
+    // Debug info
+    console.log("=== INITIAL DEBUG INFO ===");
+    console.log("userData:", userData);
+    console.log("currentUserId:", currentUserId);
+    console.log("employeeId:", employeeId);
+    console.log("userRole:", userRole);
+    console.log("isNonHOD():", isNonHOD());
     // eslint-disable-next-line
   }, []);
 
@@ -190,6 +255,35 @@ export default function ChargeHandoverApp() {
             </div>
           </div>
 
+          {/* Workflow Information Section */}
+          <div className="border-b border-gray-200 px-6 py-4 bg-blue-50">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">
+              📋 Charge Handover Workflow
+            </h3>
+            <div className="text-xs text-blue-800 space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                <span>
+                  <strong>Step 1:</strong> Faculty applies for charge handover
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                <span>
+                  <strong>Step 2:</strong> HOD reviews and approves/rejects the
+                  request
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                <span>
+                  <strong>Step 3:</strong> Receiving faculty accepts/rejects the
+                  handover
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Section 1: Requests to Approve (Received) */}
           <div className="border-b border-gray-200 px-6 py-4 bg-gray-50">
             <h2 className="text-lg font-medium text-gray-900">
@@ -255,53 +349,51 @@ export default function ChargeHandoverApp() {
               )}
 
             {/* Statistics for Faculty */}
-            {userRole.toLowerCase() === "teaching" &&
-              receivedRequests.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-orange-400 rounded-full mr-2"></div>
-                    <span className="text-gray-600">
-                      Waiting for HOD:{" "}
-                      {
-                        receivedRequests.filter(
-                          (r) => r.status === "pending_hod"
-                        ).length
-                      }
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
-                    <span className="text-gray-600">
-                      Pending Your Acceptance:{" "}
-                      {
-                        receivedRequests.filter(
-                          (r) => r.status === "pending_faculty"
-                        ).length
-                      }
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
-                    <span className="text-gray-600">
-                      Accepted:{" "}
-                      {
-                        receivedRequests.filter((r) => r.status === "approved")
-                          .length
-                      }
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-red-400 rounded-full mr-2"></div>
-                    <span className="text-gray-600">
-                      Rejected:{" "}
-                      {
-                        receivedRequests.filter((r) => r.status === "rejected")
-                          .length
-                      }
-                    </span>
-                  </div>
+            {isNonHOD() && receivedRequests.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-orange-400 rounded-full mr-2"></div>
+                  <span className="text-gray-600">
+                    Waiting for HOD:{" "}
+                    {
+                      receivedRequests.filter((r) => r.status === "pending_hod")
+                        .length
+                    }
+                  </span>
                 </div>
-              )}
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-gray-600">
+                    Pending Your Acceptance:{" "}
+                    {
+                      receivedRequests.filter(
+                        (r) => r.status === "pending_faculty"
+                      ).length
+                    }
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+                  <span className="text-gray-600">
+                    Accepted:{" "}
+                    {
+                      receivedRequests.filter((r) => r.status === "approved")
+                        .length
+                    }
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-400 rounded-full mr-2"></div>
+                  <span className="text-gray-600">
+                    Rejected:{" "}
+                    {
+                      receivedRequests.filter((r) => r.status === "rejected")
+                        .length
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -334,8 +426,7 @@ export default function ChargeHandoverApp() {
                       // Highlight requests that need action
                       (request.status === "pending_hod" &&
                         userRole.toLowerCase() === "hod") ||
-                      (request.status === "pending_faculty" &&
-                        userRole.toLowerCase() === "teaching")
+                      (request.status === "pending_faculty" && isNonHOD())
                         ? "bg-blue-50 border-l-4 border-blue-400"
                         : ""
                     }`}
@@ -352,7 +443,7 @@ export default function ChargeHandoverApp() {
                         {((request.status === "pending_hod" &&
                           userRole.toLowerCase() === "hod") ||
                           (request.status === "pending_faculty" &&
-                            userRole.toLowerCase() === "teaching")) && (
+                            isNonHOD())) && (
                           <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                             Action Required
                           </span>
@@ -378,25 +469,24 @@ export default function ChargeHandoverApp() {
                             </button>
                           </div>
                         )}
-                      {request.status === "pending_faculty" &&
-                        userRole.toLowerCase() === "teaching" && (
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleReject(request._id)}
-                              className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50"
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              Reject
-                            </button>
-                            <button
-                              onClick={() => handleApprove(request._id)}
-                              className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded text-green-700 bg-white hover:bg-green-50"
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              Accept
-                            </button>
-                          </div>
-                        )}
+                      {request.status === "pending_faculty" && isNonHOD() && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleReject(request._id)}
+                            className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => handleApprove(request._id)}
+                            className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded text-green-700 bg-white hover:bg-green-50"
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Accept
+                          </button>
+                        </div>
+                      )}
                       {/* HOD can see status badge for already processed requests */}
                       {userRole.toLowerCase() === "hod" &&
                         request.status !== "pending_hod" && (
@@ -420,26 +510,25 @@ export default function ChargeHandoverApp() {
                         )}
 
                       {/* Faculty can see status badge for requests not requiring action */}
-                      {userRole.toLowerCase() === "teaching" &&
-                        request.status !== "pending_faculty" && (
-                          <div className="flex items-center space-x-2">
-                            {request.status === "pending_hod" && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                Waiting for HOD
-                              </span>
-                            )}
-                            {request.status === "approved" && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ✅ Accepted
-                              </span>
-                            )}
-                            {request.status === "rejected" && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                ❌ Rejected by Me
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      {isNonHOD() && request.status !== "pending_faculty" && (
+                        <div className="flex items-center space-x-2">
+                          {request.status === "pending_hod" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              Waiting for HOD
+                            </span>
+                          )}
+                          {request.status === "approved" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✅ Accepted
+                            </span>
+                          )}
+                          {request.status === "rejected" && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              ❌ Rejected by Me
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

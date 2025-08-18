@@ -22,10 +22,13 @@ export default function Scholarship() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const res = await axios.get("https://erpbackend.tarstech.in/api/students", {
-        params: { search: searchTerm },
-        headers,
-      });
+      const res = await axios.get(
+        "https://erpbackend.tarstech.in/api/students",
+        {
+          params: { search: searchTerm },
+          headers,
+        }
+      );
       setStudents(res.data);
       setError("");
     } catch (err) {

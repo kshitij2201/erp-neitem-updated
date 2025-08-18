@@ -42,10 +42,13 @@ export default function Expenses() {
           token ? "Present" : "Missing"
         );
 
-        const res = await axios.get("https://erpbackend.tarstech.in/api/expenses", {
-          params: { search: searchTerm },
-          headers,
-        });
+        const res = await axios.get(
+          "https://erpbackend.tarstech.in/api/expenses",
+          {
+            params: { search: searchTerm },
+            headers,
+          }
+        );
         console.log("Expenses fetch response:", res.data);
         setExpenses(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
@@ -64,7 +67,9 @@ export default function Expenses() {
 
         const res = await axios.get(
           "https://erpbackend.tarstech.in/api/expenses/total",
-          { headers }
+          {
+            headers,
+          }
         );
         setTotalExpenses(res.data?.total || 0);
       } catch (err) {
@@ -179,10 +184,13 @@ export default function Expenses() {
       });
 
       // Refetch expenses
-      const res = await axios.get("https://erpbackend.tarstech.in/api/expenses", {
-        params: { search: searchTerm },
-        headers,
-      });
+      const res = await axios.get(
+        "https://erpbackend.tarstech.in/api/expenses",
+        {
+          params: { search: searchTerm },
+          headers,
+        }
+      );
       setExpenses(res.data);
 
       // Refetch total

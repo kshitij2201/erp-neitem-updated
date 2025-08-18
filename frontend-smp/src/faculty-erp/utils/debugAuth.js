@@ -73,7 +73,7 @@ function debugAuth() {
       })
       .catch((error) => {
         console.log("❌ Network error:", error.message);
-        console.log("💡 Check if backend is running on https://erpbackend.tarstech.in");
+        console.log("💡 Check if backend is running on http://localhost:4000");
       });
   } else {
     console.log("❌ No token available for testing");

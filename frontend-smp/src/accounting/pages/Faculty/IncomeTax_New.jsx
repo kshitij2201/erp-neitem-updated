@@ -164,7 +164,9 @@ const IncomeTax = () => {
 
   const fetchSalaryData = async () => {
     try {
-      const response = await fetch("https://erpbackend.tarstech.in/api/faculty/salary");
+      const response = await fetch(
+        "https://erpbackend.tarstech.in/api/faculty/salary"
+      );
       if (response.ok) {
         const data = await response.json();
         setSalaryData(data);
@@ -422,7 +424,9 @@ const IncomeTax = () => {
       const selectedFacultyName = salarySlipEmployee;
 
       // Fetch faculty data
-      const facultyRes = await fetch("https://erpbackend.tarstech.in/api/faculty");
+      const facultyRes = await fetch(
+        "https://erpbackend.tarstech.in/api/faculty"
+      );
       const facultyData = await facultyRes.json();
       const facultyMember = facultyData.find(
         (f) => f.personalInfo?.fullName === selectedFacultyName

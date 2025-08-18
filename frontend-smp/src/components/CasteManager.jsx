@@ -291,9 +291,12 @@ const CasteManager = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://erpbackend.tarstech.in/api/superadmin/castes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `https://erpbackend.tarstech.in/api/superadmin/castes/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       fetchCastes();
     } catch (err) {
       console.error("Error deleting caste:", err);

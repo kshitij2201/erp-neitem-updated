@@ -17,9 +17,12 @@ export default function FeePayment() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const localRes = await axios.get("https://erpbackend.tarstech.in/api/students", {
-          headers,
-        });
+        const localRes = await axios.get(
+          "https://erpbackend.tarstech.in/api/students",
+          {
+            headers,
+          }
+        );
         const studentList = localRes.data;
         setStudents(studentList);
         await fetchFeeHeads(studentList);

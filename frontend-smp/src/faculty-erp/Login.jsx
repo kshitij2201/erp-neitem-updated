@@ -19,13 +19,16 @@ const Login = ({ onLogin = () => {} }) => {
         ? { email: emailOrId, password }
         : { employeeId: emailOrId, password };
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+      const response = await fetch(
+        "https://erpbackend.tarstech.in/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
       const data = await response.json();
 
@@ -54,8 +57,6 @@ const Login = ({ onLogin = () => {} }) => {
     }
   };
 
-
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Animated background elements */}
@@ -64,7 +65,7 @@ const Login = ({ onLogin = () => {} }) => {
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-200/20 rounded-full blur-2xl animate-pulse delay-500"></div>
       </div>
-      
+
       <div className="max-w-md w-full space-y-8 bg-white/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-gray-200/50 relative z-10 transition-all duration-500 hover:shadow-purple-300/30 hover:shadow-3xl">
         <div className="text-center">
           <div className="mx-auto h-20 w-20 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 flex items-center justify-center shadow-2xl mb-6 relative group transition-all duration-300 hover:scale-110">
@@ -120,17 +121,25 @@ const Login = ({ onLogin = () => {} }) => {
           <div className="space-y-6">
             <div
               className={`relative transition-all duration-300 ${
-                activeField === "emailOrId" ? "transform -translate-y-1 scale-105" : ""
+                activeField === "emailOrId"
+                  ? "transform -translate-y-1 scale-105"
+                  : ""
               }`}
             >
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                <div className={`p-1 rounded-lg transition-all duration-200 ${
-                  activeField === "emailOrId" ? "bg-indigo-100" : "bg-transparent"
-                }`}>
+                <div
+                  className={`p-1 rounded-lg transition-all duration-200 ${
+                    activeField === "emailOrId"
+                      ? "bg-indigo-100"
+                      : "bg-transparent"
+                  }`}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className={`h-5 w-5 transition-colors duration-200 ${
-                      activeField === "emailOrId" ? "text-indigo-600" : "text-gray-500"
+                      activeField === "emailOrId"
+                        ? "text-indigo-600"
+                        : "text-gray-500"
                     }`}
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -154,8 +163,8 @@ const Login = ({ onLogin = () => {} }) => {
                 onFocus={() => setActiveField("emailOrId")}
                 onBlur={() => setActiveField("")}
                 className={`appearance-none block w-full pl-14 pr-4 py-4 border-2 bg-white/70 backdrop-filter backdrop-blur-sm text-gray-800 rounded-2xl placeholder-gray-400 focus:outline-none transition-all duration-300 ${
-                  activeField === "emailOrId" 
-                    ? "border-indigo-400 shadow-lg shadow-indigo-200/50 bg-white/90" 
+                  activeField === "emailOrId"
+                    ? "border-indigo-400 shadow-lg shadow-indigo-200/50 bg-white/90"
                     : "border-gray-300 hover:border-gray-400"
                 } ${isLoading ? "opacity-50" : ""}`}
                 disabled={isLoading}
@@ -174,17 +183,25 @@ const Login = ({ onLogin = () => {} }) => {
 
             <div
               className={`relative transition-all duration-300 ${
-                activeField === "password" ? "transform -translate-y-1 scale-105" : ""
+                activeField === "password"
+                  ? "transform -translate-y-1 scale-105"
+                  : ""
               }`}
             >
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                <div className={`p-1 rounded-lg transition-all duration-200 ${
-                  activeField === "password" ? "bg-indigo-100" : "bg-transparent"
-                }`}>
+                <div
+                  className={`p-1 rounded-lg transition-all duration-200 ${
+                    activeField === "password"
+                      ? "bg-indigo-100"
+                      : "bg-transparent"
+                  }`}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className={`h-5 w-5 transition-colors duration-200 ${
-                      activeField === "password" ? "text-indigo-600" : "text-gray-500"
+                      activeField === "password"
+                        ? "text-indigo-600"
+                        : "text-gray-500"
                     }`}
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -208,8 +225,8 @@ const Login = ({ onLogin = () => {} }) => {
                 onFocus={() => setActiveField("password")}
                 onBlur={() => setActiveField("")}
                 className={`appearance-none block w-full pl-14 pr-14 py-4 border-2 bg-white/70 backdrop-filter backdrop-blur-sm text-gray-800 rounded-2xl placeholder-gray-400 focus:outline-none transition-all duration-300 ${
-                  activeField === "password" 
-                    ? "border-indigo-400 shadow-lg shadow-indigo-200/50 bg-white/90" 
+                  activeField === "password"
+                    ? "border-indigo-400 shadow-lg shadow-indigo-200/50 bg-white/90"
                     : "border-gray-300 hover:border-gray-400"
                 } ${isLoading ? "opacity-50" : ""}`}
                 disabled={isLoading}
@@ -277,7 +294,11 @@ const Login = ({ onLogin = () => {} }) => {
               disabled={isLoading}
             >
               <span className="absolute left-0 inset-y-0 flex items-center pl-4">
-                <div className={`transition-all duration-300 ${isLoading ? "animate-spin" : "group-hover:scale-110"}`}>
+                <div
+                  className={`transition-all duration-300 ${
+                    isLoading ? "animate-spin" : "group-hover:scale-110"
+                  }`}
+                >
                   {isLoading ? (
                     <svg
                       className="h-6 w-6 text-white"
@@ -337,7 +358,7 @@ const Login = ({ onLogin = () => {} }) => {
             </button>
           </div>
         </form>
-        
+
         {/* Additional UI elements */}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">

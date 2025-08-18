@@ -31,9 +31,12 @@ export default function ApproveODLeave() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("https://erpbackend.tarstech.in/api/leave/all", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/leave/all",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       const allLeaves = response.data || [];
       console.log("Fetched leaves:", allLeaves);
       console.log("User role:", userRole);

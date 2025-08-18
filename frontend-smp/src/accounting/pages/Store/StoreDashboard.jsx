@@ -1537,14 +1537,17 @@ function CreateItemModal({ onClose, onSuccess }) {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("https://erpbackend.tarstech.in/api/store/items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        "https://erpbackend.tarstech.in/api/store/items",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await response.json();
 

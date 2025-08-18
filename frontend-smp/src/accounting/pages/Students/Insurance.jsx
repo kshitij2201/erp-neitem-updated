@@ -62,10 +62,13 @@ export default function Insurance() {
           delete params[key];
         }
       });
-      const response = await axios.get("https://erpbackend.tarstech.in/api/insurance", {
-        params,
-        headers,
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/insurance",
+        {
+          params,
+          headers,
+        }
+      );
       setPolicies(response.data);
     } catch (error) {
       setError("Failed to fetch insurance policies");
@@ -83,9 +86,12 @@ export default function Insurance() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("https://erpbackend.tarstech.in/api/students", {
-        headers,
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/students",
+        {
+          headers,
+        }
+      );
       setStudents(response.data);
     } catch (error) {
       console.error("Failed to fetch students:", error);
@@ -128,9 +134,13 @@ export default function Insurance() {
           { headers }
         );
       } else {
-        await axios.post("https://erpbackend.tarstech.in/api/insurance", formData, {
-          headers,
-        });
+        await axios.post(
+          "https://erpbackend.tarstech.in/api/insurance",
+          formData,
+          {
+            headers,
+          }
+        );
       }
       setShowForm(false);
       setEditingPolicy(null);
@@ -171,9 +181,12 @@ export default function Insurance() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        await axios.delete(`https://erpbackend.tarstech.in/api/insurance/${id}`, {
-          headers,
-        });
+        await axios.delete(
+          `https://erpbackend.tarstech.in/api/insurance/${id}`,
+          {
+            headers,
+          }
+        );
         fetchPolicies();
         fetchStats();
       } catch (error) {

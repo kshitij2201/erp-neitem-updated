@@ -401,7 +401,8 @@ const ReportsTab = ({ facultyData, calculations }) => {
       let endpoint = "";
       switch (reportType) {
         case "summary":
-          endpoint = "https://erpbackend.tarstech.in/api/gratuity/reports/summary";
+          endpoint =
+            "https://erpbackend.tarstech.in/api/gratuity/reports/summary";
           break;
         case "detailed":
           endpoint = "https://erpbackend.tarstech.in/api/gratuity/records";
@@ -410,7 +411,8 @@ const ReportsTab = ({ facultyData, calculations }) => {
           endpoint = "https://erpbackend.tarstech.in/api/gratuity/analytics";
           break;
         default:
-          endpoint = "https://erpbackend.tarstech.in/api/gratuity/reports/summary";
+          endpoint =
+            "https://erpbackend.tarstech.in/api/gratuity/reports/summary";
       }
 
       const response = await fetch(`${endpoint}?${params}`, {

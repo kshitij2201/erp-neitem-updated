@@ -123,25 +123,31 @@ const BorrowerEntry = () => {
   const fetchAllStudents = async () => {
     try {
       // Try the main students endpoint first
-      let response = await fetch("https://erpbackend.tarstech.in/api/students", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      // If that fails, try the /all endpoint
-      if (!response.ok) {
-        response = await fetch("https://erpbackend.tarstech.in/api/students/all", {
+      let response = await fetch(
+        "https://erpbackend.tarstech.in/api/students",
+        {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        });
+        }
+      );
+
+      // If that fails, try the /all endpoint
+      if (!response.ok) {
+        response = await fetch(
+          "https://erpbackend.tarstech.in/api/students/all",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
       }
 
       if (!response.ok)
@@ -168,7 +174,9 @@ const BorrowerEntry = () => {
     const fetchBooks = async () => {
       setLoadingBooks(true);
       try {
-        const response = await fetch("https://erpbackend.tarstech.in/api/books");
+        const response = await fetch(
+          "https://erpbackend.tarstech.in/api/books"
+        );
         if (!response.ok)
           throw new Error(
             `Failed to fetch books: ${response.status} ${response.statusText}`

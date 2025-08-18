@@ -177,11 +177,14 @@ class DataSyncManager {
 
       if (existing.length > 0) {
         // Update existing record
-        await fetch(`https://erpbackend.tarstech.in/api/income-tax/${existing[0]._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updateData),
-        });
+        await fetch(
+          `https://erpbackend.tarstech.in/api/income-tax/${existing[0]._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updateData),
+          }
+        );
       } else {
         // Create new record
         await fetch("https://erpbackend.tarstech.in/api/income-tax", {
@@ -291,7 +294,9 @@ class DataSyncManager {
 
     try {
       // 1. Sync all salary records to PF
-      const salaryResponse = await fetch("https://erpbackend.tarstech.in/api/salary");
+      const salaryResponse = await fetch(
+        "https://erpbackend.tarstech.in/api/salary"
+      );
       const salaryRecords = await salaryResponse.json();
 
       for (const salary of salaryRecords) {

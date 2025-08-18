@@ -60,6 +60,7 @@ const IncomeTax = () => {
     // Deductions
     tdsDeduction: "",
     epfDeduction: "",
+    advance: "", // Advance deduction
     professionalTax: "", // Professional Tax - manual entry for all calculation types
     esiDeduction: "", // ESI deduction
     loanDeduction: "", // Loan/Advance deduction
@@ -202,21 +203,25 @@ const IncomeTax = () => {
     // Deductions
     const tds = parseFloat(salaryInputs.tdsDeduction) || 0;
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
+    const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
 
     // Apply proportional deductions if working partial days
     let adjustedTds = tds;
     let adjustedEpf = epf;
+    let adjustedAdvance = advance;
     let adjustedPt = pt;
 
     if (workingDays > 0 && totalMonthDays > 0 && workingDays < totalMonthDays) {
       const dailyMultiplier = workingDays / totalMonthDays;
       adjustedTds = tds * dailyMultiplier;
       adjustedEpf = epf * dailyMultiplier;
+      adjustedAdvance = advance * dailyMultiplier;
       adjustedPt = pt * dailyMultiplier;
     }
 
-    const totalDeductions = adjustedTds + adjustedEpf + adjustedPt;
+    const totalDeductions =
+      adjustedTds + adjustedEpf + adjustedAdvance + adjustedPt;
     const netSalary = gross - totalDeductions;
 
     return {
@@ -232,6 +237,7 @@ const IncomeTax = () => {
       gross,
       tds: adjustedTds,
       epf: adjustedEpf,
+      advance: adjustedAdvance,
       pt: adjustedPt,
       totalDeductions,
       netSalary,
@@ -305,21 +311,25 @@ const IncomeTax = () => {
     // Deductions
     const tds = parseFloat(salaryInputs.tdsDeduction) || 0;
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
+    const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
 
     // Apply proportional deductions if working partial days
     let adjustedTds = tds;
     let adjustedEpf = epf;
+    let adjustedAdvance = advance;
     let adjustedPt = pt;
 
     if (workingDays > 0 && totalMonthDays > 0 && workingDays < totalMonthDays) {
       const dailyMultiplier = workingDays / totalMonthDays;
       adjustedTds = tds * dailyMultiplier;
       adjustedEpf = epf * dailyMultiplier;
+      adjustedAdvance = advance * dailyMultiplier;
       adjustedPt = pt * dailyMultiplier;
     }
 
-    const totalDeductions = adjustedTds + adjustedEpf + adjustedPt;
+    const totalDeductions =
+      adjustedTds + adjustedEpf + adjustedAdvance + adjustedPt;
     const netSalary = gross - totalDeductions;
 
     return {
@@ -335,6 +345,7 @@ const IncomeTax = () => {
       gross,
       tds: adjustedTds,
       epf: adjustedEpf,
+      advance: adjustedAdvance,
       pt: adjustedPt,
       totalDeductions,
       netSalary,
@@ -519,6 +530,7 @@ const IncomeTax = () => {
     // Deductions (usually proportional to gross salary)
     const tds = parseFloat(salaryInputs.tdsDeduction) || 0;
     const epf = parseFloat(salaryInputs.epfDeduction) || 0; // Use correct field name
+    const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0;
     const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0; // Add loan deduction
     const insurance = parseFloat(salaryInputs.insuranceDeduction) || 0; // Add insurance
@@ -528,6 +540,7 @@ const IncomeTax = () => {
     // Apply proportional deductions if working partial days
     let adjustedTds = tds;
     let adjustedEpf = epf;
+    let adjustedAdvance = advance;
     let adjustedPt = pt;
     let adjustedLoan = loanDeduction;
     let adjustedInsurance = insurance;
@@ -538,6 +551,7 @@ const IncomeTax = () => {
       const dailyMultiplier = workingDays / totalMonthDays;
       adjustedTds = tds * dailyMultiplier;
       adjustedEpf = epf * dailyMultiplier;
+      adjustedAdvance = advance * dailyMultiplier;
       adjustedPt = pt * dailyMultiplier;
       adjustedLoan = loanDeduction * dailyMultiplier;
       adjustedInsurance = insurance * dailyMultiplier;
@@ -548,6 +562,7 @@ const IncomeTax = () => {
     const totalDeductions =
       adjustedTds +
       adjustedEpf +
+      adjustedAdvance +
       adjustedPt +
       adjustedLoan +
       adjustedInsurance +
@@ -570,6 +585,7 @@ const IncomeTax = () => {
       gross,
       tds: adjustedTds,
       epf: adjustedEpf,
+      advance: adjustedAdvance,
       pt: adjustedPt,
       esi: adjustedEsi,
       loan: adjustedLoan,
@@ -654,6 +670,7 @@ const IncomeTax = () => {
         deductions: {
           tds: calculatedSalary.tds,
           epf: calculatedSalary.epf,
+          advance: calculatedSalary.advance,
           professionalTax: calculatedSalary.pt,
         },
         amount: calculatedSalary.gross, // Gross salary as total amount
@@ -683,11 +700,14 @@ const IncomeTax = () => {
         },
       };
 
-      const response = await fetch("https://erpbackend.tarstech.in/api/salary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(salaryRecord),
-      });
+      const response = await fetch(
+        "https://erpbackend.tarstech.in/api/salary",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(salaryRecord),
+        }
+      );
 
       if (response.ok) {
         alert(
@@ -994,7 +1014,9 @@ const IncomeTax = () => {
 
         // Try User model (Faculties collection) first
         try {
-          const userRes = await fetch("https://erpbackend.tarstech.in/api/users");
+          const userRes = await fetch(
+            "https://erpbackend.tarstech.in/api/users"
+          );
           if (userRes.ok) {
             const usersResponse = await userRes.json();
             const users = Array.isArray(usersResponse)
@@ -1022,7 +1044,9 @@ const IncomeTax = () => {
         }
 
         // Finally try faculty endpoint
-        const fallbackRes = await fetch("https://erpbackend.tarstech.in/api/faculty");
+        const fallbackRes = await fetch(
+          "https://erpbackend.tarstech.in/api/faculty"
+        );
         if (!fallbackRes.ok) {
           throw new Error("Failed to fetch faculty data from all endpoints");
         }
@@ -1779,7 +1803,9 @@ const IncomeTax = () => {
 
       // Fetch faculty data
       console.log("Fetching faculty data...");
-      const facultyRes = await fetch("https://erpbackend.tarstech.in/api/faculty");
+      const facultyRes = await fetch(
+        "https://erpbackend.tarstech.in/api/faculty"
+      );
       if (!facultyRes.ok) {
         throw new Error(`Faculty API failed: ${facultyRes.status}`);
       }
@@ -4568,6 +4594,23 @@ Please:
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Advance
+                      </label>
+                      <input
+                        type="number"
+                        value={salaryInputs.advance}
+                        onChange={(e) =>
+                          setSalaryInputs({
+                            ...salaryInputs,
+                            advance: e.target.value,
+                          })
+                        }
+                        placeholder="Advance amount"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         TDS
                       </label>
                       <input
@@ -5553,6 +5596,14 @@ Please:
                       ₹{calculatedSalary.epf.toLocaleString()}
                     </span>
                   </div>
+                  {calculatedSalary.advance > 0 && (
+                    <div className="flex justify-between">
+                      <span>Advance:</span>
+                      <span className="font-medium">
+                        ₹{calculatedSalary.advance.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Professional Tax:</span>
                     <span className="font-medium">

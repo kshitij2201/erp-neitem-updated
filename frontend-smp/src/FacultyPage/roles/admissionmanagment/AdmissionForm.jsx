@@ -201,21 +201,30 @@ function AdmissionForm() {
                 Authorization: `Bearer ${token}`,
               },
             }),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/departments", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/semesters", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/subjects", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }),
+            axios.get(
+              "https://erpbackend.tarstech.in/api/superadmin/departments",
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+            axios.get(
+              "https://erpbackend.tarstech.in/api/superadmin/semesters",
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+            axios.get(
+              "https://erpbackend.tarstech.in/api/superadmin/subjects",
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
           ]);
 
         const streamsData = Array.isArray(streamRes.data) ? streamRes.data : [];
@@ -512,9 +521,13 @@ function AdmissionForm() {
         );
         alert("Student updated successfully!");
       } else {
-        await axios.post("https://erpbackend.tarstech.in/api/students", formPayload, {
-          headers,
-        });
+        await axios.post(
+          "https://erpbackend.tarstech.in/api/students",
+          formPayload,
+          {
+            headers,
+          }
+        );
         alert("Student saved successfully!");
       }
 

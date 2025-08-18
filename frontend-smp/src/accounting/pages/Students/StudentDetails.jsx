@@ -30,10 +30,13 @@ export default function StudentDetails() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         // Use local API for students with search term
-        const res = await axios.get("https://erpbackend.tarstech.in/api/students", {
-          params: { search: debouncedSearchTerm },
-          headers,
-        });
+        const res = await axios.get(
+          "https://erpbackend.tarstech.in/api/students",
+          {
+            params: { search: debouncedSearchTerm },
+            headers,
+          }
+        );
         const studentList = res.data;
         setStudents(studentList);
 
@@ -50,7 +53,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://erpbackend.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on http://localhost:4000"
           );
         } else {
           setError(

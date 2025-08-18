@@ -42,7 +42,9 @@ export default function SalaryRecords() {
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        const response = await axios.get("https://erpbackend.tarstech.in/api/salary");
+        const response = await axios.get(
+          "https://erpbackend.tarstech.in/api/salary"
+        );
         setRecords(Array.isArray(response.data) ? response.data : []);
       } catch (err) {
         setError(

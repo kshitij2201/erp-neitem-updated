@@ -25,12 +25,15 @@ const testAuth = async () => {
   try {
     console.log("🚀 Testing API call with authentication...");
 
-    const response = await fetch("https://erpbackend.tarstech.in/api/students?limit=5", {
-      headers: {
-        Authorization: `Bearer ${activeToken}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      "https://erpbackend.tarstech.in/api/students?limit=5",
+      {
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     console.log("📡 Response status:", response.status);
 
@@ -53,7 +56,7 @@ const testAuth = async () => {
   } catch (error) {
     console.log("❌ Network error:", error.message);
     console.log(
-      "💡 Suggestion: Check if the backend server is running on https://erpbackend.tarstech.in"
+      "💡 Suggestion: Check if the backend server is running on http://localhost:4000"
     );
   }
 };

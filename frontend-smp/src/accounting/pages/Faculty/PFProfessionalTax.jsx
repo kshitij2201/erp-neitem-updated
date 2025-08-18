@@ -96,9 +96,12 @@ const PFProfessionalTax = () => {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await fetch("https://erpbackend.tarstech.in/api/salary", {
-        headers,
-      });
+      const response = await fetch(
+        "https://erpbackend.tarstech.in/api/salary",
+        {
+          headers,
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setSalaryData(data);
@@ -118,9 +121,12 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
       if (searchTerm) params.append("employeeName", searchTerm);
 
-      const response = await fetch(`https://erpbackend.tarstech.in/api/pf?${params}`, {
-        headers,
-      });
+      const response = await fetch(
+        `https://erpbackend.tarstech.in/api/pf?${params}`,
+        {
+          headers,
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setPfRecords(data.records || data);
@@ -280,9 +286,12 @@ const PFProfessionalTax = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
-        const response = await fetch(`https://erpbackend.tarstech.in/api/pf/${id}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `https://erpbackend.tarstech.in/api/pf/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (response.ok) {
           await fetchPFRecords();
@@ -454,11 +463,14 @@ const PFProfessionalTax = () => {
           notes: `Auto-created from PF record on ${new Date().toLocaleDateString()}`,
         };
 
-        const response = await fetch("https://erpbackend.tarstech.in/api/income-tax", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newIncomeTaxData),
-        });
+        const response = await fetch(
+          "https://erpbackend.tarstech.in/api/income-tax",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newIncomeTaxData),
+          }
+        );
 
         if (response.ok) {
           await fetchIncomeTaxData();

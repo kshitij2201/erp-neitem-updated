@@ -50,7 +50,9 @@ export default function PaymentHistoryPage() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const url = new URL("https://erpbackend.tarstech.in/api/payments/history");
+      const url = new URL(
+        "https://erpbackend.tarstech.in/api/payments/history"
+      );
       if (searchTerm) url.searchParams.append("search", searchTerm);
       if (statusFilter !== "all")
         url.searchParams.append("status", statusFilter);
@@ -177,9 +179,12 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       // Fetch real notifications from backend
-      const response = await fetch("https://erpbackend.tarstech.in/api/notifications", {
-        headers,
-      });
+      const response = await fetch(
+        "https://erpbackend.tarstech.in/api/notifications",
+        {
+          headers,
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);

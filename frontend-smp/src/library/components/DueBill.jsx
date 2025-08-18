@@ -112,7 +112,9 @@ const DueBill = () => {
     const fetchDues = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("https://erpbackend.tarstech.in/api/dues/due");
+        const response = await axios.get(
+          "https://erpbackend.tarstech.in/api/dues/due"
+        );
         console.log("Dues API Response:", response.data);
         setDues(response.data);
       } catch (err) {

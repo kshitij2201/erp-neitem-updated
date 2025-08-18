@@ -70,13 +70,16 @@ const UserProfile = ({ userData }) => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch("https://erpbackend.tarstech.in/api/auth/profile", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${userData?.token}`,
-          },
-        });
+        const response = await fetch(
+          "https://erpbackend.tarstech.in/api/auth/profile",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${userData?.token}`,
+            },
+          }
+        );
         if (response.ok) {
           const data = await response.json();
           const updatedProfile = {

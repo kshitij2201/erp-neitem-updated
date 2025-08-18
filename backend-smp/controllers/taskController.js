@@ -12,6 +12,13 @@ const createTask = async (req, res) => {
     // Extract user ID from authenticated user (set by protect middleware)
     const senderId = req.body.senderId;
     const data = { ...req.body, senderId }; // Add senderId to data
+
+    console.log("Receiver data being saved:", {
+      receiverId: data.receiverId,
+      receiverName: data.receiverName,
+      receiverEmployeeId: data.receiverEmployeeId,
+      receiverDesignation: data.receiverDesignation,
+    });
     const requiredFields = [
       "senderId",
       "employeeId",
@@ -51,6 +58,8 @@ const createTask = async (req, res) => {
       receiverName: data.receiverName,
       receiverId: data.receiverId,
       receiverDesignation: data.receiverDesignation,
+      receiverDepartment: data.receiverDepartment,
+      receiverEmployeeId: data.receiverEmployeeId,
       documents: Array.isArray(data.documents) ? data.documents : [],
       assets: Array.isArray(data.assets) ? data.assets : [],
       pendingTasks: Array.isArray(data.pendingTasks) ? data.pendingTasks : [],
@@ -75,6 +84,19 @@ const getAllTasks = async (req, res) => {
     let query = {};
     if (receiverId) query.receiverId = receiverId;
     const tasks = await Task.find(query).sort({ date: -1 });
+
+    // Debug logging
+    console.log("getAllTasks - Query:", query);
+    console.log("getAllTasks - Found tasks count:", tasks.length);
+    if (receiverId) {
+      console.log("getAllTasks - Receiver filter applied for:", receiverId);
+      tasks.forEach((task) => {
+        console.log(
+          `Task ${task._id}: receiverId=${task.receiverId}, receiverEmployeeId=${task.receiverEmployeeId}`
+        );
+      });
+    }
+
     res.json(tasks);
   } catch (error) {
     console.error("Error in getAllTasks:", error);
@@ -207,11 +229,14 @@ const approveByFaculty = async (req, res) => {
 
     // Check if the approver is the designated receiver
     // approverId could be the user's _id or employeeId, and receiverId is typically the user's _id
-    if (approverId !== task.receiverId && approverId !== task.receiverEmployeeId) {
+    if (
+      approverId !== task.receiverId &&
+      approverId !== task.receiverEmployeeId
+    ) {
       console.log("Authorization check failed:", {
         approverId,
         receiverId: task.receiverId,
-        receiverEmployeeId: task.receiverEmployeeId
+        receiverEmployeeId: task.receiverEmployeeId,
       });
       return res
         .status(403)

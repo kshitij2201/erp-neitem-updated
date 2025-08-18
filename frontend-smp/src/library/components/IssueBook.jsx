@@ -21,13 +21,16 @@ const handleIssueBook = async (ACCNO, userId, borrowerType, borrowerData) => {
       dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
     };
 
-    const response = await fetch("https://erpbackend.tarstech.in/api/issues/issue", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    const response = await fetch(
+      "https://erpbackend.tarstech.in/api/issues/issue",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
 
     const data = await response.json();
 

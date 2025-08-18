@@ -357,15 +357,18 @@ const StudentList = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get("https://erpbackend.tarstech.in/api/students", {
-        params: {
-          page: 1,
-          limit: 100,
-        },
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await axios.get(
+        "https://erpbackend.tarstech.in/api/students",
+        {
+          params: {
+            page: 1,
+            limit: 100,
+          },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       console.log("API Response:", response.data);
 

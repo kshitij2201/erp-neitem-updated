@@ -100,9 +100,12 @@ export default function PrincipalDashboard() {
           fetch("https://erpbackend.tarstech.in/api/superadmin/students/all", {
             headers,
           }),
-          fetch("https://erpbackend.tarstech.in/api/superadmin/departments/all", {
-            headers,
-          }),
+          fetch(
+            "https://erpbackend.tarstech.in/api/superadmin/departments/all",
+            {
+              headers,
+            }
+          ),
           fetch(
             "https://erpbackend.tarstech.in/api/dashboard/principal-pending-approvals",
             { headers }

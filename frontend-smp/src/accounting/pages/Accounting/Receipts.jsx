@@ -513,9 +513,12 @@ const Receipts = () => {
       }
 
       // Fetch faculty data to get complete employee information
-      const facultyRes = await fetch("https://erpbackend.tarstech.in/api/faculty", {
-        headers,
-      });
+      const facultyRes = await fetch(
+        "https://erpbackend.tarstech.in/api/faculty",
+        {
+          headers,
+        }
+      );
       if (!facultyRes.ok) {
         throw new Error("Failed to fetch faculty data");
       }
@@ -538,7 +541,9 @@ const Receipts = () => {
       // Fetch salary record details
       const salaryRes = await fetch(
         `https://erpbackend.tarstech.in/api/faculty/salary`,
-        { headers }
+        {
+          headers,
+        }
       );
       if (!salaryRes.ok) {
         throw new Error("Failed to fetch salary records");

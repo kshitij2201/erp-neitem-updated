@@ -24,11 +24,7 @@ export default function ApplyODLeave({ userData }) {
   const odLeaveTypes = [
     { value: "Conference", label: "🎓 Conference" },
     { value: "Workshop", label: "🔧 Workshop" },
-    { value: "Seminar", label: "📚 Seminar" },
-    { value: "Training", label: "💼 Training Program" },
     { value: "Official Duty", label: "🏛️ Official Duty" },
-    { value: "Research Work", label: "🔬 Research Work" },
-    { value: "Academic Visit", label: "🎯 Academic Visit" },
   ];
 
   useEffect(() => {

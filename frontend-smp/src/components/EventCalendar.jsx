@@ -100,7 +100,9 @@ const EventCalendar = () => {
       await axios.post(
         "https://erpbackend.tarstech.in/api/superadmin/events",
         newEvent,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       setEventName("");
       setEventDate(new Date().toISOString().slice(0, 10));
@@ -119,9 +121,12 @@ const EventCalendar = () => {
   // Delete event
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://erpbackend.tarstech.in/api/superadmin/events/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `https://erpbackend.tarstech.in/api/superadmin/events/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       fetchEvents();
     } catch (err) {
       console.error(

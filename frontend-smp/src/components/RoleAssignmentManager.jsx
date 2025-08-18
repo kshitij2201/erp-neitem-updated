@@ -148,10 +148,13 @@ const RoleAssignmentManager = () => {
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(`https://erpbackend.tarstech.in/api/faculty/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(
+        `https://erpbackend.tarstech.in/api/faculty/${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       if (!response.ok) {
         if (response.status === 401) {

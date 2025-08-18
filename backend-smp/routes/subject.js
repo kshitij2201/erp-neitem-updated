@@ -53,49 +53,71 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET subjects by department
-router.get("/department/:departmentName", async (req, res) => {
+// GET subjects by department (query parameter version)
+router.get("/by-department", async (req, res) => {
   try {
-    const { departmentName } = req.params;
-    console.log("[SubjectsByDepartment] Fetching subjects for department:", departmentName);
+    const { department: departmentName } = req.query;
+
+    if (!departmentName) {
+      return res.status(400).json({
+        success: false,
+        message: "Department parameter is required",
+      });
+    }
+
+    console.log(
+      "[SubjectsByDepartment] Fetching subjects for department:",
+      departmentName
+    );
 
     // First try AdminSubject with AcademicDepartment
     const academicDepartment = await AcademicDepartment.findOne({
-      name: { $regex: new RegExp(departmentName, 'i') }
+      name: { $regex: new RegExp(departmentName, "i") },
     });
 
     if (academicDepartment) {
-      console.log("[SubjectsByDepartment] Found academic department:", academicDepartment.name);
-      
+      console.log(
+        "[SubjectsByDepartment] Found academic department:",
+        academicDepartment.name
+      );
+
       // Find admin subjects for this department
-      const adminSubjects = await AdminSubject.find({ department: academicDepartment._id }).populate("department");
-      console.log("[SubjectsByDepartment] Admin subjects found:", adminSubjects.length);
+      const adminSubjects = await AdminSubject.find({
+        department: academicDepartment._id,
+      }).populate("department");
+      console.log(
+        "[SubjectsByDepartment] Admin subjects found:",
+        adminSubjects.length
+      );
 
       if (adminSubjects.length > 0) {
-        const formattedSubjects = adminSubjects.map(subject => ({
+        const formattedSubjects = adminSubjects.map((subject) => ({
           _id: subject._id,
           name: subject.name,
-          code: subject.code || subject.subjectCode || '',
+          code: subject.code || subject.subjectCode || "",
           department: subject.department?.name || departmentName,
-          type: 'admin'
+          type: "admin",
         }));
 
         return res.status(200).json({
           success: true,
           message: "Admin subjects retrieved successfully",
           data: formattedSubjects,
-          department: departmentName
+          department: departmentName,
         });
       }
     }
 
     // Fallback to old Department/Subject logic
     const department = await Department.findOne({
-      name: { $regex: new RegExp(departmentName, 'i') }
+      name: { $regex: new RegExp(departmentName, "i") },
     });
 
     if (!department) {
-      console.log("[SubjectsByDepartment] No department found:", departmentName);
+      console.log(
+        "[SubjectsByDepartment] No department found:",
+        departmentName
+      );
       return res.status(200).json({
         success: true,
         message: "Department not found",
@@ -104,24 +126,131 @@ router.get("/department/:departmentName", async (req, res) => {
     }
 
     // Find subjects for this department
-    const subjects = await Subject.find({ department: department._id }).populate("department");
-    console.log("[SubjectsByDepartment] Legacy subjects found:", subjects.length);
+    const subjects = await Subject.find({
+      department: department._id,
+    }).populate("department");
+    console.log(
+      "[SubjectsByDepartment] Legacy subjects found:",
+      subjects.length
+    );
 
-    const formattedSubjects = subjects.map(subject => ({
+    const formattedSubjects = subjects.map((subject) => ({
       _id: subject._id,
       name: subject.name,
       code: subject.subjectCode,
       department: subject.department?.name || departmentName,
       year: subject.year,
       totalLectures: subject.totalLectures,
-      type: 'legacy'
+      type: "legacy",
     }));
 
     res.status(200).json({
       success: true,
       message: "Subjects retrieved successfully",
       data: formattedSubjects,
-      department: departmentName
+      department: departmentName,
+    });
+  } catch (error) {
+    console.error("[SubjectsByDepartment] Error:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching subjects by department",
+      error: error.message,
+    });
+  }
+});
+
+// GET subjects by department (URL parameter version)
+router.get("/department/:departmentName", async (req, res) => {
+  try {
+    const { departmentName } = req.params;
+    console.log(
+      "[SubjectsByDepartment] Fetching subjects for department:",
+      departmentName
+    );
+
+    // First try AdminSubject with AcademicDepartment
+    const academicDepartment = await AcademicDepartment.findOne({
+      name: { $regex: new RegExp(departmentName, "i") },
+    });
+
+    if (academicDepartment) {
+      console.log(
+        "[SubjectsByDepartment] Found academic department:",
+        academicDepartment.name
+      );
+
+      // Find admin subjects for this department
+      const adminSubjects = await AdminSubject.find({
+        department: academicDepartment._id,
+      }).populate("department");
+      console.log(
+        "[SubjectsByDepartment] Admin subjects found:",
+        adminSubjects.length
+      );
+
+      if (adminSubjects.length > 0) {
+        const formattedSubjects = adminSubjects.map((subject) => ({
+          _id: subject._id,
+          name: subject.name,
+          code: subject.code || subject.subjectCode || "",
+          department: subject.department?.name || departmentName,
+          type: "admin",
+        }));
+
+        return res.status(200).json({
+          success: true,
+          message: "Admin subjects retrieved successfully",
+          data: formattedSubjects,
+          department: departmentName,
+        });
+      }
+    }
+
+    // Fallback to old Department/Subject logic
+    const department = await Department.findOne({
+      name: { $regex: new RegExp(departmentName, "i") },
+    });
+
+    if (!department) {
+      console.log(
+        "[SubjectsByDepartment] No department found:",
+        departmentName
+      );
+      return res.status(200).json({
+        success: true,
+        message: "Department not found",
+        data: [],
+      });
+    }
+
+    // Find subjects for this department
+    const subjects = await Subject.find({
+      department: department._id,
+    }).populate("department");
+    console.log(
+      "[SubjectsByDepartment] Legacy subjects found:",
+      subjects.length
+    );
+
+    const formattedSubjects = subjects.map((subject) => ({
+      _id: subject._id,
+      name: subject.name,
+      code: subject.subjectCode,
+      department: subject.department?.name || departmentName,
+      year: subject.year,
+      totalLectures: subject.totalLectures,
+      type: "legacy",
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Subjects retrieved successfully",
+      data: formattedSubjects,
+      department: departmentName,
     });
   } catch (error) {
     console.error("[SubjectsByDepartment] Error:", {

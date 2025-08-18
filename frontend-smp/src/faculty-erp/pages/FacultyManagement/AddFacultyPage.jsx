@@ -508,13 +508,16 @@ const FacultyRegistrationForm = () => {
         type: formData.type,
       };
 
-      const salaryResponse = await fetch("https://erpbackend.tarstech.in/api/salary", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(salaryData),
-      });
+      const salaryResponse = await fetch(
+        "https://erpbackend.tarstech.in/api/salary",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(salaryData),
+        }
+      );
 
       const salaryDataResponse = await salaryResponse.json();
       if (!salaryResponse.ok) {

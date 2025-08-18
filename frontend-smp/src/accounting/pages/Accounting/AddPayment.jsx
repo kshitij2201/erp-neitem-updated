@@ -2854,7 +2854,7 @@ export default function AddPayment() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="relative">
-                      <label className="block text-sm font-bold text-gray-800 mb-3 flex items-center">
+                      <label className="text-sm font-bold text-gray-800 mb-3 flex items-center">
                         <span className="mr-2">👤</span>
                         Select Student *
                       </label>

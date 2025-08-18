@@ -135,21 +135,36 @@ const StudentManagementDashboard = () => {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
             }),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/departments", {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
-              },
-            }),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/semesters", {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
-              },
-            }),
-            axios.get("https://erpbackend.tarstech.in/superadmin/api/subjects", {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
-              },
-            }),
+            axios.get(
+              "https://erpbackend.tarstech.in/api/superadmin/departments",
+              {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem(
+                    "facultyToken"
+                  )}`,
+                },
+              }
+            ),
+            axios.get(
+              "https://erpbackend.tarstech.in/api/superadmin/semesters",
+              {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem(
+                    "facultyToken"
+                  )}`,
+                },
+              }
+            ),
+            axios.get(
+              "https://erpbackend.tarstech.in/superadmin/api/subjects",
+              {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem(
+                    "facultyToken"
+                  )}`,
+                },
+              }
+            ),
           ]);
 
         const streamsData = streamRes.data || [];
@@ -377,11 +392,14 @@ const StudentManagementDashboard = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this student?")) {
       try {
-        await axios.delete(`https://erpbackend.tarstech.in/api/students/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
-          },
-        });
+        await axios.delete(
+          `https://erpbackend.tarstech.in/api/students/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
+            },
+          }
+        );
         fetchStudents();
         alert("Student deleted successfully!");
       } catch (err) {
