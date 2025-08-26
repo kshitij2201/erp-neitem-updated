@@ -16,6 +16,7 @@ import {
   GraduationCap,
   FileText,
   TrendingUp,
+  User,
 } from "lucide-react";
 import {
   Chart as ChartJS,
