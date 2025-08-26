@@ -110,7 +110,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend:tarstech.in/api/students",
+        "https://erpbackend.tarstech.in/api/students",
         {
           headers,
         }
@@ -139,7 +139,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend:tarstech.in/api/fee-heads",
+        "https://erpbackend.tarstech.in/api/fee-heads",
         {
           headers,
         }
@@ -172,7 +172,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend:tarstech.in/api/payments?limit=50",
+        "https://erpbackend.tarstech.in/api/payments?limit=50",
         { headers }
       );
       setRecentPayments(response.data);
@@ -194,7 +194,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `https://erpbackend:tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+        `https://erpbackend.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
         { headers }
       );
       setPendingFees(response.data || []);
@@ -212,7 +212,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const paymentsResponse = await axios.get(
-        `https://erpbackend:tarstech.in/api/payments?studentId=${studentId}`,
+        `https://erpbackend.tarstech.in/api/payments?studentId=${studentId}`,
         { headers }
       );
       const payments = paymentsResponse.data || [];
@@ -368,7 +368,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.post(
-        "https://erpbackend:tarstech.in/api/payments",
+        "https://erpbackend.tarstech.in/api/payments",
         paymentData,
         { headers }
       );

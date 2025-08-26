@@ -79,7 +79,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `https://erpbackend:tarstech.in/api/income-tax?${params}`,
+        `https://erpbackend.tarstech.in/api/income-tax?${params}`,
         { headers }
       );
       if (response.ok) {
@@ -97,7 +97,7 @@ const PFProfessionalTax = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/salary",
+        "https://erpbackend.tarstech.in/api/salary",
         {
           headers,
         }
@@ -122,7 +122,7 @@ const PFProfessionalTax = () => {
       if (searchTerm) params.append("employeeName", searchTerm);
 
       const response = await fetch(
-        `https://erpbackend:tarstech.in/api/pf?${params}`,
+        `https://erpbackend.tarstech.in/api/pf?${params}`,
         {
           headers,
         }
@@ -146,7 +146,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `https://erpbackend:tarstech.in/api/pf/stats/dashboard?${params}`
+        `https://erpbackend.tarstech.in/api/pf/stats/dashboard?${params}`
       );
       if (response.ok) {
         const stats = await response.json();
@@ -233,8 +233,8 @@ const PFProfessionalTax = () => {
     e.preventDefault();
     try {
       const url = editingRecord
-        ? `https://erpbackend:tarstech.in/api/pf/${editingRecord._id}`
-        : "https://erpbackend:tarstech.in/api/pf";
+        ? `https://erpbackend.tarstech.in/api/pf/${editingRecord._id}`
+        : "https://erpbackend.tarstech.in/api/pf";
 
       const method = editingRecord ? "PUT" : "POST";
 
@@ -287,7 +287,7 @@ const PFProfessionalTax = () => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         const response = await fetch(
-          `https://erpbackend:tarstech.in/api/pf/${id}`,
+          `https://erpbackend.tarstech.in/api/pf/${id}`,
           {
             method: "DELETE",
           }
@@ -333,7 +333,7 @@ const PFProfessionalTax = () => {
       if (filterFY) params.append("financialYear", filterFY);
 
       const response = await fetch(
-        `https://erpbackend:tarstech.in/api/pf/export/csv?${params}`
+        `https://erpbackend.tarstech.in/api/pf/export/csv?${params}`
       );
       if (response.ok) {
         const blob = await response.blob();
@@ -361,7 +361,7 @@ const PFProfessionalTax = () => {
     ) {
       try {
         const response = await fetch(
-          "https://erpbackend:tarstech.in/api/pf/bulk-create",
+          "https://erpbackend.tarstech.in/api/pf/bulk-create",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -430,7 +430,7 @@ const PFProfessionalTax = () => {
         };
 
         const response = await fetch(
-          `https://erpbackend:tarstech.in/api/income-tax/${existingIncomeTax._id}`,
+          `https://erpbackend.tarstech.in/api/income-tax/${existingIncomeTax._id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -464,7 +464,7 @@ const PFProfessionalTax = () => {
         };
 
         const response = await fetch(
-          "https://erpbackend:tarstech.in/api/income-tax",
+          "https://erpbackend.tarstech.in/api/income-tax",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

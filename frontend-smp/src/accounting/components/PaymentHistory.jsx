@@ -27,7 +27,7 @@ const PaymentHistory = () => {
     setLoading(true);
     try {
       const url = new URL(
-        "https://erpbackend:tarstech.in/api/payments/history"
+        "https://erpbackend.tarstech.in/api/payments/history"
       );
       if (searchTerm) url.searchParams.append("search", searchTerm);
       if (statusFilter !== "all")
@@ -59,7 +59,7 @@ const PaymentHistory = () => {
   const fetchStats = async () => {
     try {
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/payments/stats"
+        "https://erpbackend.tarstech.in/api/payments/stats"
       );
       if (response.ok) {
         const data = await response.json();

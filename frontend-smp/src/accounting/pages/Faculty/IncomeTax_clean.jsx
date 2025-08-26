@@ -309,7 +309,7 @@ const IncomeTax = () => {
       };
 
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/faculty/salary",
+        "https://erpbackend.tarstech.in/api/faculty/salary",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -426,7 +426,7 @@ const IncomeTax = () => {
   const fetchSalaryData = async () => {
     try {
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/faculty/salary"
+        "https://erpbackend.tarstech.in/api/faculty/salary"
       );
       if (response.ok) {
         const data = await response.json();
@@ -458,7 +458,7 @@ const IncomeTax = () => {
 
       // Fetch faculty data
       const facultyRes = await fetch(
-        "https://erpbackend:tarstech.in/api/faculty"
+        "https://erpbackend.tarstech.in/api/faculty"
       );
       const facultyData = await facultyRes.json();
       const facultyMember = facultyData.find(
@@ -472,7 +472,7 @@ const IncomeTax = () => {
 
       // Fetch salary records from our calculator saved data - include year in query
       const salaryRes = await fetch(
-        `https://erpbackend:tarstech.in/api/faculty/salary?name=${encodeURIComponent(
+        `https://erpbackend.tarstech.in/api/faculty/salary?name=${encodeURIComponent(
           selectedFacultyName
         )}&month=${salarySlipMonth}&year=${salarySlipYear}`
       );
@@ -502,7 +502,7 @@ const IncomeTax = () => {
 
       // Fetch income tax data for the employee
       const incomeTaxRes = await fetch(
-        `https://erpbackend:tarstech.in/api/income-tax?employeeName=${encodeURIComponent(
+        `https://erpbackend.tarstech.in/api/income-tax?employeeName=${encodeURIComponent(
           selectedFacultyName
         )}`
       );

@@ -71,7 +71,7 @@ const UserProfile = ({ userData }) => {
       setError(null);
       try {
         const response = await fetch(
-          "https://erpbackend:tarstech.in/api/auth/profile",
+          "https://erpbackend.tarstech.in/api/auth/profile",
           {
             method: "GET",
             headers: {
@@ -183,7 +183,7 @@ const UserProfile = ({ userData }) => {
     setPasswordLoading(true);
     try {
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/auth/change-password",
+        "https://erpbackend.tarstech.in/api/auth/change-password",
         {
           method: "POST",
           headers: {

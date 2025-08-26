@@ -95,7 +95,7 @@ const BorrowerEntry = () => {
   const fetchAllFaculties = async () => {
     try {
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/faculty/faculties"
+        "https://erpbackend.tarstech.in/api/faculty/faculties"
       );
       if (!response.ok)
         throw new Error(`Failed to fetch faculties: ${response.status}`);
@@ -124,7 +124,7 @@ const BorrowerEntry = () => {
     try {
       // Try the main students endpoint first
       let response = await fetch(
-        "https://erpbackend:tarstech.in/api/students",
+        "https://erpbackend.tarstech.in/api/students",
         {
           method: "GET",
           headers: {
@@ -138,7 +138,7 @@ const BorrowerEntry = () => {
       // If that fails, try the /all endpoint
       if (!response.ok) {
         response = await fetch(
-          "https://erpbackend:tarstech.in/api/students/all",
+          "https://erpbackend.tarstech.in/api/students/all",
           {
             method: "GET",
             headers: {
@@ -175,7 +175,7 @@ const BorrowerEntry = () => {
       setLoadingBooks(true);
       try {
         const response = await fetch(
-          "https://erpbackend:tarstech.in/api/books"
+          "https://erpbackend.tarstech.in/api/books"
         );
         if (!response.ok)
           throw new Error(
@@ -282,7 +282,7 @@ const BorrowerEntry = () => {
   const fetchFacultyDetails = async (id) => {
     try {
       const response = await fetch(
-        `https://erpbackend:tarstech.in/api/faculty/faculties?employeeId=${encodeURIComponent(
+        `https://erpbackend.tarstech.in/api/faculty/faculties?employeeId=${encodeURIComponent(
           id
         )}`,
         {
@@ -343,7 +343,7 @@ const BorrowerEntry = () => {
   const fetchStudentDetails = async (id) => {
     try {
       const response = await fetch(
-        `https://erpbackend:tarstech.in/api/students/students?studentId=${encodeURIComponent(
+        `https://erpbackend.tarstech.in/api/students/students?studentId=${encodeURIComponent(
           id
         )}`,
         {
@@ -689,7 +689,7 @@ const BorrowerEntry = () => {
     try {
       // First create the borrower entry
       const res = await axios.post(
-        "https://erpbackend:tarstech.in/api/borrower-entry",
+        "https://erpbackend.tarstech.in/api/borrower-entry",
         formData
       );
 
@@ -785,7 +785,7 @@ const BorrowerEntry = () => {
 
           // Create issue record
           const issueResponse = await axios.post(
-            "https://erpbackend:tarstech.in/api/issues/issue",
+            "https://erpbackend.tarstech.in/api/issues/issue",
             issuePayload
           );
 
@@ -839,7 +839,7 @@ const BorrowerEntry = () => {
     try {
       setLoadingEmployee(true);
       const response = await axios.get(
-        `https://erpbackend:tarstech.in/api/borrower-entry?id=${id}&type=${type}`
+        `https://erpbackend.tarstech.in/api/borrower-entry?id=${id}&type=${type}`
       );
 
       if (response.data.success) {

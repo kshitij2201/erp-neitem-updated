@@ -51,7 +51,7 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const url = new URL(
-        "https://erpbackend:tarstech.in/api/payments/history"
+        "https://erpbackend.tarstech.in/api/payments/history"
       );
       if (searchTerm) url.searchParams.append("search", searchTerm);
       if (statusFilter !== "all")
@@ -88,7 +88,7 @@ export default function PaymentHistoryPage() {
 
       // Calculate stats from fetched payments data
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/payments/history",
+        "https://erpbackend.tarstech.in/api/payments/history",
         { headers }
       );
       if (response.ok) {
@@ -124,7 +124,7 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/payments/analytics?period=30",
+        "https://erpbackend.tarstech.in/api/payments/analytics?period=30",
         { headers }
       );
       if (response.ok) {
@@ -180,7 +180,7 @@ export default function PaymentHistoryPage() {
 
       // Fetch real notifications from backend
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/notifications",
+        "https://erpbackend.tarstech.in/api/notifications",
         {
           headers,
         }
@@ -191,7 +191,7 @@ export default function PaymentHistoryPage() {
       } else {
         // If no notifications endpoint exists, generate based on recent payments
         const paymentsResponse = await fetch(
-          "https://erpbackend:tarstech.in/api/payments/history?limit=10&sort=latest",
+          "https://erpbackend.tarstech.in/api/payments/history?limit=10&sort=latest",
           { headers }
         );
         if (paymentsResponse.ok) {
@@ -213,7 +213,7 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/payments/analytics?period=1",
+        "https://erpbackend.tarstech.in/api/payments/analytics?period=1",
         { headers }
       );
       if (response.ok) {

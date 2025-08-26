@@ -20,7 +20,7 @@ const StudentFeedback = ({ userData }) => {
         if (!token) return;
 
         const response = await fetch(
-          "https://erpbackend:tarstech.in/api/feedback/settings",
+          "https://erpbackend.tarstech.in/api/feedback/settings",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -53,7 +53,7 @@ const StudentFeedback = ({ userData }) => {
       }
 
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/feedback/settings",
+        "https://erpbackend.tarstech.in/api/feedback/settings",
         {
           method: "PUT",
           headers: {

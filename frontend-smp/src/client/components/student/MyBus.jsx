@@ -89,12 +89,12 @@ const MyBus = () => {
     try {
       // Fetch current bus location from /api/buses
       const busResponse = await fetch(
-        `https://erpbackend:tarstech.in/api/buses/${busId}`
+        `https://erpbackend.tarstech.in/api/buses/${busId}`
       );
 
       // Fetch bus schedule data from /api/schedules
       const scheduleResponse = await fetch(
-        `https://erpbackend:tarstech.in/api/schedules/bus/${busId}`
+        `https://erpbackend.tarstech.in/api/schedules/bus/${busId}`
       );
 
       if (busResponse.ok) {

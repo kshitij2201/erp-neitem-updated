@@ -21,7 +21,7 @@ const RoleLogin = () => {
 
     try {
       const res = await axios.post(
-        "https://erpbackend:tarstech.in/api/faculty/rolelogin",
+        "https://erpbackend.tarstech.in/api/faculty/rolelogin",
         {
           employeeId,
           password,

@@ -9,7 +9,7 @@ const Timetable = ({ department, semester, section }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const API_URL =
-    import.meta.env.VITE_API_URL || "https://erpbackend:tarstech.in";
+    import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in";
 
   // Color schemes for different subjects
   const subjectColors = [

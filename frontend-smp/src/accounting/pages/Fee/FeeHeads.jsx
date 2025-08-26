@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = "https://erpbackend:tarstech.in/api/fee-heads";
-const STREAM_API = "https://erpbackend:tarstech.in/api/superadmin/streams"; // Fix: use correct streams endpoint
+const API = "https://erpbackend.tarstech.in/api/fee-heads";
+const STREAM_API = "https://erpbackend.tarstech.in/api/superadmin/streams"; // Fix: use correct streams endpoint
 
 export default function FeeHeads() {
   const [feeHeads, setFeeHeads] = useState([]);

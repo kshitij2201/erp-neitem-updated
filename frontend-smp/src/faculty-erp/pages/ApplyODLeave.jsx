@@ -108,7 +108,7 @@ export default function ApplyODLeave({ userData }) {
       // Fetch both regular leaves and OD leaves
       const [regularLeavesResponse, odLeavesResponse] = await Promise.all([
         axios.get(
-          `https://erpbackend:tarstech.in/api/leave/my-leaves/${employeeId}`,
+          `https://erpbackend.tarstech.in/api/leave/my-leaves/${employeeId}`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
@@ -116,7 +116,7 @@ export default function ApplyODLeave({ userData }) {
           }
         ),
         axios.get(
-          `https://erpbackend:tarstech.in/api/leave/my-od-leaves/${employeeId}`,
+          `https://erpbackend.tarstech.in/api/leave/my-od-leaves/${employeeId}`,
           {
             headers: {
               Authorization: `Bearer ${userData.token}`,
@@ -278,7 +278,7 @@ export default function ApplyODLeave({ userData }) {
       if (approvalLetter) formData.append("approvalLetter", approvalLetter);
 
       const response = await axios.post(
-        "https://erpbackend:tarstech.in/api/leave/odleave/apply",
+        "https://erpbackend.tarstech.in/api/leave/odleave/apply",
         formData,
         {
           headers: {

@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       ],
       proxy: {
         "/api": {
-          target: "https://erpbackend:tarstech.in", // use localhost if backend is on same server
+          target: "https://erpbackend.tarstech.in", // use localhost if backend is on same server
           changeOrigin: true,
           secure: false,
         },

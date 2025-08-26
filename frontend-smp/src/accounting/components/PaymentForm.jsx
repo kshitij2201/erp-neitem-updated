@@ -22,7 +22,7 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
   const fetchFeeHeads = async () => {
     try {
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/fee-heads"
+        "https://erpbackend.tarstech.in/api/fee-heads"
       );
       if (response.ok) {
         const data = await response.json();
@@ -69,7 +69,7 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
       console.log("Sending payment data:", paymentData);
 
       const response = await fetch(
-        "https://erpbackend:tarstech.in/api/payments",
+        "https://erpbackend.tarstech.in/api/payments",
         {
           method: "POST",
           headers: {

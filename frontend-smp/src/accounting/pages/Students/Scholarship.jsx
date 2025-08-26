@@ -23,7 +23,7 @@ export default function Scholarship() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await axios.get(
-        "https://erpbackend:tarstech.in/api/students",
+        "https://erpbackend.tarstech.in/api/students",
         {
           params: { search: searchTerm },
           headers,
@@ -60,7 +60,7 @@ export default function Scholarship() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await axios.post(
-        `https://erpbackend:tarstech.in/api/scholarships/${selectedStudent._id}`,
+        `https://erpbackend.tarstech.in/api/scholarships/${selectedStudent._id}`,
         {
           amount: Number(scholarshipAmount),
           details: scholarshipDetails,

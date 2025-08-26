@@ -9,7 +9,7 @@ const Announcements = () => {
 
   // Get the API URL from environment variables or use localhost as fallback
   const API_URL =
-    import.meta.env.REACT_APP_API_URL || "https://erpbackend:tarstech.in";
+    import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
 
   useEffect(() => {
     setLoading(true);
