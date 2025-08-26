@@ -26,12 +26,9 @@ export default function ChargeHandoverApp() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/tasks",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get("http://localhost:4000/api/tasks", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const allTasks = response.data.data || response.data || [];
       console.log("Fetched tasks:", allTasks);
       console.log("User role:", userRole);
@@ -151,7 +148,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `https://erpbackend.tarstech.in/api/tasks/${id}${endpoint}`,
+        `http://localhost:4000/api/tasks/${id}${endpoint}`,
         {
           decision: "approved",
           approverId: approverId,
@@ -198,7 +195,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `https://erpbackend.tarstech.in/api/tasks/${id}${endpoint}`,
+        `http://localhost:4000/api/tasks/${id}${endpoint}`,
         {
           decision: "rejected",
           approverId: approverId,
@@ -275,6 +272,13 @@ export default function ChargeHandoverApp() {
                 </span>
               </div>
               <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                <span>
+                  <strong>Special:</strong> Principal requests bypass HOD
+                  approval automatically 👑
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 bg-green-400 rounded-full"></span>
                 <span>
                   <strong>Step 3:</strong> Receiving faculty accepts/rejects the
@@ -323,6 +327,26 @@ export default function ChargeHandoverApp() {
                           (r) => r.status === "pending_faculty"
                         ).length
                       }
+                      {/* Show breakdown of principal auto-approved */}
+                      {receivedRequests.filter(
+                        (r) =>
+                          r.status === "pending_faculty" &&
+                          r.hodApproval?.approverId ===
+                            "automatic-principal-privilege"
+                      ).length > 0 && (
+                        <span className="text-blue-600 text-xs ml-1">
+                          (👑{" "}
+                          {
+                            receivedRequests.filter(
+                              (r) =>
+                                r.status === "pending_faculty" &&
+                                r.hodApproval?.approverId ===
+                                  "automatic-principal-privilege"
+                            ).length
+                          }{" "}
+                          Principal Auto-approved)
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center">
@@ -333,6 +357,26 @@ export default function ChargeHandoverApp() {
                         receivedRequests.filter((r) => r.status === "approved")
                           .length
                       }
+                      {/* Show breakdown of principal auto-approved */}
+                      {receivedRequests.filter(
+                        (r) =>
+                          r.status === "approved" &&
+                          r.hodApproval?.approverId ===
+                            "automatic-principal-privilege"
+                      ).length > 0 && (
+                        <span className="text-blue-600 text-xs ml-1">
+                          (👑{" "}
+                          {
+                            receivedRequests.filter(
+                              (r) =>
+                                r.status === "approved" &&
+                                r.hodApproval?.approverId ===
+                                  "automatic-principal-privilege"
+                            ).length
+                          }{" "}
+                          Principal Auto-approved)
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center">
@@ -426,7 +470,14 @@ export default function ChargeHandoverApp() {
                       // Highlight requests that need action
                       (request.status === "pending_hod" &&
                         userRole.toLowerCase() === "hod") ||
-                      (request.status === "pending_faculty" && isNonHOD())
+                      (request.status === "pending_faculty" &&
+                        isNonHOD() &&
+                        // Don't highlight for HOD if principal auto-approved
+                        !(
+                          userRole.toLowerCase() === "hod" &&
+                          request.hodApproval?.approverId ===
+                            "automatic-principal-privilege"
+                        ))
                         ? "bg-blue-50 border-l-4 border-blue-400"
                         : ""
                     }`}
@@ -443,7 +494,13 @@ export default function ChargeHandoverApp() {
                         {((request.status === "pending_hod" &&
                           userRole.toLowerCase() === "hod") ||
                           (request.status === "pending_faculty" &&
-                            isNonHOD())) && (
+                            isNonHOD() &&
+                            // Don't show action required for HOD if it's principal auto-approved
+                            !(
+                              userRole.toLowerCase() === "hod" &&
+                              request.hodApproval?.approverId ===
+                                "automatic-principal-privilege"
+                            ))) && (
                           <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                             Action Required
                           </span>
@@ -451,7 +508,10 @@ export default function ChargeHandoverApp() {
                       </div>
                       {/* Show approve/reject buttons based on role and status */}
                       {request.status === "pending_hod" &&
-                        userRole.toLowerCase() === "hod" && (
+                        userRole.toLowerCase() === "hod" &&
+                        // Don't show buttons if it's already auto-approved by principal
+                        request.hodApproval?.approverId !==
+                          "automatic-principal-privilege" && (
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleReject(request._id)}
@@ -492,14 +552,44 @@ export default function ChargeHandoverApp() {
                         request.status !== "pending_hod" && (
                           <div className="flex items-center space-x-2">
                             {request.status === "pending_faculty" && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Waiting for Faculty
-                              </span>
+                              <div className="flex flex-col space-y-1">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  Waiting for Faculty
+                                </span>
+                                {/* Show if it was auto-approved by principal */}
+                                {request.hodApproval?.approverId ===
+                                  "automatic-principal-privilege" && (
+                                  <div className="flex flex-col space-y-1">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      👑 Auto-approved (Principal)
+                                    </span>
+                                    <span className="text-xs text-gray-600 italic">
+                                      No HOD action required - Principal
+                                      privilege
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             )}
                             {request.status === "approved" && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ✅ Completed
-                              </span>
+                              <div className="flex flex-col space-y-1">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  ✅ Completed
+                                </span>
+                                {/* Show if it was auto-approved by principal */}
+                                {request.hodApproval?.approverId ===
+                                  "automatic-principal-privilege" && (
+                                  <div className="flex flex-col space-y-1">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      👑 Auto-approved (Principal)
+                                    </span>
+                                    <span className="text-xs text-gray-600 italic">
+                                      Principal privilege - bypassed HOD
+                                      approval
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             )}
                             {request.status === "rejected" && (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -638,6 +728,13 @@ export default function ChargeHandoverApp() {
                             }
                           >
                             HOD Approval
+                            {/* Show if auto-approved by principal */}
+                            {request.hodApproval?.approverId ===
+                              "automatic-principal-privilege" && (
+                              <span className="text-blue-600 ml-1">
+                                (👑 Auto)
+                              </span>
+                            )}
                           </span>
                         </div>
                         <span className="text-gray-300">→</span>
@@ -676,13 +773,31 @@ export default function ChargeHandoverApp() {
                             ⏳ Pending HOD Approval
                           </span>
                         ) : request.status === "pending_faculty" ? (
-                          <span className="text-yellow-600">
-                            ⏳ Pending Faculty Acceptance
-                          </span>
+                          <div>
+                            <span className="text-yellow-600">
+                              ⏳ Pending Faculty Acceptance
+                            </span>
+                            {/* Show automatic HOD approval indicator */}
+                            {request.hodApproval?.approverId ===
+                              "automatic-principal-privilege" && (
+                              <div className="mt-1 text-blue-600">
+                                👑 HOD Approval: Automatic (Principal Privilege)
+                              </div>
+                            )}
+                          </div>
                         ) : request.status === "approved" ? (
-                          <span className="text-green-600">
-                            ✅ Fully Approved & Accepted
-                          </span>
+                          <div>
+                            <span className="text-green-600">
+                              ✅ Fully Approved & Accepted
+                            </span>
+                            {/* Show automatic HOD approval indicator */}
+                            {request.hodApproval?.approverId ===
+                              "automatic-principal-privilege" && (
+                              <div className="mt-1 text-blue-600">
+                                👑 HOD Approval: Automatic (Principal Privilege)
+                              </div>
+                            )}
+                          </div>
                         ) : request.status === "rejected" ? (
                           <span className="text-red-600">❌ Rejected</span>
                         ) : (
@@ -800,6 +915,13 @@ export default function ChargeHandoverApp() {
                                   }
                                 >
                                   HOD Approval
+                                  {/* Show if auto-approved by principal */}
+                                  {request.hodApproval?.approverId ===
+                                    "automatic-principal-privilege" && (
+                                    <span className="text-blue-600 ml-1">
+                                      (👑 Auto)
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                               <span className="text-gray-300">→</span>

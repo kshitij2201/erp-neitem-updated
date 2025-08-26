@@ -24,7 +24,7 @@ export default function FacultyDataInPrincipal() {
         setLoading(true);
         setError(null);
         const response = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty/faculties?limit=1000",
+          "http://localhost:4000/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }

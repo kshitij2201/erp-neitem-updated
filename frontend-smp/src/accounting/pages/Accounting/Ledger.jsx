@@ -377,22 +377,18 @@ export default function Ledger() {
 
     // Fetch ledger data and fee heads in parallel
     Promise.all([
-      fetch("https://erpbackend.tarstech.in/api/ledger", { headers }).then(
-        (res) => {
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
-          return res.json();
+      fetch("http://localhost:4000/api/ledger", { headers }).then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
         }
-      ),
-      fetch("https://erpbackend.tarstech.in/api/fee-heads", { headers }).then(
-        (res) => {
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
-          return res.json();
+        return res.json();
+      }),
+      fetch("http://localhost:4000/api/fee-heads", { headers }).then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
         }
-      ),
+        return res.json();
+      }),
     ])
       .then(([ledgerData, feeHeadsData]) => {
         console.log("Ledger data received:", ledgerData);

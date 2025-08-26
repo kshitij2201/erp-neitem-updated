@@ -25,7 +25,7 @@ const FacultyDashboard = () => {
       }
 
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/dashboard/data?financialYear=${selectedFY}`,
+        `http://localhost:4000/api/faculty/dashboard/data?financialYear=${selectedFY}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -77,7 +77,7 @@ const FacultyDashboard = () => {
       }
 
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/dashboard/status?financialYear=${selectedFY}`,
+        `http://localhost:4000/api/faculty/dashboard/status?financialYear=${selectedFY}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -114,7 +114,7 @@ const FacultyDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/employee/${encodeURIComponent(
+        `http://localhost:4000/api/faculty/employee/${encodeURIComponent(
           employeeName
         )}/profile?financialYear=${selectedFY}`,
         {
@@ -138,7 +138,7 @@ const FacultyDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/employee/${encodeURIComponent(
+        `http://localhost:4000/api/faculty/employee/${encodeURIComponent(
           employeeName
         )}/auto-generate-pf`,
         {
@@ -176,7 +176,7 @@ const FacultyDashboard = () => {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty/bulk-operations",
+          "http://localhost:4000/api/faculty/bulk-operations",
           {
             method: "POST",
             headers: {

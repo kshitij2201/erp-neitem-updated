@@ -138,6 +138,25 @@ router.post("/rolelogin", async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
+    // Check if faculty has valid dashboard access
+    const validDashboardRoles = [
+      "principal",
+      "HOD",
+      "hod",
+      "cc",
+      "facultymanagement",
+      "teaching",
+    ];
+    const facultyRole = faculty.role || faculty.type;
+
+    if (!validDashboardRoles.includes(facultyRole)) {
+      return res.status(403).json({
+        error:
+          "Access denied: You don't have permission to access any dashboard. Please contact administrator.",
+        code: "NO_DASHBOARD_ACCESS",
+      });
+    }
+
     // Create a JWT token
     const token = jwt.sign(
       { id: faculty._id, type: faculty.type },
@@ -157,13 +176,13 @@ router.get("/hod-history", async (req, res) => {
   try {
     console.log("Fetching HOD history...");
     const hodHistory = await HODHistory.find()
-      .populate('facultyId', 'firstName lastName employeeId')
+      .populate("facultyId", "firstName lastName employeeId")
       .sort({ startDate: -1 });
-    
+
     console.log(`Found ${hodHistory.length} HOD history records`);
     res.json(hodHistory);
   } catch (err) {
-    console.error('Error fetching HOD history:', err);
+    console.error("Error fetching HOD history:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -173,13 +192,13 @@ router.get("/principal-history", async (req, res) => {
   try {
     console.log("Fetching Principal history...");
     const principalHistory = await PrincipalHistory.find()
-      .populate('facultyId', 'firstName lastName employeeId')
+      .populate("facultyId", "firstName lastName employeeId")
       .sort({ startDate: -1 });
-    
+
     console.log(`Found ${principalHistory.length} Principal history records`);
     res.json(principalHistory);
   } catch (err) {
-    console.error('Error fetching Principal history:', err);
+    console.error("Error fetching Principal history:", err);
     res.status(500).json({ error: err.message });
   }
 });

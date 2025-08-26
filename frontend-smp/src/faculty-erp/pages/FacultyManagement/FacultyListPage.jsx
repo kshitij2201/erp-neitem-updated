@@ -56,7 +56,7 @@ export default function FacultyDashboard() {
         setLoading(true);
         setError(null);
         const response = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty/faculties?limit=1000",
+          "http://localhost:4000/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }
@@ -93,10 +93,10 @@ export default function FacultyDashboard() {
     const fetchHistory = async () => {
       try {
         const hodResponse = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty/hod-history"
+          "http://localhost:4000/api/faculty/hod-history"
         );
         const principalResponse = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty/principal-history"
+          "http://localhost:4000/api/faculty/principal-history"
         );
         if (hodResponse.ok) {
           const hodData = await hodResponse.json();
@@ -195,7 +195,7 @@ export default function FacultyDashboard() {
   const handleDeleteFaculty = async (facultyId) => {
     try {
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/delete/${facultyId}`,
+        `http://localhost:4000/api/faculty/delete/${facultyId}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -286,7 +286,7 @@ export default function FacultyDashboard() {
     try {
       setFormLoading(true);
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/assign-${formData.role}`,
+        `http://localhost:4000/api/faculty/assign-${formData.role}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -385,7 +385,7 @@ export default function FacultyDashboard() {
     try {
       // Optionally, you can call a backend endpoint to remove HOD role
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/remove-hod/${facultyId}`,
+        `http://localhost:4000/api/faculty/remove-hod/${facultyId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -420,7 +420,7 @@ export default function FacultyDashboard() {
       if (!confirmRemoval) return;
 
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/remove-principal/${facultyId}`,
+        `http://localhost:4000/api/faculty/remove-principal/${facultyId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

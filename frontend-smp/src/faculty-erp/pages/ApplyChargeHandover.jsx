@@ -62,7 +62,7 @@ export default function ApplyChargeHandoverForm() {
     const fetchFacultyList = async () => {
       try {
         const res = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty/faculties?limit=1000"
+          "http://localhost:4000/api/faculty/faculties?limit=1000"
         );
         const data = await res.json();
         setFacultyList(
@@ -87,16 +87,13 @@ export default function ApplyChargeHandoverForm() {
           return;
         }
 
-        const response = await fetch(
-          "https://erpbackend.tarstech.in/api/auth/profile",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await fetch("http://localhost:4000/api/auth/profile", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (response.ok) {
           const userData = await response.json();
@@ -110,6 +107,9 @@ export default function ApplyChargeHandoverForm() {
             employeeId: userData.employeeId || "",
             designation: userData.designation || "",
             department: userData.department || "",
+            // Set status based on user role - principals skip HOD approval
+            status:
+              userData.role === "principal" ? "pending_faculty" : "pending_hod",
           }));
         } else {
           const errorData = await response.json();
@@ -191,6 +191,10 @@ export default function ApplyChargeHandoverForm() {
       if (!token) {
         throw new Error("Authentication token not found. Please log in again.");
       }
+
+      // Check if user is principal for automatic HOD approval
+      const isPrincipal = userData?.role === "principal";
+
       const payload = {
         ...formData,
         senderId, // Add senderId to payload
@@ -203,14 +207,50 @@ export default function ApplyChargeHandoverForm() {
         handoverEndDate: endDate,
         reportingManager: formData.employeeName,
       };
+
+      // Add automatic HOD approval if user is principal
+      if (isPrincipal) {
+        payload.hodApproval = {
+          decision: "approved",
+          approverId: "automatic-principal-privilege",
+          date: new Date(),
+          remarks: "Automatic HOD approval - Principal privilege",
+        };
+      }
+
       delete payload.handoverReason;
       console.log("Payload being submitted:", payload);
 
-      await axios.post("https://erpbackend.tarstech.in/api/tasks", payload, {
+      await axios.post("http://localhost:4000/api/tasks", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuccess(true);
-      setTimeout(() => navigate("/faculty-erp/dashboard"), 2000);
+
+      // Reset form after successful submission
+      setTimeout(() => {
+        const currentUserData = JSON.parse(
+          localStorage.getItem("user") || "{}"
+        );
+        setFormData((prev) => ({
+          ...prev,
+          handoverStartDate: "",
+          handoverEndDate: "",
+          handoverReason: "",
+          receiverName: "",
+          receiverDesignation: "",
+          documents: [],
+          assets: [],
+          pendingTasks: [],
+          remarks: "",
+          status:
+            currentUserData?.role === "principal"
+              ? "pending_faculty"
+              : "pending_hod",
+        }));
+        setReceiverId("");
+        setSelectedReceiver(null);
+        setSuccess(false);
+      }, 5000); // Increased to 5 seconds to give user time to read the message
     } catch (err) {
       setError(
         err.response?.data?.message || err.message || "Submission failed"
@@ -277,6 +317,30 @@ export default function ApplyChargeHandoverForm() {
                   </div>
                 </div>
 
+                {/* Principal Privilege Notification */}
+                {(() => {
+                  const userData = JSON.parse(
+                    localStorage.getItem("user") || "{}"
+                  );
+                  return (
+                    userData?.role === "principal" && (
+                      <div className="mb-8 p-6 rounded-2xl text-center font-medium backdrop-blur-sm border bg-blue-50/80 border-blue-200 text-blue-800">
+                        <span className="text-2xl mr-3">👑</span>
+                        <div>
+                          <div className="font-bold text-lg">
+                            Principal Privilege
+                          </div>
+                          <div className="text-sm mt-2">
+                            As Principal, your charge handover request will
+                            bypass HOD approval and go directly to the receiving
+                            faculty for acceptance.
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  );
+                })()}
+
                 {/* Message Section */}
                 {error && (
                   <div className="mb-8 p-6 rounded-2xl text-center font-medium backdrop-blur-sm border bg-red-50/80 border-red-200 text-red-800 animate-pulse">
@@ -285,9 +349,64 @@ export default function ApplyChargeHandoverForm() {
                   </div>
                 )}
                 {success && (
-                  <div className="mb-8 p-6 rounded-2xl text-center font-medium backdrop-blur-sm border bg-green-50/80 border-green-200 text-green-800 animate-pulse">
+                  <div className="mb-8 p-6 rounded-2xl text-center font-medium backdrop-blur-sm border bg-green-50/80 border-green-200 text-green-800">
                     <span className="text-2xl mr-3">✅</span>
-                    Form submitted successfully! Redirecting...
+                    <div>
+                      <div className="font-bold text-lg mb-2">
+                        Charge Handover Request Submitted Successfully!
+                      </div>
+                      <div className="text-sm mb-4">
+                        Your request has been submitted and is now in the
+                        approval workflow.
+                      </div>
+                      <div className="flex justify-center space-x-4">
+                        <button
+                          onClick={() => {
+                            setSuccess(false);
+                            const currentUserData = JSON.parse(
+                              localStorage.getItem("user") || "{}"
+                            );
+                            setFormData((prev) => ({
+                              ...prev,
+                              handoverStartDate: "",
+                              handoverEndDate: "",
+                              handoverReason: "",
+                              receiverName: "",
+                              receiverDesignation: "",
+                              documents: [],
+                              assets: [],
+                              pendingTasks: [],
+                              remarks: "",
+                              status:
+                                currentUserData?.role === "principal"
+                                  ? "pending_faculty"
+                                  : "pending_hod",
+                            }));
+                            setReceiverId("");
+                            setSelectedReceiver(null);
+                          }}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors"
+                        >
+                          Submit Another Request
+                        </button>
+                        <button
+                          onClick={() => navigate("/faculty-erp/dashboard")}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
+                        >
+                          Go to Dashboard
+                        </button>
+                        <button
+                          onClick={() =>
+                            navigate(
+                              "/faculty-erp/dashboard/sent-charge-handover"
+                            )
+                          }
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                        >
+                          View Sent Requests
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -406,7 +525,7 @@ export default function ApplyChargeHandoverForm() {
                             setReceiverId(id);
                             if (id) {
                               const res = await fetch(
-                                `https://erpbackend.tarstech.in/api/faculty/faculties?facultyId=${id}`
+                                `http://localhost:4000/api/faculty/faculties?facultyId=${id}`
                               );
                               const data = await res.json();
                               const faculty = Array.isArray(

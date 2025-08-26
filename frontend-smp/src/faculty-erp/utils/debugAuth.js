@@ -50,7 +50,7 @@ function debugAuth() {
   if (finalToken) {
     console.log("🧪 Testing token with API call...");
 
-    fetch("https://erpbackend.tarstech.in/api/students?limit=1", {
+    fetch("http://localhost:4000/api/students?limit=1", {
       headers: {
         Authorization: `Bearer ${finalToken}`,
         "Content-Type": "application/json",

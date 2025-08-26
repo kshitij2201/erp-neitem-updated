@@ -650,6 +650,29 @@ router.get("/my-leaves/:employeeId", async (req, res) => {
   }
 });
 
+// Fetch OD leaves for a specific employee
+router.get("/my-od-leaves/:employeeId", async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const odLeaves = await ODLeave.find({ employeeId })
+      .select(
+        "employeeId firstName department leaveType type startDate endDate reason contact eventName location attachment approvalLetter leaveDays status hodDecision principalDecision createdAt"
+      )
+      .lean();
+    // Ensure principalDecision and hodDecision are always objects or null
+    const formatted = odLeaves.map((l) => ({
+      ...l,
+      hodDecision: l.hodDecision || null,
+      principalDecision: l.principalDecision || null,
+      status: l.status || "Pending",
+    }));
+    res.status(200).json({ odLeaves: formatted });
+  } catch (error) {
+    console.error("Fetch my OD leaves error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Leave Management Dashboard APIs
 
 // Get all leaves for management dashboard

@@ -31,7 +31,7 @@ const SubjectManager = () => {
   const fetchStreams = async () => {
     try {
       const res = await axios.get(
-        "https://erpbackend.tarstech.in/api/superadmin/streams",
+        "http://localhost:4000/api/superadmin/streams",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -48,7 +48,7 @@ const SubjectManager = () => {
   const fetchDepartments = async (streamId) => {
     try {
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/superadmin/departments?streamId=${streamId}`,
+        `http://localhost:4000/api/superadmin/departments?streamId=${streamId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -65,7 +65,7 @@ const SubjectManager = () => {
   const fetchSubjects = async (departmentId) => {
     try {
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/superadmin/subjects?departmentId=${departmentId}`,
+        `http://localhost:4000/api/superadmin/subjects?departmentId=${departmentId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -80,7 +80,7 @@ const SubjectManager = () => {
     if (!newSubject.trim() || !selectedDepartmentId) return;
     try {
       await axios.post(
-        "https://erpbackend.tarstech.in/api/superadmin/subjects",
+        "http://localhost:4000/api/superadmin/subjects",
         { name: newSubject, department: selectedDepartmentId },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -96,7 +96,7 @@ const SubjectManager = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(
-        `https://erpbackend.tarstech.in/api/superadmin/subjects/${id}`,
+        `http://localhost:4000/api/superadmin/subjects/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -110,7 +110,7 @@ const SubjectManager = () => {
   const handleEdit = async (id) => {
     try {
       await axios.put(
-        `https://erpbackend.tarstech.in/api/superadmin/subjects/${id}`,
+        `http://localhost:4000/api/superadmin/subjects/${id}`,
         { name: editedSubjectName, department: selectedDepartmentId },
         {
           headers: { Authorization: `Bearer ${token}` },

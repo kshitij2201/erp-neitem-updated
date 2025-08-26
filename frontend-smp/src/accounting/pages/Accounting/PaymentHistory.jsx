@@ -50,9 +50,7 @@ export default function PaymentHistoryPage() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const url = new URL(
-        "https://erpbackend.tarstech.in/api/payments/history"
-      );
+      const url = new URL("http://localhost:4000/api/payments/history");
       if (searchTerm) url.searchParams.append("search", searchTerm);
       if (statusFilter !== "all")
         url.searchParams.append("status", statusFilter);
@@ -88,7 +86,7 @@ export default function PaymentHistoryPage() {
 
       // Calculate stats from fetched payments data
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/payments/history",
+        "http://localhost:4000/api/payments/history",
         { headers }
       );
       if (response.ok) {
@@ -124,7 +122,7 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/payments/analytics?period=30",
+        "http://localhost:4000/api/payments/analytics?period=30",
         { headers }
       );
       if (response.ok) {
@@ -179,19 +177,16 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       // Fetch real notifications from backend
-      const response = await fetch(
-        "https://erpbackend.tarstech.in/api/notifications",
-        {
-          headers,
-        }
-      );
+      const response = await fetch("http://localhost:4000/api/notifications", {
+        headers,
+      });
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);
       } else {
         // If no notifications endpoint exists, generate based on recent payments
         const paymentsResponse = await fetch(
-          "https://erpbackend.tarstech.in/api/payments/history?limit=10&sort=latest",
+          "http://localhost:4000/api/payments/history?limit=10&sort=latest",
           { headers }
         );
         if (paymentsResponse.ok) {
@@ -213,7 +208,7 @@ export default function PaymentHistoryPage() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/payments/analytics?period=1",
+        "http://localhost:4000/api/payments/analytics?period=1",
         { headers }
       );
       if (response.ok) {

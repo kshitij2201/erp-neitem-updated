@@ -62,13 +62,10 @@ export default function Insurance() {
           delete params[key];
         }
       });
-      const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/insurance",
-        {
-          params,
-          headers,
-        }
-      );
+      const response = await axios.get("http://localhost:4000/api/insurance", {
+        params,
+        headers,
+      });
       setPolicies(response.data);
     } catch (error) {
       setError("Failed to fetch insurance policies");
@@ -86,12 +83,9 @@ export default function Insurance() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/students",
-        {
-          headers,
-        }
-      );
+      const response = await axios.get("http://localhost:4000/api/students", {
+        headers,
+      });
       setStudents(response.data);
     } catch (error) {
       console.error("Failed to fetch students:", error);
@@ -108,7 +102,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/insurance/stats",
+        "http://localhost:4000/api/insurance/stats",
         { headers }
       );
       setStats(response.data);
@@ -129,18 +123,14 @@ export default function Insurance() {
 
       if (editingPolicy) {
         await axios.put(
-          `https://erpbackend.tarstech.in/api/insurance/${editingPolicy._id}`,
+          `http://localhost:4000/api/insurance/${editingPolicy._id}`,
           formData,
           { headers }
         );
       } else {
-        await axios.post(
-          "https://erpbackend.tarstech.in/api/insurance",
-          formData,
-          {
-            headers,
-          }
-        );
+        await axios.post("http://localhost:4000/api/insurance", formData, {
+          headers,
+        });
       }
       setShowForm(false);
       setEditingPolicy(null);
@@ -181,12 +171,9 @@ export default function Insurance() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        await axios.delete(
-          `https://erpbackend.tarstech.in/api/insurance/${id}`,
-          {
-            headers,
-          }
-        );
+        await axios.delete(`http://localhost:4000/api/insurance/${id}`, {
+          headers,
+        });
         fetchPolicies();
         fetchStats();
       } catch (error) {
@@ -205,7 +192,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       await axios.patch(
-        `https://erpbackend.tarstech.in/api/insurance/${id}/payment`,
+        `http://localhost:4000/api/insurance/${id}/payment`,
         {
           paymentStatus,
           lastPaymentDate:
@@ -229,7 +216,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       await axios.patch(
-        `https://erpbackend.tarstech.in/api/insurance/${id}/status`,
+        `http://localhost:4000/api/insurance/${id}/status`,
         { status },
         { headers }
       );

@@ -29,7 +29,7 @@ const RoleLogin = () => {
 
     try {
       const res = await axios.post(
-        "https://erpbackend.tarstech.in/api/faculty/rolelogin",
+        "http://localhost:4000/api/faculty/rolelogin",
         {
           employeeId,
           password,
@@ -113,7 +113,7 @@ const RoleLogin = () => {
               />
             </svg>
           </div>
-          <h2 className="mt-6 text-4xl font-bold text-white tracking-tight bg-gradient-to-r from-white to-indigo-200 bg-clip-text text-transparent">
+          <h2 className="mt-6 text-4xl font-bold text-[white] tracking-tight bg-gradient-to-r from-white to-indigo-200 bg-clip-text">
             Library Management
           </h2>
           <p className="mt-2 text-sm text-indigo-100 font-medium">
@@ -303,18 +303,32 @@ const RoleLogin = () => {
           }
         }
         .animate-blob {
-          animation: blob 7s infinite;
+          animation-name: blob;
+          animation-duration: 7s;
+          animation-iteration-count: infinite;
+          animation-timing-function: ease-in-out;
+          animation-delay: 0s;
         }
         .animate-float {
-          animation: float 6s ease-in-out infinite;
+          animation-name: float;
+          animation-duration: 6s;
+          animation-iteration-count: infinite;
+          animation-timing-function: ease-in-out;
+          animation-delay: 0s;
         }
-        .animation-delay-2000 {
+        .animate-blob.animation-delay-2000 {
           animation-delay: 2s;
         }
-        .animation-delay-3000 {
+        .animate-blob.animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        .animate-float.animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animate-float.animation-delay-3000 {
           animation-delay: 3s;
         }
-        .animation-delay-4000 {
+        .animate-float.animation-delay-4000 {
           animation-delay: 4s;
         }
       `}</style>

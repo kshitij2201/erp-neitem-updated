@@ -64,7 +64,9 @@ const createTask = async (req, res) => {
       assets: Array.isArray(data.assets) ? data.assets : [],
       pendingTasks: Array.isArray(data.pendingTasks) ? data.pendingTasks : [],
       remarks: data.remarks,
-      status: "pending_hod",
+      status: data.status || "pending_hod", // Use status from frontend or default to pending_hod
+      // Add HOD approval if provided (for principal automatic approval)
+      hodApproval: data.hodApproval || undefined,
     });
     const savedTask = await task.save();
     res

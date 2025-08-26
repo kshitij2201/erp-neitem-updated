@@ -10,9 +10,7 @@ const MyLeaveRequests = ({ userData }) => {
     if (!userData?.employeeId) return;
     setLoading(true);
     axios
-      .get(
-        `https://erpbackend.tarstech.in/api/leave/my-leaves/${userData.employeeId}`
-      )
+      .get(`http://localhost:4000/api/leave/my-leaves/${userData.employeeId}`)
       .then((res) => {
         setLeaves(res.data.leaves || []);
         setLoading(false);

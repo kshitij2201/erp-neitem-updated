@@ -29,7 +29,7 @@ const BooksAnalytics = () => {
   useEffect(() => {
     const fetchBooks = async () => {
       try {
-        const res = await axios.get("https://erpbackend.tarstech.in/api/books");
+        const res = await axios.get("http://localhost:4000/api/books");
         setBooks(res.data);
       } catch (err) {
         setBooks([]);

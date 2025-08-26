@@ -31,12 +31,9 @@ export default function ApproveODLeave() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/leave/all",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get("http://localhost:4000/api/leave/all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const allLeaves = response.data || [];
       console.log("Fetched leaves:", allLeaves);
       console.log("User role:", userRole);
@@ -95,8 +92,8 @@ export default function ApproveODLeave() {
 
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `https://erpbackend.tarstech.in/api/leave/hod/${id}`
-          : `https://erpbackend.tarstech.in/api/leave/principal/${id}`;
+          ? `http://localhost:4000/api/leave/hod/${id}`
+          : `http://localhost:4000/api/leave/principal/${id}`;
 
       const payload =
         userRole.toLowerCase() === "hod"
@@ -147,8 +144,8 @@ export default function ApproveODLeave() {
 
       const endpoint =
         userRole.toLowerCase() === "hod"
-          ? `https://erpbackend.tarstech.in/api/leave/hod/${id}`
-          : `https://erpbackend.tarstech.in/api/leave/principal/${id}`;
+          ? `http://localhost:4000/api/leave/hod/${id}`
+          : `http://localhost:4000/api/leave/principal/${id}`;
 
       const payload =
         userRole.toLowerCase() === "hod"

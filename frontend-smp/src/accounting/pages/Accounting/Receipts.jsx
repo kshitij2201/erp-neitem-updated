@@ -44,7 +44,7 @@ const Receipts = () => {
 
       console.log("Fetching receipts with params:", params.toString());
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts?${params}`,
+        `http://localhost:4000/api/receipts?${params}`,
         { headers }
       );
 
@@ -109,7 +109,7 @@ const Receipts = () => {
       if (receipt.type === "student") {
         // Fetch full payment details with student info
         const paymentResponse = await fetch(
-          `https://erpbackend.tarstech.in/api/receipts/student/${receipt._id}`,
+          `http://localhost:4000/api/receipts/student/${receipt._id}`,
           { headers }
         );
         if (!paymentResponse.ok) {
@@ -513,12 +513,9 @@ const Receipts = () => {
       }
 
       // Fetch faculty data to get complete employee information
-      const facultyRes = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty",
-        {
-          headers,
-        }
-      );
+      const facultyRes = await fetch("http://localhost:4000/api/faculty", {
+        headers,
+      });
       if (!facultyRes.ok) {
         throw new Error("Failed to fetch faculty data");
       }
@@ -540,7 +537,7 @@ const Receipts = () => {
 
       // Fetch salary record details
       const salaryRes = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/salary`,
+        `http://localhost:4000/api/faculty/salary`,
         {
           headers,
         }
@@ -1163,7 +1160,7 @@ const Receipts = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const checkResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`,
+        `http://localhost:4000/api/receipts/${receipt._id}`,
         { headers }
       );
 
@@ -1223,7 +1220,7 @@ const Receipts = () => {
 
       // First, verify the receipt exists by trying to fetch it
       const checkResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${editReceipt._id}`,
+        `http://localhost:4000/api/receipts/${editReceipt._id}`,
         { headers }
       );
       if (!checkResponse.ok) {
@@ -1258,7 +1255,7 @@ const Receipts = () => {
       // If receipt exists, proceed with update
       const lastEditedBy = window.currentUser?.name || "Unknown User";
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${editReceipt._id}`,
+        `http://localhost:4000/api/receipts/${editReceipt._id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -1320,7 +1317,7 @@ const Receipts = () => {
 
       // First verify the receipt exists on the backend
       const checkResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`
+        `http://localhost:4000/api/receipts/${receipt._id}`
       );
       if (!checkResponse.ok) {
         if (checkResponse.status === 404) {
@@ -1342,7 +1339,7 @@ const Receipts = () => {
 
       // Receipt exists, proceed with deletion
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`,
+        `http://localhost:4000/api/receipts/${receipt._id}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -1390,7 +1387,7 @@ const Receipts = () => {
 
         try {
           const checkResponse = await fetch(
-            `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`
+            `http://localhost:4000/api/receipts/${receipt._id}`
           );
           if (checkResponse.ok) {
             validReceipts.push(receipt);
@@ -1436,7 +1433,7 @@ const Receipts = () => {
           batch.map(async (receipt) => {
             try {
               const checkResponse = await fetch(
-                `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`,
+                `http://localhost:4000/api/receipts/${receipt._id}`,
                 {
                   method: "HEAD", // Use HEAD instead of GET to avoid downloading data
                 }

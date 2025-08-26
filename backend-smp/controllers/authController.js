@@ -222,6 +222,22 @@ const login = async (req, res) => {
         facultyRole = "principal";
       }
 
+      // Check if faculty has valid dashboard access
+      const validDashboardRoles = [
+        "principal",
+        "HOD",
+        "cc",
+        "facultymanagement",
+        "teaching",
+      ];
+      if (!validDashboardRoles.includes(facultyRole)) {
+        return res.status(403).json({
+          message:
+            "Access denied: You don't have permission to access any dashboard. Please contact administrator.",
+          code: "NO_DASHBOARD_ACCESS",
+        });
+      }
+
       tokenPayload.role = facultyRole;
       tokenPayload.type = user.type;
     } else if (userType === "driver") {

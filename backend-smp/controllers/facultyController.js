@@ -407,6 +407,26 @@ const roleLogin = async (req, res) => {
       });
     }
 
+    // Check if faculty has a valid role for dashboard access
+    const validDashboardRoles = [
+      "principal",
+      "hod",
+      "HOD",
+      "cc",
+      "facultymanagement",
+      "teaching",
+    ];
+    const facultyRole = faculty.role || faculty.type;
+
+    // If faculty doesn't have a valid dashboard role, deny login
+    if (!validDashboardRoles.includes(facultyRole)) {
+      return res.status(403).json({
+        error:
+          "Access denied: You don't have permission to access any dashboard. Please contact administrator.",
+        code: "NO_DASHBOARD_ACCESS",
+      });
+    }
+
     // Create a proper JWT token with library management information
     const jwt = (await import("jsonwebtoken")).default;
     const tokenPayload = {

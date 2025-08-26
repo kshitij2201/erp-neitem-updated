@@ -173,7 +173,7 @@ const AddBook = ({ initialData }) => {
       };
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/books",
+        "http://localhost:4000/api/books",
         bookData
       );
 
@@ -215,7 +215,7 @@ const AddBook = ({ initialData }) => {
       };
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/books",
+        "http://localhost:4000/api/books",
         formattedData
       );
 

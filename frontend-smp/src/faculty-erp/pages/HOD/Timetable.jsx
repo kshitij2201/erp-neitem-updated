@@ -109,7 +109,7 @@ export default function TimetableSimple({ userData }) {
       }
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/cc/my-cc-assignments",
+        "http://localhost:4000/api/cc/my-cc-assignments",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -187,7 +187,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const subjectsRes = await axios.get(
-          `https://erpbackend.tarstech.in/api/subjects/department/${encodeURIComponent(
+          `http://localhost:4000/api/subjects/department/${encodeURIComponent(
             department
           )}`,
           { headers }
@@ -203,7 +203,7 @@ export default function TimetableSimple({ userData }) {
           console.log("Subjects API failed, trying alternative approach...");
           // Try alternative API endpoint
           const altSubjectsRes = await axios.get(
-            `https://erpbackend.tarstech.in/api/superadmin/subjects`,
+            `http://localhost:4000/api/superadmin/subjects`,
             { headers, params: { department: department } }
           );
 
@@ -226,7 +226,7 @@ export default function TimetableSimple({ userData }) {
         // Fallback: Load subjects from faculty-department-subject mapping
         try {
           const fdsRes = await axios.get(
-            `https://erpbackend.tarstech.in/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
+            `http://localhost:4000/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
               department
             )}`,
             { headers }
@@ -255,7 +255,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/faculty/faculties",
+          "http://localhost:4000/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
 
@@ -281,7 +281,7 @@ export default function TimetableSimple({ userData }) {
         // Try alternative approach
         try {
           const altFacultiesRes = await axios.get(
-            "https://erpbackend.tarstech.in/api/faculty",
+            "http://localhost:4000/api/faculty",
             { headers }
           );
 
@@ -348,7 +348,7 @@ export default function TimetableSimple({ userData }) {
 
       // First, get all AdminSubjects for this department
       const subjectsResponse = await axios.get(
-        `https://erpbackend.tarstech.in/api/subjects/department/${encodeURIComponent(
+        `http://localhost:4000/api/subjects/department/${encodeURIComponent(
           department
         )}`,
         { headers }
@@ -372,7 +372,7 @@ export default function TimetableSimple({ userData }) {
             );
 
             const facultiesResponse = await axios.get(
-              `https://erpbackend.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
+              `http://localhost:4000/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -446,7 +446,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/faculty/faculties",
+          "http://localhost:4000/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
         facultyList =
@@ -456,7 +456,7 @@ export default function TimetableSimple({ userData }) {
       } catch (error) {
         console.log("Primary faculty API failed, trying alternative...");
         const altFacultiesRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/faculty",
+          "http://localhost:4000/api/faculty",
           { headers }
         );
         const allFaculties =
@@ -595,7 +595,7 @@ export default function TimetableSimple({ userData }) {
 
       // Step 1: Get AdminSubjects for department
       const subjectsResponse = await axios.get(
-        `https://erpbackend.tarstech.in/api/subjects/department/${encodeURIComponent(
+        `http://localhost:4000/api/subjects/department/${encodeURIComponent(
           ccAssignment.department
         )}`,
         { headers }
@@ -616,7 +616,7 @@ export default function TimetableSimple({ userData }) {
 
           try {
             const facultiesResponse = await axios.get(
-              `https://erpbackend.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
+              `http://localhost:4000/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -665,12 +665,9 @@ export default function TimetableSimple({ userData }) {
   const loadConflictingFaculties = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/timetable",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get("http://localhost:4000/api/timetable", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const allTimetables = response.data || [];
 
       const conflicts = {};
@@ -1035,7 +1032,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
+        `http://localhost:4000/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
           subjectName
         )}`,
         {
@@ -1139,7 +1136,7 @@ export default function TimetableSimple({ userData }) {
       console.log("Saving timetable payload:", payload);
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/timetable",
+        "http://localhost:4000/api/timetable",
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -1192,17 +1189,14 @@ export default function TimetableSimple({ userData }) {
     setLoading(true);
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/timetable",
-        {
-          params: {
-            department: ccAssignment.department,
-          },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get("http://localhost:4000/api/timetable", {
+        params: {
+          department: ccAssignment.department,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       console.log("Load timetable response:", response.data);
 
@@ -1313,7 +1307,7 @@ export default function TimetableSimple({ userData }) {
       const token = localStorage.getItem("authToken");
 
       const response = await axios.delete(
-        `https://erpbackend.tarstech.in/api/timetable/${currentTimetableId}`,
+        `http://localhost:4000/api/timetable/${currentTimetableId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

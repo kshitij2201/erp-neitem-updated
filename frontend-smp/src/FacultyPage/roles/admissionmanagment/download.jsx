@@ -89,7 +89,7 @@ const Download = () => {
     setLoading(true);
     try {
       const res = await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/superadmin/students",
+        "http://localhost:4000/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }

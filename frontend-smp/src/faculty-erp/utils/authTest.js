@@ -25,15 +25,12 @@ const testAuth = async () => {
   try {
     console.log("🚀 Testing API call with authentication...");
 
-    const response = await fetch(
-      "https://erpbackend.tarstech.in/api/students?limit=5",
-      {
-        headers: {
-          Authorization: `Bearer ${activeToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await fetch("http://localhost:4000/api/students?limit=5", {
+      headers: {
+        Authorization: `Bearer ${activeToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     console.log("📡 Response status:", response.status);
 

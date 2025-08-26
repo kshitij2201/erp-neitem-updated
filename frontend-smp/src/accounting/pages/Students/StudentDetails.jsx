@@ -30,13 +30,10 @@ export default function StudentDetails() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         // Use local API for students with search term
-        const res = await axios.get(
-          "https://erpbackend.tarstech.in/api/students",
-          {
-            params: { search: debouncedSearchTerm },
-            headers,
-          }
-        );
+        const res = await axios.get("http://localhost:4000/api/students", {
+          params: { search: debouncedSearchTerm },
+          headers,
+        });
         const studentList = res.data;
         setStudents(studentList);
 
@@ -76,7 +73,7 @@ export default function StudentDetails() {
           try {
             // Fetch fee heads with semester matching
             const feeRes = await axios.get(
-              `https://erpbackend.tarstech.in/api/fee-heads/applicable/${student._id}`,
+              `http://localhost:4000/api/fee-heads/applicable/${student._id}`,
               {
                 headers,
                 params: {
@@ -159,7 +156,7 @@ export default function StudentDetails() {
         studentList.map(async (student) => {
           try {
             const res = await axios.get(
-              `https://erpbackend.tarstech.in/api/insurance/student/${student._id}`,
+              `http://localhost:4000/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data;

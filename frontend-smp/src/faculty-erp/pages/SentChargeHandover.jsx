@@ -17,7 +17,7 @@ export default function SentChargeHandover() {
     try {
       const token = userData?.token || localStorage.getItem("authToken");
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/tasks/sent/${employeeId}`,
+        `http://localhost:4000/api/tasks/sent/${employeeId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setRequests(res.data || []);
@@ -124,12 +124,32 @@ export default function SentChargeHandover() {
                             </span>
                           </div>
                           <div className="text-sm text-gray-900 ml-6">
-                            {request.status === "pending" ? (
-                              <span className="text-amber-600">Pending</span>
+                            {request.status === "pending_hod" ? (
+                              <span className="text-amber-600">
+                                ⏳ Pending HOD Approval
+                              </span>
+                            ) : request.status === "pending_faculty" ? (
+                              <span className="text-yellow-600">
+                                ⏳ Pending Faculty Acceptance
+                              </span>
                             ) : request.status === "approved" ? (
-                              <span className="text-green-600">Approved</span>
+                              <span className="text-green-600">
+                                ✅ Approved & Accepted
+                              </span>
+                            ) : request.status === "rejected" ? (
+                              <span className="text-red-600">❌ Rejected</span>
                             ) : (
-                              <span className="text-red-600">Rejected</span>
+                              <span className="text-gray-600">
+                                Unknown Status
+                              </span>
+                            )}
+
+                            {/* Show automatic HOD approval indicator */}
+                            {request.hodApproval?.approverId ===
+                              "automatic-principal-privilege" && (
+                              <div className="mt-2 text-blue-600 text-xs">
+                                👑 HOD Approval: Automatic (Principal Privilege)
+                              </div>
                             )}
                           </div>
                         </div>

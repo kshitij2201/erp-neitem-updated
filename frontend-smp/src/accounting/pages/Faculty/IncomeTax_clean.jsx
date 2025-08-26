@@ -308,14 +308,11 @@ const IncomeTax = () => {
         paymentDate: new Date().toISOString().split("T")[0], // Current date as payment date
       };
 
-      const response = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty/salary",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(salaryRecord),
-        }
-      );
+      const response = await fetch("http://localhost:4000/api/faculty/salary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(salaryRecord),
+      });
 
       if (response.ok) {
         alert(
@@ -425,9 +422,7 @@ const IncomeTax = () => {
 
   const fetchSalaryData = async () => {
     try {
-      const response = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty/salary"
-      );
+      const response = await fetch("http://localhost:4000/api/faculty/salary");
       if (response.ok) {
         const data = await response.json();
         setSalaryData(data);
@@ -457,9 +452,7 @@ const IncomeTax = () => {
       const selectedFacultyName = salarySlipEmployee;
 
       // Fetch faculty data
-      const facultyRes = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty"
-      );
+      const facultyRes = await fetch("http://localhost:4000/api/faculty");
       const facultyData = await facultyRes.json();
       const facultyMember = facultyData.find(
         (f) => f.personalInfo?.fullName === selectedFacultyName
@@ -472,7 +465,7 @@ const IncomeTax = () => {
 
       // Fetch salary records from our calculator saved data - include year in query
       const salaryRes = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/salary?name=${encodeURIComponent(
+        `http://localhost:4000/api/faculty/salary?name=${encodeURIComponent(
           selectedFacultyName
         )}&month=${salarySlipMonth}&year=${salarySlipYear}`
       );
@@ -502,7 +495,7 @@ const IncomeTax = () => {
 
       // Fetch income tax data for the employee
       const incomeTaxRes = await fetch(
-        `https://erpbackend.tarstech.in/api/income-tax?employeeName=${encodeURIComponent(
+        `http://localhost:4000/api/income-tax?employeeName=${encodeURIComponent(
           selectedFacultyName
         )}`
       );

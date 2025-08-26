@@ -26,7 +26,7 @@ const RoleAssignmentManager = () => {
     setError(null);
     try {
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty/faculties?type=non-teaching",
+        "http://localhost:4000/api/faculty/faculties?type=non-teaching",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -100,7 +100,7 @@ const RoleAssignmentManager = () => {
     const faculty = facultyList.find((f) => f._id === id);
     try {
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/${id}/status`,
+        `http://localhost:4000/api/faculty/${id}/status`,
         {
           method: "PUT",
           headers: {
@@ -148,13 +148,10 @@ const RoleAssignmentManager = () => {
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/${id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await fetch(`http://localhost:4000/api/faculty/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         if (response.status === 401) {

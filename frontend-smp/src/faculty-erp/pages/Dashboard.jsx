@@ -42,1023 +42,482 @@ ChartJS.register(
 );
 
 function Dashboard({ userData, onLogout }) {
+  const [todos, setTodos] = useState([]);
+  const [newTodo, setNewTodo] = useState("");
+  const [editingTodo, setEditingTodo] = useState(null);
+  const [editText, setEditText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [dataType, setDataType] = useState("faculty"); // For admin dashboard
-  const [facultyCount, setFacultyCount] = useState(null);
-  const [facultyCountLoading, setFacultyCountLoading] = useState(true);
-  const [facultyCountError, setFacultyCountError] = useState(null);
-  const [facultyByDept, setFacultyByDept] = useState([]);
-  const [facultyByDeptLoading, setFacultyByDeptLoading] = useState(true);
-  const [facultyByDeptError, setFacultyByDeptError] = useState(null);
-  const [studentsByDept, setStudentsByDept] = useState([]);
-  const [studentsByDeptLoading, setStudentsByDeptLoading] = useState(true);
-  const [studentsByDeptError, setStudentsByDeptError] = useState(null);
-  const [studentCount, setStudentCount] = useState(null);
-  const [studentCountLoading, setStudentCountLoading] = useState(true);
-  const [studentCountError, setStudentCountError] = useState(null);
-  const [departmentCount, setDepartmentCount] = useState(null);
-  const [departmentCountLoading, setDepartmentCountLoading] = useState(true);
-  const [departmentCountError, setDepartmentCountError] = useState(null);
 
-  // Teaching Dashboard specific state
-  const [teachingStats, setTeachingStats] = useState({
-    totalStudents: 0,
-    totalSubjects: 0,
-    classesThisWeek: 0,
-    pendingAssignments: 0,
-    averageAttendance: 0,
-  });
-  const [teachingStatsLoading, setTeachingStatsLoading] = useState(true);
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [subjectsList, setSubjectsList] = useState([]);
-  const [attendanceData, setAttendanceData] = useState({
-    labels: [],
-    datasets: [],
-  });
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [upcomingClasses, setUpcomingClasses] = useState([]);
+  // Sample quick stats based on role
+  const getQuickStats = () => {
+    const baseStats = [
+      { label: "Profile Completion", value: "95%", icon: User, color: "blue" },
+      { label: "This Month", value: "24 Days", icon: Calendar, color: "green" },
+    ];
 
-  // Chart data configuration for admin dashboard
-  const adminChartData = {
-    labels:
-      dataType === "faculty"
-        ? facultyByDept.map((item) => item.name)
-        : studentsByDept.map((item) => item.name),
-    datasets: [
-      {
-        label: dataType === "faculty" ? "Faculty Count" : "Student Count",
-        data:
-          dataType === "faculty"
-            ? facultyByDept.map((item) => item.count)
-            : studentsByDept.map((item) => item.count),
-        backgroundColor: "#2563eb",
-        borderColor: "#1e3a8a",
-        borderWidth: 1,
-        hoverBackgroundColor: "#3b82f6",
-        borderRadius: 4,
-      },
-    ],
-  };
-
-  // Teaching Dashboard Charts
-  const attendanceChartData = {
-    labels: attendanceData.labels,
-    datasets: [
-      {
-        label: "Present Students",
-        data: attendanceData.datasets[0]?.data || [],
-        backgroundColor: "#10b981",
-        borderColor: "#059669",
-        borderWidth: 2,
-        borderRadius: 4,
-      },
-      {
-        label: "Absent Students",
-        data: attendanceData.datasets[1]?.data || [],
-        backgroundColor: "#ef4444",
-        borderColor: "#dc2626",
-        borderWidth: 2,
-        borderRadius: 4,
-      },
-    ],
-  };
-
-  const performanceChartData = {
-    labels: ["Excellent", "Good", "Average", "Poor"],
-    datasets: [
-      {
-        data: [25, 35, 30, 10],
-        backgroundColor: ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"],
-        borderColor: ["#059669", "#1d4ed8", "#d97706", "#dc2626"],
-        borderWidth: 2,
-      },
-    ],
-  };
-
-  // Chart options for admin dashboard
-  const adminChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          font: {
-            size: 14,
-            family: "'Inter', sans-serif",
-          },
-          color: "#1f2937",
-        },
-      },
-      title: {
-        display: true,
-        text:
-          dataType === "faculty" ? "Faculty by Branch" : "Students by Branch",
-        font: {
-          size: 18,
-          family: "'Inter', sans-serif",
-          weight: "bold",
-        },
-        color: "#1f2937",
-        padding: {
-          bottom: 20,
-        },
-      },
-      tooltip: {
-        backgroundColor: "#1f2937",
-        titleFont: { size: 14 },
-        bodyFont: { size: 12 },
-      },
-    },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: "Branches",
-          font: {
-            size: 14,
-            family: "'Inter', sans-serif",
-          },
-          color: "#1f2937",
-        },
-        grid: {
-          display: false,
-        },
-        ticks: {
-          font: {
-            size: 12,
-          },
-          color: "#4b5563",
-          maxRotation: 45,
-          minRotation: 45,
-        },
-      },
-      y: {
-        title: {
-          display: true,
-          text: "Total Count",
-          font: {
-            size: 14,
-            family: "'Inter', sans-serif",
-          },
-          color: "#1f2937",
-        },
-        beginAtZero: true,
-        grid: {
-          color: "#e5e7eb",
-        },
-        ticks: {
-          font: {
-            size: 12,
-          },
-          color: "#4b5563",
-        },
-      },
-    },
-  };
-
-  // Teaching Dashboard Chart Options
-  const attendanceChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          font: { size: 12, family: "'Inter', sans-serif" },
-          color: "#1f2937",
-        },
-      },
-      title: {
-        display: true,
-        text: `Attendance Overview - ${selectedSubject || "All Subjects"}`,
-        font: { size: 16, family: "'Inter', sans-serif", weight: "bold" },
-        color: "#1f2937",
-      },
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { color: "#4b5563", font: { size: 11 } },
-      },
-      y: {
-        beginAtZero: true,
-        grid: { color: "#e5e7eb" },
-        ticks: { color: "#4b5563", font: { size: 11 } },
-      },
-    },
-  };
-
-  const performanceChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: {
-          font: { size: 12, family: "'Inter', sans-serif" },
-          color: "#1f2937",
-          padding: 15,
-        },
-      },
-      title: {
-        display: true,
-        text: "Student Performance Distribution",
-        font: { size: 16, family: "'Inter', sans-serif", weight: "bold" },
-        color: "#1f2937",
-        padding: { bottom: 20 },
-      },
-    },
-  };
-
-  // Simulate data loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Fetch total number of faculties, students, departments and distributions from backend
-  useEffect(() => {
     if (userData?.role === "facultymanagement") {
-      // Fetch basic stats
-      setFacultyCountLoading(true);
-      setStudentCountLoading(true);
-      setDepartmentCountLoading(true);
-      setFacultyCountError(null);
-      setStudentCountError(null);
-      setDepartmentCountError(null);
+      return [
+        ...baseStats,
+        { label: "Total Faculty", value: "120", icon: Users, color: "purple" },
+        {
+          label: "Active Departments",
+          value: "8",
+          icon: Building,
+          color: "orange",
+        },
+      ];
+    } else if (userData?.role === "faculty") {
+      return [
+        ...baseStats,
+        { label: "Classes Today", value: "4", icon: BookOpen, color: "purple" },
+        {
+          label: "Student Attendance",
+          value: "92%",
+          icon: TrendingUp,
+          color: "orange",
+        },
+      ];
+    } else {
+      return [
+        ...baseStats,
+        {
+          label: "Tasks Completed",
+          value: "18",
+          icon: CheckCircle,
+          color: "purple",
+        },
+        { label: "Pending Items", value: "3", icon: Clock, color: "orange" },
+      ];
+    }
+  };
 
-      fetch(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:4000"
-        }/api/dashboard/stats`
+  // Load todos from localStorage
+  useEffect(() => {
+    const savedTodos = localStorage.getItem(
+      `todos_${userData?.email || "user"}`
+    );
+    if (savedTodos) {
+      setTodos(JSON.parse(savedTodos));
+    }
+
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, [userData?.email]);
+
+  // Save todos to localStorage
+  useEffect(() => {
+    if (userData?.email) {
+      localStorage.setItem(`todos_${userData.email}`, JSON.stringify(todos));
+    }
+  }, [todos, userData?.email]);
+
+  const addTodo = () => {
+    if (newTodo.trim()) {
+      const todo = {
+        id: Date.now(),
+        text: newTodo.trim(),
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+      setTodos([...todos, todo]);
+      setNewTodo("");
+    }
+  };
+
+  const deleteTodo = (id) => {
+    setTodos(todos.filter((todo) => todo.id !== id));
+  };
+
+  const toggleTodo = (id) => {
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
       )
-        .then((res) => res.json())
-        .then((data) => {
-          setFacultyCount(data.totalFaculty || 0);
-          setStudentCount(data.totalStudents || 0);
-          setDepartmentCount(data.departments || 0);
-        })
-        .catch((err) => {
-          console.error("Error fetching basic stats:", err);
-          setFacultyCountError("Failed to fetch faculty count");
-          setStudentCountError("Failed to fetch student count");
-          setDepartmentCountError("Failed to fetch department count");
-        })
-        .finally(() => {
-          setFacultyCountLoading(false);
-          setStudentCountLoading(false);
-          setDepartmentCountLoading(false);
-        });
+    );
+  };
 
-      // Fetch faculty distribution using academic departments
-      const loadFacultyDistribution = async () => {
-        setFacultyByDeptLoading(true);
-        setFacultyByDeptError(null);
+  const startEdit = (todo) => {
+    setEditingTodo(todo.id);
+    setEditText(todo.text);
+  };
 
-        const result = await fetchFacultyDistribution();
-
-        if (result.success) {
-          setFacultyByDept(result.distribution);
-          // Update faculty count if not already set
-          if (!facultyCount) {
-            setFacultyCount(result.totalFaculties);
-          }
-        } else {
-          setFacultyByDeptError(result.error);
-          console.error("Error fetching faculty distribution:", result.error);
-        }
-
-        setFacultyByDeptLoading(false);
-      };
-
-      // Fetch student distribution using academic departments
-      const loadStudentDistribution = async () => {
-        setStudentsByDeptLoading(true);
-        setStudentsByDeptError(null);
-
-        const result = await fetchStudentDistribution();
-
-        if (result.success) {
-          setStudentsByDept(result.distribution);
-          // Update student count if not already set
-          if (!studentCount) {
-            setStudentCount(result.totalStudents);
-          }
-        } else {
-          setStudentsByDeptError(result.error);
-          console.error("Error fetching student distribution:", result.error);
-        }
-
-        setStudentsByDeptLoading(false);
-      };
-
-      loadFacultyDistribution();
-      loadStudentDistribution();
+  const saveEdit = () => {
+    if (editText.trim()) {
+      setTodos(
+        todos.map((todo) =>
+          todo.id === editingTodo ? { ...todo, text: editText.trim() } : todo
+        )
+      );
     }
+    setEditingTodo(null);
+    setEditText("");
+  };
 
-    // Fetch teaching dashboard data
-    if (userData?.role === "teaching" || userData?.role === "HOD") {
-      setTeachingStatsLoading(true);
+  const cancelEdit = () => {
+    setEditingTodo(null);
+    setEditText("");
+  };
 
-      // Fetch teaching stats
-      const fetchTeachingStats = async () => {
-        try {
-          const token = localStorage.getItem("authToken");
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_API_URL || "http://localhost:4000"
-            }/api/dashboard/teaching-stats`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            setTeachingStats({
-              totalStudents: data.totalStudents,
-              totalSubjects: data.totalSubjects,
-              classesThisWeek: data.classesThisWeek,
-              pendingAssignments: data.pendingAssignments,
-              averageAttendance: data.averageAttendance,
-            });
-
-            setSubjectsList(data.subjectsList || []);
-
-            if (
-              data.subjectsList &&
-              data.subjectsList.length > 0 &&
-              !selectedSubject
-            ) {
-              setSelectedSubject(data.subjectsList[0]);
-            }
-
-            setAttendanceData(data.attendanceData);
-            setRecentActivities(data.recentActivities || []);
-            setUpcomingClasses(data.upcomingClasses || []);
-          } else {
-            console.error(
-              "Failed to fetch teaching stats:",
-              response.statusText
-            );
-            // Fallback to mock data
-            setTeachingStats({
-              totalStudents: 120,
-              totalSubjects: 4,
-              classesThisWeek: 18,
-              pendingAssignments: 5,
-              averageAttendance: 85,
-            });
-
-            setSubjectsList([
-              "Data Structures",
-              "Operating Systems",
-              "Database Management",
-              "Computer Networks",
-            ]);
-
-            if (!selectedSubject) {
-              setSelectedSubject("Data Structures");
-            }
-
-            setAttendanceData({
-              labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-              datasets: [
-                { data: [28, 25, 30, 27, 26] },
-                { data: [2, 5, 0, 3, 4] },
-              ],
-            });
-
-            setRecentActivities([
-              {
-                type: "assignment",
-                text: "New assignment posted for Data Structures",
-                time: "2 hours ago",
-              },
-              {
-                type: "attendance",
-                text: "Attendance marked for OS class",
-                time: "4 hours ago",
-              },
-              {
-                type: "announcement",
-                text: "Class rescheduled for tomorrow",
-                time: "1 day ago",
-              },
-            ]);
-
-            setUpcomingClasses([
-              { subject: "Data Structures", time: "10:00 AM", room: "CS-101" },
-              { subject: "Operating Systems", time: "2:00 PM", room: "CS-201" },
-              {
-                subject: "Database Management",
-                time: "4:00 PM",
-                room: "CS-301",
-              },
-            ]);
-          }
-        } catch (error) {
-          console.error("Error fetching teaching stats:", error);
-          // Fallback to mock data on error
-          setTeachingStats({
-            totalStudents: 120,
-            totalSubjects: 4,
-            classesThisWeek: 18,
-            pendingAssignments: 5,
-            averageAttendance: 85,
-          });
-
-          setSubjectsList([
-            "Data Structures",
-            "Operating Systems",
-            "Database Management",
-            "Computer Networks",
-          ]);
-
-          if (!selectedSubject) {
-            setSelectedSubject("Data Structures");
-          }
-
-          setAttendanceData({
-            labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-            datasets: [
-              { data: [28, 25, 30, 27, 26] },
-              { data: [2, 5, 0, 3, 4] },
-            ],
-          });
-
-          setRecentActivities([
-            {
-              type: "assignment",
-              text: "New assignment posted for Data Structures",
-              time: "2 hours ago",
-            },
-            {
-              type: "attendance",
-              text: "Attendance marked for OS class",
-              time: "4 hours ago",
-            },
-            {
-              type: "announcement",
-              text: "Class rescheduled for tomorrow",
-              time: "1 day ago",
-            },
-          ]);
-
-          setUpcomingClasses([
-            { subject: "Data Structures", time: "10:00 AM", room: "CS-101" },
-            { subject: "Operating Systems", time: "2:00 PM", room: "CS-201" },
-            { subject: "Database Management", time: "4:00 PM", room: "CS-301" },
-          ]);
-        } finally {
-          setTeachingStatsLoading(false);
-        }
-      };
-
-      fetchTeachingStats();
+  const getRoleDisplayName = () => {
+    switch (userData?.role) {
+      case "facultymanagement":
+        return "Faculty Management";
+      case "faculty":
+        return "Faculty";
+      case "staff":
+        return "Staff";
+      default:
+        return userData?.role || "User";
     }
-  }, [userData]);
+  };
 
-  // Determine which dashboard to show based on role
-  const showAdminDashboard = userData?.role === "facultymanagement";
-  const showTeachingDashboard =
-    userData?.role === "teaching" || userData?.role === "HOD";
-  const showNonTeachingDashboard = userData?.role === "non-teaching";
+  const getGreetingMessage = () => {
+    const hour = new Date().getHours();
+    let greeting = "";
 
-  // Show loading state
+    if (hour < 12) greeting = "Good Morning";
+    else if (hour < 17) greeting = "Good Afternoon";
+    else greeting = "Good Evening";
+
+    return `${greeting}, ${userData?.name || "User"}!`;
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg font-medium text-gray-600">
-            Loading dashboard...
-          </p>
-          <div className="mt-4 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
+  const quickStats = getQuickStats();
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Main Content */}
-      <div className="w-full p-6">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, {userData?.firstName || userData?.email || "User"}
-            </h1>
-            <p className="text-gray-600">
-              {showAdminDashboard
-                ? "Faculty Management Dashboard"
-                : showTeachingDashboard
-                ? "Teaching Dashboard"
-                : showNonTeachingDashboard
-                ? "Non-Teaching Dashboard"
-                : "Staff Dashboard"}
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {getGreetingMessage()}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Welcome to your personalized dashboard
+              </p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 shadow-md"
+            >
+              <LogOut size={20} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-2 text-red-600 hover:text-red-700 bg-red-50 px-4 py-2 rounded-md"
-          >
-            <LogOut size={20} />
-            <span>Logout</span>
-          </button>
         </div>
+      </div>
 
-        {/* Show appropriate dashboard based on role */}
-        {showAdminDashboard ? (
-          <div className="space-y-6">
-            {/* Admin Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* User Profile Card */}
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border border-gray-100">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            {/* Profile Picture */}
+            <div className="flex-shrink-0">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                {userData?.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+            </div>
+
+            {/* User Information */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <User className="text-blue-600" size={20} />
                   <div>
-                    <p className="text-gray-500">Total Faculty</p>
-                    <p className="text-2xl font-bold">
-                      {facultyCountLoading ? (
-                        "..."
-                      ) : facultyCountError ? (
-                        <span className="text-red-500 text-base">Err</span>
-                      ) : (
-                        facultyCount
-                      )}
+                    <p className="text-sm text-gray-500">Full Name</p>
+                    <p className="font-semibold text-gray-900">
+                      {userData?.name || "Not Available"}
                     </p>
                   </div>
-                  <div className="bg-blue-100 p-3 rounded-full">
-                    <Users size={24} className="text-blue-600" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Mail className="text-green-600" size={20} />
+                  <div>
+                    <p className="text-sm text-gray-500">Email Address</p>
+                    <p className="font-semibold text-gray-900">
+                      {userData?.email || "Not Available"}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Star className="text-purple-600" size={20} />
                   <div>
-                    <p className="text-gray-500">Total Students</p>
-                    <p className="text-2xl font-bold">
-                      {studentCountLoading ? (
-                        "..."
-                      ) : studentCountError ? (
-                        <span className="text-gray-400 text-base">N/A</span>
-                      ) : (
-                        studentCount
-                      )}
+                    <p className="text-sm text-gray-500">Role</p>
+                    <p className="font-semibold text-gray-900">
+                      {getRoleDisplayName()}
                     </p>
-                  </div>
-                  <div className="bg-green-100 p-3 rounded-full">
-                    <Users size={24} className="text-green-600" />
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Building className="text-orange-600" size={20} />
                   <div>
-                    <p className="text-gray-500">Total Departments</p>
-                    <p className="text-2xl font-bold">
-                      {departmentCountLoading ? (
-                        "..."
-                      ) : departmentCountError ? (
-                        <span className="text-red-500 text-base">Err</span>
-                      ) : (
-                        departmentCount
-                      )}
+                    <p className="text-sm text-gray-500">Department</p>
+                    <p className="font-semibold text-gray-900">
+                      {userData?.department || "Computer Science"}
                     </p>
-                  </div>
-                  <div className="bg-purple-100 p-3 rounded-full">
-                    <BookOpen size={24} className="text-purple-600" />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Graph Section */}
-            <div className="bg-white rounded-lg shadow-md p-6 w-full">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900">
-                Faculty & Student Distribution
-              </h2>
-              <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <label className="font-medium text-gray-700">
-                  Select Data:
-                </label>
-                <select
-                  value={dataType}
-                  onChange={(e) => setDataType(e.target.value)}
-                  className="w-full sm:w-auto p-2 border border-gray-300 rounded-md bg-white shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-                >
-                  <option value="faculty">Faculty</option>
-                  <option value="students">Students</option>
-                </select>
+            {/* Employment Status */}
+            <div className="flex-shrink-0">
+              <div className="bg-green-100 border border-green-200 rounded-lg p-4 text-center">
+                <Briefcase className="text-green-600 mx-auto mb-2" size={24} />
+                <p className="text-sm text-gray-600">Status</p>
+                <p className="font-bold text-green-700">Active</p>
               </div>
-              <div className="h-64 sm:h-80 overflow-x-auto">
-                {(dataType === "faculty" && facultyByDeptLoading) ||
-                (dataType === "students" && studentsByDeptLoading) ? (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                      <p>Loading {dataType} distribution...</p>
-                    </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {quickStats.map((stat, index) => {
+            const Icon = stat.icon;
+            const colorClasses = {
+              blue: "bg-blue-100 text-blue-600 border-blue-200",
+              green: "bg-green-100 text-green-600 border-green-200",
+              purple: "bg-purple-100 text-purple-600 border-purple-200",
+              orange: "bg-orange-100 text-orange-600 border-orange-200",
+            };
+
+            return (
+              <div
+                key={index}
+                className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow duration-300"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-500 text-sm font-medium mb-1">
+                      {stat.label}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stat.value}
+                    </p>
                   </div>
-                ) : (dataType === "faculty" && facultyByDeptError) ||
-                  (dataType === "students" && studentsByDeptError) ? (
-                  <div className="flex items-center justify-center h-full text-red-500">
-                    <div className="text-center">
-                      <p>Error loading {dataType} data</p>
-                      <p className="text-sm mt-1">
-                        {dataType === "faculty"
-                          ? facultyByDeptError
-                          : studentsByDeptError}
+                  <div
+                    className={`p-3 rounded-lg border ${
+                      colorClasses[stat.color]
+                    }`}
+                  >
+                    <Icon size={24} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Todo Management Section */}
+        <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <Target className="text-blue-600" size={28} />
+            <h2 className="text-2xl font-bold text-gray-900">My Todo List</h2>
+            <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+              {todos.filter((todo) => !todo.completed).length} pending
+            </span>
+          </div>
+
+          {/* Add Todo Form */}
+          <div className="flex gap-3 mb-6">
+            <input
+              type="text"
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && addTodo()}
+              placeholder="Add a new task..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            />
+            <button
+              onClick={addTodo}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 shadow-md"
+            >
+              <Plus size={20} />
+              <span className="hidden sm:inline">Add Task</span>
+            </button>
+          </div>
+
+          {/* Todo List */}
+          <div className="space-y-3">
+            {todos.length === 0 ? (
+              <div className="text-center py-12">
+                <Target className="text-gray-400 mx-auto mb-4" size={48} />
+                <p className="text-gray-500 text-lg">No tasks yet!</p>
+                <p className="text-gray-400">
+                  Add your first task to get started.
+                </p>
+              </div>
+            ) : (
+              todos.map((todo) => (
+                <div
+                  key={todo.id}
+                  className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 ${
+                    todo.completed
+                      ? "bg-gray-50 border-gray-200"
+                      : "bg-white border-gray-300 hover:shadow-md"
+                  }`}
+                >
+                  {/* Checkbox */}
+                  <button
+                    onClick={() => toggleTodo(todo.id)}
+                    className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      todo.completed
+                        ? "bg-green-500 border-green-500 text-white"
+                        : "border-gray-300 hover:border-blue-500"
+                    }`}
+                  >
+                    {todo.completed && <Check size={16} />}
+                  </button>
+
+                  {/* Todo Text */}
+                  <div className="flex-1">
+                    {editingTodo === todo.id ? (
+                      <input
+                        type="text"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && saveEdit()}
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <p
+                        className={`${
+                          todo.completed
+                            ? "line-through text-gray-500"
+                            : "text-gray-900"
+                        } font-medium`}
+                      >
+                        {todo.text}
                       </p>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <Bar data={adminChartData} options={adminChartOptions} />
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    {editingTodo === todo.id ? (
+                      <>
+                        <button
+                          onClick={saveEdit}
+                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                        >
+                          <Check size={18} />
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <X size={18} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEdit(todo)}
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                          <Edit3 size={18} />
+                        </button>
+                        <button
+                          onClick={() => deleteTodo(todo.id)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Todo Summary */}
+          {todos.length > 0 && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-gray-600">
+                <div className="flex gap-6">
+                  <span>
+                    <strong>{todos.length}</strong> total tasks
+                  </span>
+                  <span>
+                    <strong>
+                      {todos.filter((todo) => todo.completed).length}
+                    </strong>{" "}
+                    completed
+                  </span>
+                  <span>
+                    <strong>
+                      {todos.filter((todo) => !todo.completed).length}
+                    </strong>{" "}
+                    pending
+                  </span>
+                </div>
+                {todos.length > 0 && (
+                  <div className="text-right">
+                    <span className="text-blue-600 font-medium">
+                      {Math.round(
+                        (todos.filter((todo) => todo.completed).length /
+                          todos.length) *
+                          100
+                      )}
+                      % Complete
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8 bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-left">
+              <FileText className="text-blue-600" size={24} />
+              <div>
+                <p className="font-medium text-gray-900">View Profile</p>
+                <p className="text-sm text-gray-600">Update your information</p>
+              </div>
+            </button>
+
+            <button className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors text-left">
+              <Calendar className="text-green-600" size={24} />
+              <div>
+                <p className="font-medium text-gray-900">View Schedule</p>
+                <p className="text-sm text-gray-600">Check your calendar</p>
+              </div>
+            </button>
+
+            <button className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors text-left">
+              <Activity className="text-purple-600" size={24} />
+              <div>
+                <p className="font-medium text-gray-900">Recent Activity</p>
+                <p className="text-sm text-gray-600">View your activity log</p>
+              </div>
+            </button>
           </div>
-        ) : showTeachingDashboard ? (
-          <div className="space-y-6">
-            {/* Teaching Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500 text-sm font-medium">
-                      Total Students
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
-                      {teachingStatsLoading
-                        ? "..."
-                        : teachingStats.totalStudents}
-                    </p>
-                  </div>
-                  <div className="bg-blue-100 p-3 rounded-full">
-                    <Users size={24} className="text-blue-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500 text-sm font-medium">
-                      Subjects Teaching
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
-                      {teachingStatsLoading
-                        ? "..."
-                        : teachingStats.totalSubjects}
-                    </p>
-                  </div>
-                  <div className="bg-purple-100 p-3 rounded-full">
-                    <BookOpen size={24} className="text-purple-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500 text-sm font-medium">
-                      Classes This Week
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
-                      {teachingStatsLoading
-                        ? "..."
-                        : teachingStats.classesThisWeek}
-                    </p>
-                  </div>
-                  <div className="bg-green-100 p-3 rounded-full">
-                    <Calendar size={24} className="text-green-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500 text-sm font-medium">
-                      Avg Attendance
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
-                      {teachingStatsLoading
-                        ? "..."
-                        : `${teachingStats.averageAttendance}%`}
-                    </p>
-                  </div>
-                  <div className="bg-yellow-100 p-3 rounded-full">
-                    <TrendingUp size={24} className="text-yellow-600" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Attendance Chart */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Weekly Attendance
-                  </h2>
-                  <select
-                    value={selectedSubject}
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                    className="w-full sm:w-auto p-2 border border-gray-300 rounded-md bg-white shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-                  >
-                    {subjectsList.map((subject) => (
-                      <option key={subject} value={subject}>
-                        {subject}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="h-64">
-                  {teachingStatsLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                        <p className="text-gray-500">
-                          Loading attendance data...
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <Bar
-                      data={attendanceChartData}
-                      options={attendanceChartOptions}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Performance Distribution */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  Student Performance
-                </h2>
-                <div className="h-64">
-                  {teachingStatsLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                        <p className="text-gray-500">
-                          Loading performance data...
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <Doughnut
-                      data={performanceChartData}
-                      options={performanceChartOptions}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions and Recent Activities */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Upcoming Classes */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Clock size={20} className="text-blue-600" />
-                  Today's Classes
-                </h2>
-                <div className="space-y-3">
-                  {upcomingClasses.map((classItem, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {classItem.subject}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Room: {classItem.room}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-blue-600">
-                          {classItem.time}
-                        </p>
-                        <p className="text-xs text-gray-500">Today</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent Activities */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Activity size={20} className="text-green-600" />
-                  Recent Activities
-                </h2>
-                <div className="space-y-3">
-                  {recentActivities.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex-shrink-0 mt-1">
-                        {activity.type === "assignment" && (
-                          <FileText size={16} className="text-purple-600" />
-                        )}
-                        {activity.type === "attendance" && (
-                          <CheckCircle size={16} className="text-green-600" />
-                        )}
-                        {activity.type === "announcement" && (
-                          <AlertCircle size={16} className="text-blue-600" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">{activity.text}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <button className="flex flex-col items-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200">
-                  <CheckCircle size={24} className="text-blue-600 mb-2" />
-                  <span className="text-sm font-medium text-gray-900">
-                    Mark Attendance
-                  </span>
-                </button>
-                <button className="flex flex-col items-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors duration-200">
-                  <FileText size={24} className="text-purple-600 mb-2" />
-                  <span className="text-sm font-medium text-gray-900">
-                    Create Assignment
-                  </span>
-                </button>
-                <button className="flex flex-col items-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors duration-200">
-                  <GraduationCap size={24} className="text-green-600 mb-2" />
-                  <span className="text-sm font-medium text-gray-900">
-                    View Students
-                  </span>
-                </button>
-                <button className="flex flex-col items-center p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors duration-200">
-                  <Calendar size={24} className="text-yellow-600 mb-2" />
-                  <span className="text-sm font-medium text-gray-900">
-                    View Timetable
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : showNonTeachingDashboard ? (
-          <div className="space-y-6">
-            {/* Non-Teaching Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500">Total Tasks</p>
-                    <p className="text-2xl font-bold">
-                      {/* {nonTeachingStats.totalTasks} */}
-                    </p>
-                  </div>
-                  <div className="bg-blue-100 p-3 rounded-full">
-                    <Users size={24} className="text-blue-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500">Completed Tasks</p>
-                    <p className="text-2xl font-bold">
-                      {/* {nonTeachingStats.completedTasks} */}
-                    </p>
-                  </div>
-                  <div className="bg-green-100 p-3 rounded-full">
-                    <Activity size={24} className="text-green-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500">Pending Tasks</p>
-                    <p className="text-2xl font-bold">
-                      {/* {nonTeachingStats.pendingTasks} */}
-                    </p>
-                  </div>
-                  <div className="bg-yellow-100 p-3 rounded-full">
-                    <Award size={24} className="text-yellow-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500">Upcoming Meetings</p>
-                    <p className="text-2xl font-bold">
-                      {/* {nonTeachingStats.upcomingMeetings} */}
-                    </p>
-                  </div>
-                  <div className="bg-purple-100 p-3 rounded-full">
-                    <Calendar size={24} className="text-purple-600" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Task Overview */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Task Overview</h2>
-              <div className="space-y-2">
-                {/* {taskData.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="w-16 sm:w-24 flex-shrink-0 font-medium">
-                      {item.name}
-                    </div>
-                    <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-green-500 rounded-full"
-                        style={{
-                          width: `${(item.completed / item.count) * 100}%`,
-                        }}
-                      ></div>
-                    </div>
-                    <div className="w-16 sm:w-20 text-right ml-2 font-medium text-green-600">
-                      {item.completed}/{item.count}
-                    </div>
-                  </div>
-                ))} */}
-              </div>
-            </div>
-
-            {/* Upcoming Meetings */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Upcoming Meetings</h2>
-              <div className="space-y-4">
-                {/* <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 bg-blue-50 rounded-lg">
-                  <div className="bg-blue-100 p-3 rounded-full">
-                    <Calendar size={20} className="text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Staff Coordination Meeting</p>
-                    <p className="text-gray-500 text-sm">
-                      Today, 2:00 PM - Conference Room
-                    </p>
-                  </div>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                    10 Attendees
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 bg-purple-50 rounded-lg">
-                  <div className="bg-purple-100 p-3 rounded-full">
-                    <Calendar size={20} className="text-purple-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Maintenance Review</p>
-                    <p className="text-gray-500 text-sm">
-                      Tomorrow, 10:00 AM - Admin Office
-                    </p>
-                  </div>
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                    5 Attendees
-                  </span>
-                </div> */}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Staff Dashboard</h2>
-            <p className="text-gray-600">
-              Welcome to your dashboard. Please use the sidebar to navigate to
-              specific features like profile, payslip, or announcements.
-            </p>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

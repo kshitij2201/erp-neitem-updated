@@ -42,9 +42,25 @@ const App = () => {
       try {
         const parsedUser = JSON.parse(savedUser);
         const validRoles = rolePermissionsAndRoutes.map((r) => r.role);
-        const userRole = validRoles.includes(parsedUser.type)
-          ? parsedUser.role
-          : "teaching";
+        const userRole = parsedUser.role || parsedUser.type;
+
+        // Check if user has valid dashboard access
+        const hasSpecificDashboard =
+          userRole === "principal" ||
+          userRole === "HOD" ||
+          userRole === "hod" ||
+          userRole === "cc" ||
+          userRole === "facultymanagement" ||
+          userRole === "teaching";
+
+        // If user doesn't have dashboard access, clear storage and redirect to login
+        if (!hasSpecificDashboard) {
+          localStorage.clear();
+          setIsAuthenticated(false);
+          setUserData(null);
+          navigate("/faculty-erp/login");
+          return;
+        }
 
         console.log(parsedUser.role);
         console.log(validRoles);
@@ -63,7 +79,9 @@ const App = () => {
             navigate("/faculty-erp/hod-dashboard");
           } else if (userRole === "cc") {
             navigate("/faculty-erp/cc-dashboard");
-          } else {
+          } else if (userRole === "facultymanagement") {
+            navigate("/faculty-erp/dashboard");
+          } else if (userRole === "teaching") {
             navigate("/faculty-erp/dashboard");
           }
         } else if (
@@ -101,7 +119,26 @@ const App = () => {
 
   const handleLogin = (user) => {
     const validRoles = rolePermissionsAndRoutes.map((r) => r.role);
-    const role = validRoles.includes(user.role) ? user.role : "teaching";
+    const userRole = user.role || user.type; // Check both role and type
+
+    // Check if user has a valid role for specific dashboards
+    const hasSpecificDashboard =
+      userRole === "principal" ||
+      userRole === "HOD" ||
+      userRole === "hod" ||
+      userRole === "cc" ||
+      userRole === "facultymanagement" ||
+      userRole === "teaching";
+
+    // If user doesn't have a specific dashboard access, prevent login
+    if (!hasSpecificDashboard) {
+      alert(
+        "Access Denied: You don't have permission to access any dashboard. Please contact administrator."
+      );
+      return; // Stop the login process
+    }
+
+    const role = validRoles.includes(userRole) ? userRole : userRole;
     const validatedUser = { ...user, role };
     localStorage.setItem("user", JSON.stringify(validatedUser));
     localStorage.setItem("authToken", user.token);
@@ -114,8 +151,14 @@ const App = () => {
       navigate("/faculty-erp/hod-dashboard");
     } else if (role === "cc") {
       navigate("/faculty-erp/cc-dashboard");
-    } else {
+    } else if (role === "facultymanagement") {
       navigate("/faculty-erp/dashboard");
+    } else if (role === "teaching") {
+      navigate("/faculty-erp/dashboard");
+    } else {
+      // This should not happen now, but as a fallback
+      alert("Access Denied: No valid dashboard found for your role.");
+      return;
     }
   };
 

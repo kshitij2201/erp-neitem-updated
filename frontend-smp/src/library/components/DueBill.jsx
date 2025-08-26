@@ -64,7 +64,7 @@ const DueBill = () => {
 
       // Send payment to backend
       const paymentResponse = await axios.post(
-        "https://erpbackend.tarstech.in/api/dues/pay",
+        "http://localhost:4000/api/dues/pay",
         paymentData
       );
       console.log("Payment response:", paymentResponse.data);
@@ -75,7 +75,7 @@ const DueBill = () => {
 
       // Refresh dues from backend
       const duesResponse = await axios.get(
-        "https://erpbackend.tarstech.in/api/dues/due"
+        "http://localhost:4000/api/dues/due"
       );
       setDues(duesResponse.data);
 
@@ -112,9 +112,7 @@ const DueBill = () => {
     const fetchDues = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(
-          "https://erpbackend.tarstech.in/api/dues/due"
-        );
+        const response = await axios.get("http://localhost:4000/api/dues/due");
         console.log("Dues API Response:", response.data);
         setDues(response.data);
       } catch (err) {
@@ -131,7 +129,7 @@ const DueBill = () => {
   const fetchPaymentHistory = async (studentId) => {
     try {
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/dues/history?studentId=${studentId}`
+        `http://localhost:4000/api/dues/history?studentId=${studentId}`
       );
       setPaymentHistory(response.data);
     } catch (err) {

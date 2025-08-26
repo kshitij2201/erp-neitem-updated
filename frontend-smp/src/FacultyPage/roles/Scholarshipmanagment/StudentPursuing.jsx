@@ -94,13 +94,13 @@ const StudentPursuing = () => {
     setLoading(true);
     try {
       const studentRes = await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/superadmin/students",
+        "http://localhost:4000/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }
       );
       const scholarshipRes = await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/scholarships",
+        "http://localhost:4000/api/scholarships",
         {
           headers: getAuthHeaders(),
         }
@@ -199,7 +199,7 @@ const StudentPursuing = () => {
         scholarshipStatus: status,
       };
 
-      await fetchWithRetry("https://erpbackend.tarstech.in/api/scholarships", {
+      await fetchWithRetry("http://localhost:4000/api/scholarships", {
         method: "POST",
         headers: getAuthHeaders(),
         data: scholarshipData,

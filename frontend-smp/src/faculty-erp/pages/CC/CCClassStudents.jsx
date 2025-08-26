@@ -51,7 +51,7 @@ const CCClassStudents = ({ userData }) => {
       }
 
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty/get-cc-class-students",
+        "http://localhost:4000/api/faculty/get-cc-class-students",
         {
           method: "GET",
           headers: {

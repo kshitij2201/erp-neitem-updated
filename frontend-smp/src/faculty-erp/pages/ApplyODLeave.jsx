@@ -21,11 +21,68 @@ export default function ApplyODLeave({ userData }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // New states for showing submitted leaves
+  const [submittedLeaves, setSubmittedLeaves] = useState([]);
+  const [loadingLeaves, setLoadingLeaves] = useState(false);
+  const [showLeaves, setShowLeaves] = useState(false);
+
   const odLeaveTypes = [
     { value: "Conference", label: "🎓 Conference" },
     { value: "Workshop", label: "🔧 Workshop" },
     { value: "Official Duty", label: "🏛️ Official Duty" },
   ];
+
+  // Helper function to get status color and text
+  const getStatusDisplay = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return {
+          color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          text: "⏳ Pending",
+          icon: "⏳",
+        };
+      case "hod approved":
+        return {
+          color: "bg-blue-100 text-blue-800 border-blue-200",
+          text: "✅ HOD Approved",
+          icon: "👨‍💼",
+        };
+      case "hod rejected":
+        return {
+          color: "bg-red-100 text-red-800 border-red-200",
+          text: "❌ HOD Rejected",
+          icon: "👨‍💼",
+        };
+      case "principal approved":
+        return {
+          color: "bg-green-100 text-green-800 border-green-200",
+          text: "✅ Approved",
+          icon: "🎉",
+        };
+      case "principal rejected":
+        return {
+          color: "bg-red-100 text-red-800 border-red-200",
+          text: "❌ Rejected",
+          icon: "❌",
+        };
+      default:
+        return {
+          color: "bg-gray-100 text-gray-800 border-gray-200",
+          text: "❓ Unknown",
+          icon: "❓",
+        };
+    }
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   useEffect(() => {
     if (!userData?.token) {
@@ -33,6 +90,71 @@ export default function ApplyODLeave({ userData }) {
       setTimeout(() => navigate("/login"), 2000);
     }
   }, [userData, navigate]);
+
+  // Function to fetch submitted OD leaves
+  const fetchSubmittedLeaves = async () => {
+    if (!userData?.token) return;
+
+    setLoadingLeaves(true);
+    try {
+      const decoded = userData?.token ? jwtDecode(userData.token) : {};
+      const employeeId = decoded.employeeId || userData?.employeeId;
+
+      if (!employeeId) {
+        console.error("Employee ID missing");
+        return;
+      }
+
+      // Fetch both regular leaves and OD leaves
+      const [regularLeavesResponse, odLeavesResponse] = await Promise.all([
+        axios.get(`http://localhost:4000/api/leave/my-leaves/${employeeId}`, {
+          headers: {
+            Authorization: `Bearer ${userData.token}`,
+          },
+        }),
+        axios.get(
+          `http://localhost:4000/api/leave/my-od-leaves/${employeeId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${userData.token}`,
+            },
+          }
+        ),
+      ]);
+
+      // Combine and format leaves
+      const allLeaves = [
+        ...regularLeavesResponse.data.leaves.map((leave) => ({
+          ...leave,
+          leaveCategory: "Regular",
+        })),
+        ...odLeavesResponse.data.odLeaves.map((leave) => ({
+          ...leave,
+          leaveCategory: "OD",
+        })),
+      ];
+
+      // Sort by creation date (newest first)
+      allLeaves.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      setSubmittedLeaves(allLeaves);
+    } catch (error) {
+      console.error("Error fetching submitted leaves:", error);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setMessage("Session expired. Please login again.");
+        setTimeout(() => navigate("/login"), 2000);
+      } else {
+        setMessage("Error fetching your submitted leaves");
+      }
+    } finally {
+      setLoadingLeaves(false);
+    }
+  };
+
+  // Fetch leaves when component mounts
+  useEffect(() => {
+    fetchSubmittedLeaves();
+  }, [userData]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -153,7 +275,7 @@ export default function ApplyODLeave({ userData }) {
       if (approvalLetter) formData.append("approvalLetter", approvalLetter);
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/leave/odleave/apply",
+        "http://localhost:4000/api/leave/odleave/apply",
         formData,
         {
           headers: {
@@ -167,6 +289,8 @@ export default function ApplyODLeave({ userData }) {
         response.data.message || "OD Leave application submitted successfully!"
       );
       handleCancel();
+      // Refresh the submitted leaves list
+      fetchSubmittedLeaves();
     } catch (error) {
       const errorMsg =
         error.response?.data?.message ||
@@ -208,6 +332,171 @@ export default function ApplyODLeave({ userData }) {
           </div>
 
           <div className="backdrop-blur-xl bg-white/80 border border-white/20 rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 hover:shadow-3xl hover:bg-white/90">
+            {/* Submitted Leaves Section */}
+            <div className="p-8 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 flex items-center">
+                  📋 Your Submitted Leaves
+                </h3>
+                <button
+                  onClick={() => setShowLeaves(!showLeaves)}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 flex items-center gap-2"
+                >
+                  <span>{showLeaves ? "🔼" : "🔽"}</span>
+                  {showLeaves ? "Hide" : "Show"} Leaves
+                </button>
+              </div>
+
+              {showLeaves && (
+                <div className="space-y-4">
+                  {loadingLeaves ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                      <span className="ml-3 text-gray-600">
+                        Loading your leaves...
+                      </span>
+                    </div>
+                  ) : submittedLeaves.length > 0 ? (
+                    <div className="grid gap-4 max-h-96 overflow-y-auto">
+                      {submittedLeaves.map((leave, index) => {
+                        const statusDisplay = getStatusDisplay(leave.status);
+                        return (
+                          <div
+                            key={leave._id || index}
+                            className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300"
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="text-lg">
+                                    {leave.leaveCategory === "OD" ? "🎯" : "📝"}
+                                  </span>
+                                  <h4 className="font-semibold text-gray-800">
+                                    {leave.leaveCategory === "OD"
+                                      ? `${leave.leaveType} - ${
+                                          leave.eventName || leave.reason
+                                        }`
+                                      : `${leave.leaveType} Leave`}
+                                  </h4>
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-medium border ${statusDisplay.color}`}
+                                  >
+                                    {statusDisplay.text}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-gray-600">
+                                  <div className="flex items-center gap-2">
+                                    <span>📅</span>
+                                    <span>
+                                      {formatDate(leave.startDate)} -{" "}
+                                      {formatDate(leave.endDate)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span>⏰</span>
+                                    <span>{leave.leaveDays} day(s)</span>
+                                  </div>
+                                  {leave.leaveCategory === "OD" &&
+                                    leave.location && (
+                                      <div className="flex items-center gap-2">
+                                        <span>📍</span>
+                                        <span>{leave.location}</span>
+                                      </div>
+                                    )}
+                                  <div className="flex items-center gap-2">
+                                    <span>📤</span>
+                                    <span>
+                                      Applied: {formatDate(leave.createdAt)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Show approval details */}
+                                {(leave.hodDecision ||
+                                  leave.principalDecision) && (
+                                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                    {leave.hodDecision && (
+                                      <div className="text-sm mb-2">
+                                        <span className="font-medium text-gray-700">
+                                          HOD Decision:
+                                        </span>
+                                        <span
+                                          className={`ml-2 px-2 py-1 rounded text-xs ${
+                                            leave.hodDecision.decision ===
+                                            "Approved"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-800"
+                                          }`}
+                                        >
+                                          {leave.hodDecision.decision}
+                                        </span>
+                                        {leave.hodDecision.comment && (
+                                          <div className="text-gray-600 mt-1">
+                                            {leave.hodDecision.comment}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {leave.principalDecision && (
+                                      <div className="text-sm">
+                                        <span className="font-medium text-gray-700">
+                                          Principal Decision:
+                                        </span>
+                                        <span
+                                          className={`ml-2 px-2 py-1 rounded text-xs ${
+                                            leave.principalDecision.decision ===
+                                            "Approved"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-800"
+                                          }`}
+                                        >
+                                          {leave.principalDecision.decision}
+                                        </span>
+                                        {leave.principalDecision.comment && (
+                                          <div className="text-gray-600 mt-1">
+                                            {leave.principalDecision.comment}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <span className="text-4xl mb-3 block">📝</span>
+                      <p className="text-lg font-medium">
+                        No leaves submitted yet
+                      </p>
+                      <p className="text-sm">
+                        Your submitted leaves will appear here
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Refresh button */}
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={fetchSubmittedLeaves}
+                      disabled={loadingLeaves}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-300 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <span className={loadingLeaves ? "animate-spin" : ""}>
+                        🔄
+                      </span>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="p-8">
               {/* Header Card */}
               <div className="mb-8 p-6 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-lg border border-white/10">
