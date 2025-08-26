@@ -11,7 +11,7 @@ const PaymentHistory = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          "http://localhost:4000/api/dues/history/all"
+          "https://erpbackend:tarstech.in/api/dues/history/all"
         );
         // Convert dummy/test bookId to valid ObjectId-like string if needed
         const fixed = Array.isArray(response.data)

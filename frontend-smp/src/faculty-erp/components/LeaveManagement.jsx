@@ -45,17 +45,17 @@ const LeaveManagement = () => {
 
       // Fetch all leaves for management dashboard
       const leavesResponse = await fetch(
-        "http://localhost:4000/api/leave/management/all-leaves"
+        "https://erpbackend:tarstech.in/api/leave/management/all-leaves"
       );
 
       // Fetch all OD leaves for management dashboard
       const odLeavesResponse = await fetch(
-        "http://localhost:4000/api/leave/management/all-od-leaves"
+        "https://erpbackend:tarstech.in/api/leave/management/all-od-leaves"
       );
 
       // Fetch leave statistics
       const statsResponse = await fetch(
-        "http://localhost:4000/api/leave/management/statistics"
+        "https://erpbackend:tarstech.in/api/leave/management/statistics"
       );
 
       // Process leaves data

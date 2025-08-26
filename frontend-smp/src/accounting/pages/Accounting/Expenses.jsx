@@ -42,10 +42,13 @@ export default function Expenses() {
           token ? "Present" : "Missing"
         );
 
-        const res = await axios.get("http://localhost:4000/api/expenses", {
-          params: { search: searchTerm },
-          headers,
-        });
+        const res = await axios.get(
+          "https://erpbackend:tarstech.in/api/expenses",
+          {
+            params: { search: searchTerm },
+            headers,
+          }
+        );
         console.log("Expenses fetch response:", res.data);
         setExpenses(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
@@ -63,7 +66,7 @@ export default function Expenses() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const res = await axios.get(
-          "http://localhost:4000/api/expenses/total",
+          "https://erpbackend:tarstech.in/api/expenses/total",
           {
             headers,
           }
@@ -163,7 +166,7 @@ export default function Expenses() {
       console.log("Headers being sent:", headers);
 
       const response = await axios.post(
-        "http://localhost:4000/api/expenses",
+        "https://erpbackend:tarstech.in/api/expenses",
         payload,
         { headers }
       );
@@ -181,15 +184,18 @@ export default function Expenses() {
       });
 
       // Refetch expenses
-      const res = await axios.get("http://localhost:4000/api/expenses", {
-        params: { search: searchTerm },
-        headers,
-      });
+      const res = await axios.get(
+        "https://erpbackend:tarstech.in/api/expenses",
+        {
+          params: { search: searchTerm },
+          headers,
+        }
+      );
       setExpenses(res.data);
 
       // Refetch total
       const totalRes = await axios.get(
-        "http://localhost:4000/api/expenses/total",
+        "https://erpbackend:tarstech.in/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -238,7 +244,7 @@ export default function Expenses() {
       console.log("Updating expense status:", { id, status });
       // Send both status and action to backend for audit clarity
       const response = await axios.patch(
-        `http://localhost:4000/api/expenses/${id}/status`,
+        `https://erpbackend:tarstech.in/api/expenses/${id}/status`,
         { status, action: status },
         { headers }
       );
@@ -272,7 +278,7 @@ export default function Expenses() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      await axios.delete(`http://localhost:4000/api/expenses/${id}`, {
+      await axios.delete(`https://erpbackend:tarstech.in/api/expenses/${id}`, {
         headers,
       });
 
@@ -281,7 +287,7 @@ export default function Expenses() {
 
       // Refetch total since we deleted an expense
       const totalRes = await axios.get(
-        "http://localhost:4000/api/expenses/total",
+        "https://erpbackend:tarstech.in/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -359,7 +365,7 @@ export default function Expenses() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://localhost:4000/api/expenses/export/${format}`,
+        `https://erpbackend:tarstech.in/api/expenses/export/${format}`,
         {
           responseType: "blob",
           params: { headerInfo: JSON.stringify(headerInfo) },

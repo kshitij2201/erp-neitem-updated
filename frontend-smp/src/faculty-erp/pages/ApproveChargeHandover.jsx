@@ -26,9 +26,12 @@ export default function ChargeHandoverApp() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("http://localhost:4000/api/tasks", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        "https://erpbackend:tarstech.in/api/tasks",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       const allTasks = response.data.data || response.data || [];
       console.log("Fetched tasks:", allTasks);
       console.log("User role:", userRole);
@@ -148,7 +151,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `http://localhost:4000/api/tasks/${id}${endpoint}`,
+        `https://erpbackend:tarstech.in/api/tasks/${id}${endpoint}`,
         {
           decision: "approved",
           approverId: approverId,
@@ -195,7 +198,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `http://localhost:4000/api/tasks/${id}${endpoint}`,
+        `https://erpbackend:tarstech.in/api/tasks/${id}${endpoint}`,
         {
           decision: "rejected",
           approverId: approverId,

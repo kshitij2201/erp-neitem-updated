@@ -55,7 +55,7 @@ const EventCalendar = () => {
   const fetchEvents = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:4000/api/superadmin/events",
+        "https://erpbackend:tarstech.in/api/superadmin/events",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -98,7 +98,7 @@ const EventCalendar = () => {
 
     try {
       await axios.post(
-        "http://localhost:4000/api/superadmin/events",
+        "https://erpbackend:tarstech.in/api/superadmin/events",
         newEvent,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -121,9 +121,12 @@ const EventCalendar = () => {
   // Delete event
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:4000/api/superadmin/events/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `https://erpbackend:tarstech.in/api/superadmin/events/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       fetchEvents();
     } catch (err) {
       console.error(
@@ -150,7 +153,7 @@ const EventCalendar = () => {
 
     try {
       await axios.put(
-        `http://localhost:4000/api/superadmin/events/${editingId}`,
+        `https://erpbackend:tarstech.in/api/superadmin/events/${editingId}`,
         {
           ...editedEvent,
           startTime: editedEvent.startTime

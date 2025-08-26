@@ -87,11 +87,14 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
       }
 
       // Use the general leave API endpoint to get data from Leave collection only
-      const response = await axios.get(`http://localhost:4000/api/leave/all`, {
-        headers: {
-          Authorization: `Bearer ${userData.token}`,
-        },
-      });
+      const response = await axios.get(
+        `https://erpbackend:tarstech.in/api/leave/all`,
+        {
+          headers: {
+            Authorization: `Bearer ${userData.token}`,
+          },
+        }
+      );
 
       // Filter by selected department and view mode
       const allLeaves = Array.isArray(response.data) ? response.data : [];
@@ -209,7 +212,7 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
       }
 
       const response = await axios.put(
-        `http://localhost:4000/api/leave/principal/${decision.leaveId}`,
+        `https://erpbackend:tarstech.in/api/leave/principal/${decision.leaveId}`,
         {
           principalEmployeeId,
           decision: decision.decision,

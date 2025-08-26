@@ -8,7 +8,8 @@ const Announcements = () => {
   const [expandedId, setExpandedId] = useState(null);
 
   // Get the API URL from environment variables or use localhost as fallback
-  const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+  const API_URL =
+    import.meta.env.REACT_APP_API_URL || "https://erpbackend:tarstech.in";
 
   useEffect(() => {
     setLoading(true);

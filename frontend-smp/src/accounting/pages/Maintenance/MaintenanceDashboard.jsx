@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import TestTicketCreation from "../../components/TestTicketCreation";
 import AssetManagement from "./AssetManagement";
 
-const API_BASE_URL = "http://localhost:4000/api/maintenance";
+const API_BASE_URL = "https://erpbackend:tarstech.in/api/maintenance";
 
 export default function MaintenancePage() {
   const [dashboardData, setDashboardData] = useState(null);

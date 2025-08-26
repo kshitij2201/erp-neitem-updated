@@ -487,7 +487,7 @@ const FacultyRegistrationForm = () => {
 
       // 1. Register Faculty
       const facultyResponse = await fetch(
-        "http://localhost:4000/api/faculty/register",
+        "https://erpbackend:tarstech.in/api/faculty/register",
         {
           method: "POST",
           body: formDataToSubmit,
@@ -508,13 +508,16 @@ const FacultyRegistrationForm = () => {
         type: formData.type,
       };
 
-      const salaryResponse = await fetch("http://localhost:4000/api/salary", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(salaryData),
-      });
+      const salaryResponse = await fetch(
+        "https://erpbackend:tarstech.in/api/salary",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(salaryData),
+        }
+      );
 
       const salaryDataResponse = await salaryResponse.json();
       if (!salaryResponse.ok) {

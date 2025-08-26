@@ -19,13 +19,16 @@ const Login = ({ onLogin = () => {} }) => {
         ? { email: emailOrId, password }
         : { employeeId: emailOrId, password };
 
-      const response = await fetch("http://localhost:4000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+      const response = await fetch(
+        "https://erpbackend:tarstech.in/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
       const data = await response.json();
 

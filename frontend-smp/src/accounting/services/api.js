@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Base API configuration
-const API_BASE_URL = "http://localhost:4000/api";
+const API_BASE_URL = "https://erpbackend:tarstech.in/api";
 
 // Create axios instance
 const api = axios.create({

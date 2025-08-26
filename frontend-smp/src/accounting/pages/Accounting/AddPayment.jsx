@@ -109,9 +109,12 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("http://localhost:4000/api/students", {
-        headers,
-      });
+      const response = await axios.get(
+        "https://erpbackend:tarstech.in/api/students",
+        {
+          headers,
+        }
+      );
 
       // Sort students by name in ascending order
       const sortedStudents = response.data.sort((a, b) => {
@@ -135,9 +138,12 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("http://localhost:4000/api/fee-heads", {
-        headers,
-      });
+      const response = await axios.get(
+        "https://erpbackend:tarstech.in/api/fee-heads",
+        {
+          headers,
+        }
+      );
       // Remove duplicates based on title and sort in ascending order
       const uniqueFeeHeads = response.data.filter(
         (head, index, self) =>
@@ -166,7 +172,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "http://localhost:4000/api/payments?limit=50",
+        "https://erpbackend:tarstech.in/api/payments?limit=50",
         { headers }
       );
       setRecentPayments(response.data);
@@ -188,7 +194,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://localhost:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+        `https://erpbackend:tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
         { headers }
       );
       setPendingFees(response.data || []);
@@ -206,7 +212,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const paymentsResponse = await axios.get(
-        `http://localhost:4000/api/payments?studentId=${studentId}`,
+        `https://erpbackend:tarstech.in/api/payments?studentId=${studentId}`,
         { headers }
       );
       const payments = paymentsResponse.data || [];
@@ -362,7 +368,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.post(
-        "http://localhost:4000/api/payments",
+        "https://erpbackend:tarstech.in/api/payments",
         paymentData,
         { headers }
       );

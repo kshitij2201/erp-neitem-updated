@@ -22,10 +22,13 @@ export default function Scholarship() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const res = await axios.get("http://localhost:4000/api/students", {
-        params: { search: searchTerm },
-        headers,
-      });
+      const res = await axios.get(
+        "https://erpbackend:tarstech.in/api/students",
+        {
+          params: { search: searchTerm },
+          headers,
+        }
+      );
       setStudents(res.data);
       setError("");
     } catch (err) {
@@ -57,7 +60,7 @@ export default function Scholarship() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await axios.post(
-        `http://localhost:4000/api/scholarships/${selectedStudent._id}`,
+        `https://erpbackend:tarstech.in/api/scholarships/${selectedStudent._id}`,
         {
           amount: Number(scholarshipAmount),
           details: scholarshipDetails,
