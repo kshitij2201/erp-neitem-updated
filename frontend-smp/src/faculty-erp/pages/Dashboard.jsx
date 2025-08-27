@@ -17,6 +17,16 @@ import {
   FileText,
   TrendingUp,
   User,
+  Building,
+  Mail,
+  Star,
+  Briefcase,
+  Target,
+  Plus,
+  Check,
+  X,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -180,7 +190,7 @@ function Dashboard({ userData, onLogout }) {
     else if (hour < 17) greeting = "Good Afternoon";
     else greeting = "Good Evening";
 
-    return `${greeting}, ${userData?.name || "User"}!`;
+    return `${greeting}, ${userData?.firstName || "User"}!`;
   };
 
   if (isLoading) {
@@ -240,7 +250,7 @@ function Dashboard({ userData, onLogout }) {
                   <div>
                     <p className="text-sm text-gray-500">Full Name</p>
                     <p className="font-semibold text-gray-900">
-                      {userData?.name || "Not Available"}
+                      {userData?.firstName || "Not Available"}
                     </p>
                   </div>
                 </div>
