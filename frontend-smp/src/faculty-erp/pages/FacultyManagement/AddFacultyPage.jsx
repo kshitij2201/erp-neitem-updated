@@ -415,6 +415,17 @@ const FacultyRegistrationForm = () => {
     } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifscCode)) {
       newErrors.ifscCode = "Invalid IFSC code format";
     }
+    
+    // Validate date of joining is not in the future
+    if (formData.dateOfJoining) {
+      const doj = new Date(formData.dateOfJoining);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+      if (doj > today) {
+        newErrors.dateOfJoining = "Date of Joining cannot be in the future";
+      }
+    }
+    
     if (formData.dateOfBirth && formData.dateOfJoining) {
       const dob = new Date(formData.dateOfBirth);
       const doj = new Date(formData.dateOfJoining);
@@ -608,7 +619,6 @@ const FacultyRegistrationForm = () => {
     "Associate Professor",
     "Assistant Professor",
     "Professor",
-    "Head of Department",
     "Other",
   ];
 
@@ -1444,6 +1454,7 @@ const FacultyRegistrationForm = () => {
                       type="date"
                       value={formData.dateOfJoining}
                       onChange={handleChange}
+                      max={new Date().toISOString().split('T')[0]}
                       className={`w-full px-3 py-1.5 rounded-md border ${
                         errors.dateOfJoining
                           ? "border-red-500"
