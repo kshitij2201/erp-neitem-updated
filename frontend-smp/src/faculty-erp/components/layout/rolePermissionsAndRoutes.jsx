@@ -1154,7 +1154,7 @@ export const rolePermissionsAndRoutes = [
         ),
       },
       {
-        path: "dashboard/announcementnonteaching",
+        path: "announcementnonteaching",
         element: (isAuthenticated, userRole, userData) => (
           <ProtectedRoute
             isAuthenticated={isAuthenticated}
@@ -1290,7 +1290,6 @@ export const rolePermissionsAndRoutes = [
             userRole={userRole}
             routeName="dashboard"
           >
-            {console.log("Role:", userRole, "Path:", isAuthenticated)}
             <FacultyListPage
               userData={userData}
               onLogout={() => ({ action: "logout" })}

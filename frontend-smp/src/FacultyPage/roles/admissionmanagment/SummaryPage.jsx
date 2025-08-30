@@ -20,8 +20,6 @@ import {
   Calendar,
   Image,
   Hash,
-  Sun,
-  Moon,
 } from "lucide-react";
 
 ChartJS.register(
@@ -36,7 +34,7 @@ ChartJS.register(
 
 const SummaryPage = () => {
   const navigate = useNavigate();
-  
+
   // State variables
   const [students, setStudents] = useState([]);
   const [castes, setCastes] = useState([]);
@@ -60,20 +58,17 @@ const SummaryPage = () => {
   const [isMonthFilterOpen, setIsMonthFilterOpen] = useState(false);
   const [theme, setTheme] = useState("dark"); // 'light' or 'dark'
 
-  // Theme toggle
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
-
   // Helper function to get auth headers
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('facultyToken');
+    const token = localStorage.getItem("facultyToken");
     if (!token) {
-      localStorage.removeItem('token');
-      navigate('/');
+      localStorage.removeItem("token");
+      navigate("/");
       return null;
     }
     return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     };
   };
 
@@ -98,10 +93,14 @@ const SummaryPage = () => {
         ]);
 
         // Check for authentication errors
-        if (studentsResponse.status === 401 || castesResponse.status === 401 || 
-            departmentsResponse.status === 401 || streamsResponse.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
+        if (
+          studentsResponse.status === 401 ||
+          castesResponse.status === 401 ||
+          departmentsResponse.status === 401 ||
+          streamsResponse.status === 401
+        ) {
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
 
@@ -135,14 +134,17 @@ const SummaryPage = () => {
         processData(studentsData, castesData, departmentsData, streamsData);
       } catch (error) {
         console.error("Data fetching error:", error);
-        
+
         // Handle authentication errors
-        if (error.message.includes('authentication') || error.message.includes('token')) {
-          localStorage.removeItem('token');
-          navigate('/');
+        if (
+          error.message.includes("authentication") ||
+          error.message.includes("token")
+        ) {
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
-        
+
         setError(error.message || "An error occurred while fetching data.");
       } finally {
         setIsLoading(false);
@@ -178,8 +180,11 @@ const SummaryPage = () => {
 
     studentsData.forEach((student) => {
       const nationality = student.nationality || "Unknown";
-      nationalityCounts[nationality] = (nationalityCounts[nationality] || 0) + 1;
-      guardianStatusCounts[student.guardianNumber ? "Provided" : "Not Provided"]++;
+      nationalityCounts[nationality] =
+        (nationalityCounts[nationality] || 0) + 1;
+      guardianStatusCounts[
+        student.guardianNumber ? "Provided" : "Not Provided"
+      ]++;
       photoStatusCounts[student.photo ? "Provided" : "Not Provided"]++;
       abcIdStatusCounts[student.abcId ? "Provided" : "Not Provided"]++;
     });
@@ -204,7 +209,11 @@ const SummaryPage = () => {
           monthlyData[monthYear] = {
             month: monthYear,
             departments: {},
-            admissionTypes: { Regular: 0, "Direct Second Year": 0, "Lateral Entry": 0 },
+            admissionTypes: {
+              Regular: 0,
+              "Direct Second Year": 0,
+              "Lateral Entry": 0,
+            },
             categories: {},
             streams: {},
             nationalities: {},
@@ -232,7 +241,9 @@ const SummaryPage = () => {
           monthlyData[monthYear].admissionTypes[admissionType]++;
         else monthlyData[monthYear].admissionTypes["Regular"]++;
         if (student.casteCategory) {
-          const caste = castesData.find((c) => c.name === student.casteCategory);
+          const caste = castesData.find(
+            (c) => c.name === student.casteCategory
+          );
           if (caste) monthlyData[monthYear].categories[caste._id]++;
         }
         if (student.stream?._id)
@@ -261,7 +272,10 @@ const SummaryPage = () => {
       .map((caste) => ({ name: caste.name, count: catCounts[caste._id] || 0 }))
       .sort((a, b) => b.count - a.count);
     const formattedStreams = streamsData
-      .map((stream) => ({ name: stream.name, count: streamCounts[stream._id] || 0 }))
+      .map((stream) => ({
+        name: stream.name,
+        count: streamCounts[stream._id] || 0,
+      }))
       .sort((a, b) => b.count - a.count);
     const formattedNationalities = Object.keys(nationalityCounts)
       .map((nationality) => ({
@@ -641,7 +655,7 @@ const SummaryPage = () => {
         display: true,
         text: getBarChartData().title,
         font: { size: 16, weight: "bold" },
-        color: "#1e293b",
+        color: "#e2e8f0",
         padding: { top: 10, bottom: 20 },
       },
       tooltip: { enabled: false },
@@ -649,13 +663,13 @@ const SummaryPage = () => {
     scales: {
       y: {
         beginAtZero: true,
-        grid: { color: "rgba(0, 0, 0, 0.05)" },
-        ticks: { color: "#64748b", font: { size: 12 } },
+        grid: { color: "rgba(255, 255, 255, 0.1)" },
+        ticks: { color: "#cbd5e1", font: { size: 12 } },
       },
       x: {
         grid: { display: false },
         ticks: {
-          color: "#64748b",
+          color: "#cbd5e1",
           font: { size: 12, weight: "bold" },
           callback: function (index) {
             const label = this.getLabelForValue(index);
@@ -675,15 +689,22 @@ const SummaryPage = () => {
     plugins: {
       legend: {
         position: "right",
-        labels: { font: { size: 12 }, usePointStyle: true, padding: 20, color: "#64748b" },
+        labels: {
+          font: { size: 12 },
+          usePointStyle: true,
+          padding: 20,
+          color: "#cbd5e1",
+        },
       },
       title: {
         display: true,
         text: selectedMonthFilter
-          ? `Students by ${filterType} (${formatMonthYear(selectedMonthFilter)})`
+          ? `Students by ${filterType} (${formatMonthYear(
+              selectedMonthFilter
+            )})`
           : `Students by ${filterType}`,
         font: { size: 16, weight: "bold" },
-        color: "#1e293b",
+        color: "#e2e8f0",
         padding: { top: 10, bottom: 10 },
       },
       tooltip: {
@@ -744,38 +765,24 @@ const SummaryPage = () => {
       textPrimary: "text-gray-50",
       textSecondary: "text-indigo-200",
       textAccent: "text-white",
-     
+
       buttonBg: "bg-gradient-to-r from-indigo-700 to-purple-700",
       buttonHover: "hover:bg-indigo-800",
       chartBg: "bg-white/10 backdrop-blur-xl",
       glow: "bg-indigo-400/30",
       doughnutGlow: "bg-purple-400/20",
     },
-    light: {
-      bg: "bg-gradient-to-br from-indigo-50 via-purple-50 to-gray-100",
-      headerBg: "bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400",
-      headerBorder: "border-b-4 border-indigo-200",
-      cardBg: "bg-white/80 backdrop-blur-lg",
-      cardBorder: "border border-indigo-200",
-      textPrimary: "text-gray-800",
-      textSecondary: "text-indigo-700",
-      textAccent: "text-indigo-900",
-    
-      buttonBg: "bg-gradient-to-r from-indigo-500 to-purple-500",
-      buttonHover: "hover:bg-indigo-600",
-      chartBg: "bg-white/80 backdrop-blur-xl",
-      glow: "bg-indigo-300/30",
-      doughnutGlow: "bg-purple-300/20",
-    },
   };
   const currentTheme = themeClasses[theme];
 
   if (isLoading) {
     return (
-      <div className={`min-h-screen ${currentTheme.bg} flex items-center justify-center`}>
+      <div
+        className={`min-h-screen ${currentTheme.bg} flex items-center justify-center`}
+      >
         <div className="text-center">
           <div className="w-20 h-20 border-8 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-6 shadow-2xl"></div>
-          <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-indigo-100' : 'text-indigo-700'} tracking-widest animate-pulse`}>
+          <p className="text-2xl font-bold text-indigo-100 tracking-widest animate-pulse">
             Loading dashboard data...
           </p>
         </div>
@@ -785,10 +792,14 @@ const SummaryPage = () => {
 
   if (error) {
     return (
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-red-900 via-indigo-900 to-black' : 'bg-gradient-to-br from-red-100 via-indigo-100 to-gray-100'} flex items-center justify-center`}>
-        <div className={`${theme === 'dark' ? 'bg-white/80' : 'bg-white'} backdrop-blur-2xl rounded-3xl shadow-2xl p-10 max-w-md border-2 border-red-300`}>
-          <h2 className="text-3xl font-black text-red-700 mb-4 tracking-tight">Error Loading Data</h2>
-          <p className={`${theme === 'dark' ? 'text-gray-800' : 'text-gray-700'} mb-6`}>{error}</p>
+      <div
+        className={`min-h-screen bg-gradient-to-br from-red-900 via-indigo-900 to-black flex items-center justify-center`}
+      >
+        <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl p-10 max-w-md border-2 border-red-300">
+          <h2 className="text-3xl font-black text-red-700 mb-4 tracking-tight">
+            Error Loading Data
+          </h2>
+          <p className="text-gray-800 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 transition"
@@ -801,30 +812,24 @@ const SummaryPage = () => {
   }
 
   return (
-    <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.textPrimary} pb-12 font-sans transition-colors duration-500`}>
+    <div
+      className={`min-h-screen ${currentTheme.bg} ${currentTheme.textPrimary} pb-12 font-sans transition-colors duration-500`}
+    >
       {/* Header */}
-      <div className={`${currentTheme.headerBg} py-9 px-4 md:px-16 shadow-2xl ${currentTheme.headerBorder}`}>
+      <div
+        className={`${currentTheme.headerBg} py-9 px-4 md:px-16 shadow-2xl ${currentTheme.headerBorder}`}
+      >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className={`text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg bg-gradient-to-r ${theme === 'dark' ? 'from-white via-indigo-200 to-purple-300' : 'from-indigo-800 via-purple-700 to-indigo-900'} bg-clip-text text-transparent animate-gradient-x`}>
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent animate-gradient-x">
               Student Enrollment Dashboard
             </h1>
-            <p className={`${currentTheme.textSecondary} mt-2 text-lg font-medium tracking-wider animate-fade-in`}>
+            <p
+              className={`${currentTheme.textSecondary} mt-2 text-lg font-medium tracking-wider animate-fade-in`}
+            >
               Academic Year 2024-2025
             </p>
           </div>
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`p-3 rounded-full ${theme === 'dark' ? 'bg-indigo-700' : 'bg-indigo-200'} shadow-lg hover:scale-110 transition-transform duration-300 animate-pulse-slow`}
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <Sun className="h-6 w-6 text-yellow-300" />
-            ) : (
-              <Moon className="h-6 w-6 text-indigo-700" />
-            )}
-          </button>
         </div>
       </div>
 
@@ -837,18 +842,26 @@ const SummaryPage = () => {
               className={`relative ${currentTheme.cardBg} rounded-2xl shadow-2xl p-8 flex items-center gap-6 ${currentTheme.cardBorder} hover:scale-105 hover:shadow-indigo-700/40 transition-all duration-300 group animate-fade-in-up`}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className={`${currentTheme.statsIcon} p-4 rounded-xl flex-shrink-0 shadow-lg group-hover:scale-110 transition`}>
+              <div
+                className={`${currentTheme.statsIcon} p-4 rounded-xl flex-shrink-0 shadow-lg group-hover:scale-110 transition`}
+              >
                 {stat.icon}
               </div>
               <div>
-                <p className={`text-base font-semibold ${currentTheme.textSecondary} uppercase tracking-wider`}>
+                <p
+                  className={`text-base font-semibold ${currentTheme.textSecondary} uppercase tracking-wider`}
+                >
                   {stat.title}
                 </p>
-                <p className={`text-3xl md:text-4xl font-black ${currentTheme.textAccent} drop-shadow-sm tracking-tight animate-count`}>
+                <p
+                  className={`text-3xl md:text-4xl font-black ${currentTheme.textAccent} drop-shadow-sm tracking-tight animate-count`}
+                >
                   {stat.value.toLocaleString()}
                 </p>
               </div>
-              <div className={`absolute -top-4 -right-4 w-8 h-8 ${currentTheme.glow} rounded-full blur-lg opacity-60 animate-pulse`}></div>
+              <div
+                className={`absolute -top-4 -right-4 w-8 h-8 ${currentTheme.glow} rounded-full blur-lg opacity-60 animate-pulse`}
+              ></div>
             </div>
           ))}
         </div>
@@ -856,21 +869,23 @@ const SummaryPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Bar Chart Panel */}
           <div className="lg:col-span-2 animate-fade-in-left">
-            <div className={`${currentTheme.chartBg} rounded-2xl shadow-2xl p-8 ${currentTheme.cardBorder} relative overflow-hidden`}>
+            <div
+              className={`${currentTheme.chartBg} rounded-2xl shadow-2xl p-8 ${currentTheme.cardBorder} relative overflow-hidden`}
+            >
               {/* Filters */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                 {/* Filter Type Dropdown */}
                 <div className="relative">
                   <button
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
-                    className={`flex items-center gap-2 px-6 py-3 text-base font-bold ${theme === 'dark' ? 'text-indigo-100' : 'text-white'} ${currentTheme.buttonBg} border ${theme === 'dark' ? 'border-indigo-400/40' : 'border-indigo-300'} rounded-xl shadow-lg hover:scale-105 ${currentTheme.buttonHover} transition-all`}
+                    className="flex items-center gap-2 px-6 py-3 text-base font-bold text-indigo-100 bg-gradient-to-r from-indigo-700 to-purple-700 border border-indigo-400/40 rounded-xl shadow-lg hover:scale-105 hover:bg-indigo-800 transition-all"
                   >
-                    <Filter className={`w-5 h-5 ${theme === 'dark' ? 'text-indigo-200' : 'text-indigo-100'}`} />
+                    <Filter className="w-5 h-5 text-indigo-200" />
                     <span>{filterType}</span>
                     <ChevronDown className="w-5 h-5" />
                   </button>
                   {isFilterOpen && (
-                    <div className={`absolute z-50 w-56 mt-2 ${theme === 'dark' ? 'bg-white/90' : 'bg-white'} backdrop-blur-xl border ${theme === 'dark' ? 'border-indigo-200' : 'border-indigo-300'} rounded-xl shadow-2xl animate-fade-in`}>
+                    <div className="absolute z-50 w-56 mt-2 bg-white/90 backdrop-blur-xl border border-indigo-200 rounded-xl shadow-2xl animate-fade-in">
                       <div className="py-2">
                         {[
                           "Department",
@@ -891,8 +906,8 @@ const SummaryPage = () => {
                             }}
                             className={`block w-full px-5 py-3 text-base text-left font-semibold rounded-md transition ${
                               filterType === type
-                                ? `bg-gradient-to-r ${theme === 'dark' ? 'from-indigo-200 via-purple-200 to-indigo-100' : 'from-indigo-100 via-purple-100 to-indigo-50'} text-indigo-800 shadow`
-                                : `${theme === 'dark' ? 'text-indigo-800 hover:bg-indigo-50' : 'text-indigo-700 hover:bg-indigo-100'}`
+                                ? "bg-gradient-to-r from-indigo-200 via-purple-200 to-indigo-100 text-indigo-800 shadow"
+                                : "text-indigo-800 hover:bg-indigo-50"
                             }`}
                           >
                             {type}
@@ -906,9 +921,9 @@ const SummaryPage = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsMonthFilterOpen(!isMonthFilterOpen)}
-                    className={`flex items-center gap-2 px-6 py-3 text-base font-bold ${theme === 'dark' ? 'text-indigo-100' : 'text-white'} ${currentTheme.buttonBg} border ${theme === 'dark' ? 'border-indigo-400/40' : 'border-indigo-300'} rounded-xl shadow-lg hover:scale-105 ${currentTheme.buttonHover} transition-all`}
+                    className="flex items-center gap-2 px-6 py-3 text-base font-bold text-indigo-100 bg-gradient-to-r from-indigo-700 to-purple-700 border border-indigo-400/40 rounded-xl shadow-lg hover:scale-105 hover:bg-indigo-800 transition-all"
                   >
-                    <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-indigo-200' : 'text-indigo-100'}`} />
+                    <Calendar className="w-5 h-5 text-indigo-200" />
                     <span>
                       {selectedMonthFilter
                         ? formatMonthYear(selectedMonthFilter)
@@ -917,7 +932,7 @@ const SummaryPage = () => {
                     <ChevronDown className="w-5 h-5" />
                   </button>
                   {isMonthFilterOpen && (
-                    <div className={`absolute z-50 w-56 mt-2 ${theme === 'dark' ? 'bg-white/90' : 'bg-white'} backdrop-blur-xl border ${theme === 'dark' ? 'border-indigo-200' : 'border-indigo-300'} rounded-xl shadow-2xl animate-fade-in max-h-72 overflow-y-auto custom-scrollbar`}>
+                    <div className="absolute z-50 w-56 mt-2 bg-white/90 backdrop-blur-xl border border-indigo-200 rounded-xl shadow-2xl animate-fade-in max-h-72 overflow-y-auto custom-scrollbar">
                       {admissionsByMonth.map((item) => (
                         <button
                           key={item.month}
@@ -927,8 +942,8 @@ const SummaryPage = () => {
                           }}
                           className={`block w-full px-5 py-3 text-base text-left font-semibold rounded-md transition ${
                             selectedMonthFilter === item.month
-                              ? `bg-gradient-to-r ${theme === 'dark' ? 'from-indigo-200 via-purple-200 to-indigo-100' : 'from-indigo-100 via-purple-100 to-indigo-50'} text-indigo-800 shadow`
-                              : `${theme === 'dark' ? 'text-indigo-800 hover:bg-indigo-50' : 'text-indigo-700 hover:bg-indigo-100'}`
+                              ? "bg-gradient-to-r from-indigo-200 via-purple-200 to-indigo-100 text-indigo-800 shadow"
+                              : "text-indigo-800 hover:bg-indigo-50"
                           }`}
                         >
                           {formatMonthYear(item.month)}
@@ -953,16 +968,22 @@ const SummaryPage = () => {
               <div className="h-80 md:h-96 xl:h-[32rem] relative z-10">
                 <Bar data={getBarChartData()} options={barChartOptions} />
               </div>
-              <div className={`absolute -bottom-10 -left-10 w-40 h-40 ${currentTheme.glow} rounded-full blur-3xl opacity-60 pointer-events-none`}></div>
+              <div
+                className={`absolute -bottom-10 -left-10 w-40 h-40 ${currentTheme.glow} rounded-full blur-3xl opacity-60 pointer-events-none`}
+              ></div>
             </div>
           </div>
           {/* Doughnut Chart Panel */}
           <div className="animate-fade-in-right">
-            <div className={`${currentTheme.chartBg} rounded-2xl shadow-2xl p-8 ${currentTheme.cardBorder} relative overflow-hidden`}>
+            <div
+              className={`${currentTheme.chartBg} rounded-2xl shadow-2xl p-8 ${currentTheme.cardBorder} relative overflow-hidden`}
+            >
               <div className="h-64 md:h-80 xl:h-[22rem]">
                 <Doughnut data={getDoughnutData()} options={doughnutOptions} />
               </div>
-              <div className={`absolute -top-8 -right-8 w-32 h-32 ${currentTheme.doughnutGlow} rounded-full blur-2xl opacity-60 pointer-events-none`}></div>
+              <div
+                className={`absolute -top-8 -right-8 w-32 h-32 ${currentTheme.doughnutGlow} rounded-full blur-2xl opacity-60 pointer-events-none`}
+              ></div>
             </div>
           </div>
         </div>

@@ -21,7 +21,9 @@ export default function TimetableSimple({ userData }) {
     section: "",
     schedule: [], // Will contain days and time slots
   });
+  console.log("Timetable state:", timetable);
 
+  console.log("TOkebn Generated", decodeToken(localStorage.getItem("authToken")));
   const [faculties, setFaculties] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [subjectFacultyMap, setSubjectFacultyMap] = useState({}); // Maps subject to its assigned faculties
@@ -93,6 +95,7 @@ export default function TimetableSimple({ userData }) {
       id: faculty.id || faculty.employeeId,
     }));
   }, [faculties]);
+ 
 
   // Fetch user's CC assignment
   const fetchCCAssignment = async () => {
@@ -2111,3 +2114,21 @@ export default function TimetableSimple({ userData }) {
     </div>
   );
 }
+
+
+const decodeToken = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Failed to decode token', error);
+    return null;
+  }
+};

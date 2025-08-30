@@ -415,6 +415,7 @@ const roleLogin = async (req, res) => {
       "cc",
       "facultymanagement",
       "teaching",
+      "non-teaching",
     ];
     const facultyRole = faculty.role || faculty.type;
 

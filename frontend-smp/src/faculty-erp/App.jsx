@@ -20,6 +20,21 @@ const App = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Normalize some common role/type variants into the canonical values
+  const normalizeRole = (raw) => {
+    if (!raw) return raw;
+    const s = String(raw).toLowerCase().trim();
+    if (
+      (s.includes("non") && s.includes("teach")) ||
+      s === "nonteaching" ||
+      s === "non-teaching" ||
+      s === "non teaching"
+    ) {
+      return "non-teaching";
+    }
+    return raw;
+  };
+
   // Handle responsive sidebar behavior
   useEffect(() => {
     const handleResize = () => {
@@ -42,16 +57,18 @@ const App = () => {
       try {
         const parsedUser = JSON.parse(savedUser);
         const validRoles = rolePermissionsAndRoutes.map((r) => r.role);
-        const userRole = parsedUser.role || parsedUser.type;
+        const userRoleRaw = parsedUser.role || parsedUser.type;
+        const userRole = normalizeRole(userRoleRaw);
 
-        // Check if user has valid dashboard access
+        // Check if user has valid dashboard access (include non-teaching)
         const hasSpecificDashboard =
           userRole === "principal" ||
           userRole === "HOD" ||
           userRole === "hod" ||
           userRole === "cc" ||
           userRole === "facultymanagement" ||
-          userRole === "teaching";
+          userRole === "teaching" ||
+          userRole === "non-teaching";
 
         // If user doesn't have dashboard access, clear storage and redirect to login
         if (!hasSpecificDashboard) {
@@ -82,6 +99,8 @@ const App = () => {
           } else if (userRole === "facultymanagement") {
             navigate("/faculty-erp/dashboard");
           } else if (userRole === "teaching") {
+            navigate("/faculty-erp/dashboard");
+          } else if (userRole === "non-teaching") {
             navigate("/faculty-erp/dashboard");
           }
         } else if (
@@ -119,24 +138,26 @@ const App = () => {
 
   const handleLogin = (user) => {
     const validRoles = rolePermissionsAndRoutes.map((r) => r.role);
-    const userRole = user.role || user.type; // Check both role and type
+    const userRoleRaw = user.role || user.type; // Check both role and type
+    const userRole = normalizeRole(userRoleRaw);
 
-    // Check if user has a valid role for specific dashboards
+    // Check if user has a valid role for specific dashboards (include non-teaching)
     const hasSpecificDashboard =
       userRole === "principal" ||
       userRole === "HOD" ||
       userRole === "hod" ||
       userRole === "cc" ||
       userRole === "facultymanagement" ||
-      userRole === "teaching";
+      userRole === "teaching" ||
+      userRole === "non-teaching";
 
     // If user doesn't have a specific dashboard access, prevent login
-    if (!hasSpecificDashboard) {
-      alert(
-        "Access Denied: You don't have permission to access any dashboard. Please contact administrator."
-      );
-      return; // Stop the login process
-    }
+    // if (!hasSpecificDashboard) {
+    //   alert(
+    //     "Access Denied: You don't have permission to access any dashboard. Please contact administrator."
+    //   );
+    //   return; // Stop the login process
+    // }
 
     const role = validRoles.includes(userRole) ? userRole : userRole;
     const validatedUser = { ...user, role };
@@ -154,6 +175,8 @@ const App = () => {
     } else if (role === "facultymanagement") {
       navigate("/faculty-erp/dashboard");
     } else if (role === "teaching") {
+      navigate("/faculty-erp/dashboard");
+    } else if (role === "non-teaching") {
       navigate("/faculty-erp/dashboard");
     } else {
       // This should not happen now, but as a fallback
@@ -226,7 +249,7 @@ const App = () => {
         <Routes>
           {/* Redirect legacy or external /cc-dashboard to faculty-erp route */}
           <Route
-            path="/cc-dashboard"
+            path="/faculty-erp/cc-dashboard"
             element={<Navigate to="/faculty-erp/cc-dashboard" />}
           />
           <Route

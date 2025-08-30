@@ -673,398 +673,447 @@ export default function Ledger() {
   }
 
   return (
-    <div className="p-6">
-      {/* College Header */}
-      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 mb-6">
-        <div className="flex items-center gap-4">
-          <img src="/logo1.png" alt="College Logo" className="h-16 w-auto" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Nagarjuna Institute of Engineering and Technology
-            </h1>
-            <p className="text-gray-600">
-              Management Information System - Ledger Management
-            </p>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="p-6">
+        {/* College Header */}
+        <div className="bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-700 mb-6">
+          <div className="flex items-center gap-4">
+            <img src="/logo1.png" alt="College Logo" className="h-16 w-auto" />
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                Nagarjuna Institute of Engineering and Technology
+              </h1>
+              <p className="text-gray-300">
+                Management Information System - Ledger Management
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <h1 className="text-2xl font-bold mb-4">Ledger</h1>
-      <div className="flex flex-wrap gap-4 mb-4 items-end">
-        <div>
-          <label className="block text-sm font-medium">Type</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
-            <option value="All">All</option>
-            <option value="Payment">Payment</option>
-            <option value="Expense">Expense</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Person</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={personFilter}
-            onChange={(e) => setPersonFilter(e.target.value)}
-          >
-            <option value="All">All Persons</option>
-            {uniquePersons.map((person) => (
-              <option key={person} value={person}>
-                {person}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Course</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={courseFilter}
-            onChange={(e) => setCourseFilter(e.target.value)}
-          >
-            <option value="All">All Courses</option>
-            {uniqueCourses.map((course) => (
-              <option key={course} value={course}>
-                {course}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Fee Head</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={feeHeadFilter}
-            onChange={(e) => setFeeHeadFilter(e.target.value)}
-          >
-            <option value="All">All Fee Heads</option>
-            {Array.isArray(feeHeads) &&
-              feeHeads.map((feeHead) => (
-                <option key={feeHead._id} value={feeHead.title}>
-                  {feeHead.title}
-                </option>
-              ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">From</label>
-          <input
-            type="date"
-            className="border rounded px-2 py-1"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">To</label>
-          <input
-            type="date"
-            className="border rounded px-2 py-1"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Search</label>
-          <input
-            type="text"
-            className="border rounded px-2 py-1"
-            placeholder="Description, Reference, Fee Head, Course, Receipt, or Remarks"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Sort By</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            {sortFields.map((field) => (
-              <option key={field.value} value={field.value}>
-                {field.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium">Order</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={sortDir}
-            onChange={(e) => setSortDir(e.target.value)}
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </div>
-        <button
-          className="ml-auto bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
-          onClick={() => exportToDCR(sortedEntries, dateFrom, dateTo)}
-        >
-          Export DCR (PDF)
-        </button>
-      </div>
-      <div className="mb-2 flex flex-wrap gap-4 justify-end font-semibold">
-        <div>
-          Total:{" "}
-          {total.toLocaleString("en-IN", {
-            style: "currency",
-            currency: "INR",
-          })}
-        </div>
-        <div className="text-green-700">
-          Payments:{" "}
-          {totalPayments.toLocaleString("en-IN", {
-            style: "currency",
-            currency: "INR",
-          })}
-        </div>
-        <div className="text-red-600">
-          Expenses:{" "}
-          {totalExpenses.toLocaleString("en-IN", {
-            style: "currency",
-            currency: "INR",
-          })}
-        </div>
-        <button
-          className="ml-4 bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 print:hidden"
-          onClick={handlePrint}
-        >
-          Print
-        </button>
-      </div>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      {!loading && !error && (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border rounded shadow print:bg-white">
-            <thead>
-              <tr>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("date")}
-                >
-                  Date{" "}
-                  {sortBy === "date" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("type")}
-                >
-                  Type{" "}
-                  {sortBy === "type" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("receiptNumber")}
-                >
-                  Receipt No{" "}
-                  {sortBy === "receiptNumber"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("personName")}
-                >
-                  Person{" "}
-                  {sortBy === "personName"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("course")}
-                >
-                  Course{" "}
-                  {sortBy === "course" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("description")}
-                >
-                  Description{" "}
-                  {sortBy === "description"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("reference")}
-                >
-                  Reference{" "}
-                  {sortBy === "reference"
-                    ? sortDir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("method")}
-                >
-                  Method{" "}
-                  {sortBy === "method" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("feeHead")}
-                >
-                  Fee Head{" "}
-                  {sortBy === "feeHead" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("remarks")}
-                >
-                  Remarks{" "}
-                  {sortBy === "remarks" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-                <th
-                  className="px-4 py-2 border text-right cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("amount")}
-                >
-                  Amount{" "}
-                  {sortBy === "amount" ? (sortDir === "asc" ? "▲" : "▼") : ""}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedSortedEntries.map((entry, idx) => (
-                <tr
-                  key={idx}
-                  className={
-                    entry.type === "Expense" ? "bg-red-50" : "bg-green-50"
-                  }
-                  onClick={() => setModalEntry(entry)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <td className="px-4 py-2 border">
-                    {entry.date
-                      ? new Date(entry.date).toLocaleDateString()
-                      : ""}
-                  </td>
-                  <td className="px-4 py-2 border">{entry.type}</td>
-                  <td className="px-4 py-2 border">
-                    {entry.receiptNumber || "-"}
-                  </td>
-                  <td className="px-4 py-2 border">
-                    {entry.personName || "-"}
-                  </td>
-                  <td className="px-4 py-2 border">{entry.course || "-"}</td>
-                  <td className="px-4 py-2 border">{entry.description}</td>
-                  <td className="px-4 py-2 border">{entry.reference}</td>
-                  <td className="px-4 py-2 border">{entry.method}</td>
-                  <td className="px-4 py-2 border">{entry.feeHead || "-"}</td>
-                  <td className="px-4 py-2 border">{entry.remarks || "-"}</td>
-                  <td
-                    className={`px-4 py-2 border text-right font-bold ${
-                      entry.amount < 0 ? "text-red-600" : "text-green-700"
-                    }`}
-                  >
-                    {typeof entry.amount === "number" && !isNaN(entry.amount)
-                      ? entry.amount.toLocaleString("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                        })
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {/* Pagination controls */}
-          <div className="flex justify-between items-center mt-2 print:hidden">
+        <h1 className="text-3xl font-bold mb-6 text-white">Ledger</h1>
+        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+          <div className="flex flex-wrap gap-4 mb-4 items-end">
             <div>
-              Page {page} of {pageCount}
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Type
+              </label>
+              <select
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <option value="All">All</option>
+                <option value="Payment">Payment</option>
+                <option value="Expense">Expense</option>
+              </select>
             </div>
             <div>
-              <button
-                className="px-2 py-1 border rounded mr-2"
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Person
+              </label>
+              <select
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={personFilter}
+                onChange={(e) => setPersonFilter(e.target.value)}
               >
-                Prev
-              </button>
-              <button
-                className="px-2 py-1 border rounded"
-                disabled={page === pageCount || pageCount === 0}
-                onClick={() => setPage(page + 1)}
+                <option value="All">All Persons</option>
+                {uniquePersons.map((person) => (
+                  <option key={person} value={person}>
+                    {person}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Course
+              </label>
+              <select
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
               >
-                Next
-              </button>
+                <option value="All">All Courses</option>
+                {uniqueCourses.map((course) => (
+                  <option key={course} value={course}>
+                    {course}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        </div>
-      )}
-      {/* Row details modal */}
-      {modalEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 print:hidden">
-          <div className="bg-white rounded shadow-lg p-6 min-w-[300px] max-w-[90vw]">
-            <h2 className="text-xl font-bold mb-2">Entry Details</h2>
-            <div className="mb-2">
-              <b>Date:</b>{" "}
-              {modalEntry.date
-                ? new Date(modalEntry.date).toLocaleString()
-                : "-"}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Fee Head
+              </label>
+              <select
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={feeHeadFilter}
+                onChange={(e) => setFeeHeadFilter(e.target.value)}
+              >
+                <option value="All">All Fee Heads</option>
+                {Array.isArray(feeHeads) &&
+                  feeHeads.map((feeHead) => (
+                    <option key={feeHead._id} value={feeHead.title}>
+                      {feeHead.title}
+                    </option>
+                  ))}
+              </select>
             </div>
-            <div className="mb-2">
-              <b>Type:</b> {modalEntry.type}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                From
+              </label>
+              <input
+                type="date"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
             </div>
-            <div className="mb-2">
-              <b>Receipt Number:</b> {modalEntry.receiptNumber || "-"}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                To
+              </label>
+              <input
+                type="date"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
             </div>
-            <div className="mb-2">
-              <b>Person:</b> {modalEntry.personName || "-"}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Search
+              </label>
+              <input
+                type="text"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="Description, Reference, Fee Head, Course, Receipt, or Remarks"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
-            <div className="mb-2">
-              <b>Course:</b> {modalEntry.course || "-"}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Sort By
+              </label>
+              <select
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                {sortFields.map((field) => (
+                  <option key={field.value} value={field.value}>
+                    {field.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="mb-2">
-              <b>Description:</b> {modalEntry.description}
-            </div>
-            <div className="mb-2">
-              <b>Reference:</b> {modalEntry.reference}
-            </div>
-            <div className="mb-2">
-              <b>Method:</b> {modalEntry.method}
-            </div>
-            <div className="mb-2">
-              <b>Fee Head:</b> {modalEntry.feeHead || "-"}
-            </div>
-            <div className="mb-2">
-              <b>Remarks:</b> {modalEntry.remarks || "-"}
-            </div>
-            <div className="mb-2">
-              <b>Amount:</b>{" "}
-              {typeof modalEntry.amount === "number" &&
-              !isNaN(modalEntry.amount)
-                ? modalEntry.amount.toLocaleString("en-IN", {
-                    style: "currency",
-                    currency: "INR",
-                  })
-                : "-"}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">
+                Order
+              </label>
+              <select
+                className="border border-gray-600 rounded px-2 py-1 bg-gray-700 text-white"
+                value={sortDir}
+                onChange={(e) => setSortDir(e.target.value)}
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
             </div>
             <button
-              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              onClick={() => setModalEntry(null)}
+              className="ml-auto bg-blue-700 text-white px-4 py-2 rounded shadow hover:bg-blue-800"
+              onClick={() => exportToDCR(sortedEntries, dateFrom, dateTo)}
             >
-              Close
+              Export DCR (PDF)
             </button>
           </div>
         </div>
-      )}
+        <div className="mb-2 flex flex-wrap gap-4 justify-end font-semibold text-black">
+          <div>
+            Total:{" "}
+            {total.toLocaleString("en-IN", {
+              style: "currency",
+              currency: "INR",
+            })}
+          </div>
+          <div className="text-green-400">
+            Payments:{" "}
+            {totalPayments.toLocaleString("en-IN", {
+              style: "currency",
+              currency: "INR",
+            })}
+          </div>
+          <div className="text-red-600">
+            Expenses:{" "}
+            {totalExpenses.toLocaleString("en-IN", {
+              style: "currency",
+              currency: "INR",
+            })}
+          </div>
+          <button
+            className="ml-4 bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-800 print:hidden"
+            onClick={handlePrint}
+          >
+            Print
+          </button>
+        </div>
+        {loading && <div className="text-gray-300">Loading...</div>}
+        {error && <div className="text-red-400">{error}</div>}
+        {!loading && !error && (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-gray-800 border border-gray-600 rounded shadow print:bg-white">
+              <thead>
+                <tr>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("date")}
+                  >
+                    Date{" "}
+                    {sortBy === "date" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("type")}
+                  >
+                    Type{" "}
+                    {sortBy === "type" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("receiptNumber")}
+                  >
+                    Receipt No{" "}
+                    {sortBy === "receiptNumber"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("personName")}
+                  >
+                    Person{" "}
+                    {sortBy === "personName"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("course")}
+                  >
+                    Course{" "}
+                    {sortBy === "course" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("description")}
+                  >
+                    Description{" "}
+                    {sortBy === "description"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("reference")}
+                  >
+                    Reference{" "}
+                    {sortBy === "reference"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("method")}
+                  >
+                    Method{" "}
+                    {sortBy === "method" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("feeHead")}
+                  >
+                    Fee Head{" "}
+                    {sortBy === "feeHead"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("remarks")}
+                  >
+                    Remarks{" "}
+                    {sortBy === "remarks"
+                      ? sortDir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </th>
+                  <th
+                    className="px-4 py-2 border border-gray-600 text-right cursor-pointer hover:bg-gray-700 text-white bg-gray-800"
+                    onClick={() => handleSort("amount")}
+                  >
+                    Amount{" "}
+                    {sortBy === "amount" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedSortedEntries.map((entry, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-gray-700"
+                    onClick={() => setModalEntry(entry)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.date
+                        ? new Date(entry.date).toLocaleDateString()
+                        : ""}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.type}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.receiptNumber || "-"}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.personName || "-"}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.course || "-"}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.description}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.reference}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.method}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.feeHead || "-"}
+                    </td>
+                    <td className="px-4 py-2 border border-gray-600 text-white">
+                      {entry.remarks || "-"}
+                    </td>
+                    <td
+                      className={`px-4 py-2 border border-gray-600 text-right font-bold ${
+                        entry.amount < 0 ? "text-red-400" : "text-green-400"
+                      }`}
+                    >
+                      {typeof entry.amount === "number" && !isNaN(entry.amount)
+                        ? entry.amount.toLocaleString("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                          })
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Pagination controls */}
+            <div className="flex justify-between items-center mt-2 print:hidden">
+              <div className="text-gray-300">
+                Page {page} of {pageCount}
+              </div>
+              <div>
+                <button
+                  className="px-2 py-1 border border-gray-600 rounded mr-2 text-white bg-gray-700 hover:bg-gray-600"
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Prev
+                </button>
+                <button
+                  className="px-2 py-1 border border-gray-600 rounded text-white bg-gray-700 hover:bg-gray-600"
+                  disabled={page === pageCount || pageCount === 0}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Row details modal */}
+        {modalEntry && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 print:hidden">
+            <div className="bg-gray-800 rounded shadow-lg p-6 min-w-[300px] max-w-[90vw] border border-gray-600">
+              <h2 className="text-xl font-bold mb-2 text-white">
+                Entry Details
+              </h2>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Date:</b>{" "}
+                {modalEntry.date
+                  ? new Date(modalEntry.date).toLocaleString()
+                  : "-"}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Type:</b> {modalEntry.type}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Receipt Number:</b>{" "}
+                {modalEntry.receiptNumber || "-"}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Person:</b>{" "}
+                {modalEntry.personName || "-"}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Course:</b> {modalEntry.course || "-"}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Description:</b>{" "}
+                {modalEntry.description}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Reference:</b> {modalEntry.reference}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Method:</b> {modalEntry.method}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Fee Head:</b>{" "}
+                {modalEntry.feeHead || "-"}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Remarks:</b>{" "}
+                {modalEntry.remarks || "-"}
+              </div>
+              <div className="mb-2 text-gray-300">
+                <b className="text-white">Amount:</b>{" "}
+                {typeof modalEntry.amount === "number" &&
+                !isNaN(modalEntry.amount)
+                  ? modalEntry.amount.toLocaleString("en-IN", {
+                      style: "currency",
+                      currency: "INR",
+                    })
+                  : "-"}
+              </div>
+              <button
+                className="mt-4 bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800"
+                onClick={() => setModalEntry(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

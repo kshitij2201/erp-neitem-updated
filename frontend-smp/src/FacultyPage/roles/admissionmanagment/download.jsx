@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Download as DownloadIcon, Sun, Moon } from "lucide-react";
+import { Download as DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Theme classes
+// Theme classes - Dark theme only
 const themeClasses = {
   dark: {
     bg: "bg-gradient-to-br from-slate-900 via-gray-800 to-slate-950",
@@ -25,28 +25,11 @@ const themeClasses = {
     tableRow: "hover:bg-indigo-900/20",
     loader: "border-indigo-500",
   },
-  light: {
-    bg: "bg-gradient-to-br from-indigo-50 via-purple-50 to-gray-100",
-    cardBg: "bg-white/80 backdrop-blur-lg border border-indigo-200",
-    textPrimary: "text-gray-800",
-    textSecondary: "text-indigo-700",
-    textAccent: "text-indigo-900",
-    buttonBg: "bg-gradient-to-r from-indigo-500 to-purple-500",
-    buttonHover: "hover:bg-indigo-600",
-    inputBg: "bg-white",
-    errorBg: "bg-red-50 text-red-700",
-    shadow: "shadow-xl shadow-indigo-300/30",
-    glow: "shadow-[0_0_20px_rgba(165,180,252,0.3)]",
-    headerBg: "bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-500",
-    tableHeader: "bg-indigo-200 text-indigo-800",
-    tableRow: "hover:bg-indigo-100",
-    loader: "border-indigo-500",
-  },
 };
 
 const Download = () => {
   const navigate = useNavigate();
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState("dark");
   const currentTheme = themeClasses[theme];
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
@@ -257,23 +240,6 @@ const Download = () => {
           }
         `}
       </style>
-
-      {/* Theme Toggle */}
-      <div className="flex justify-end mb-6">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className={`p-3 rounded-full ${
-            theme === "dark" ? "bg-indigo-700" : "bg-indigo-200"
-          } shadow-lg hover:scale-110 transition-transform`}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-5 w-5 text-yellow-300" />
-          ) : (
-            <Moon className="h-5 w-5 text-indigo-700" />
-          )}
-        </button>
-      </div>
 
       {/* Header */}
       <motion.div

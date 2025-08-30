@@ -48,38 +48,70 @@ import {
 
 // Sample data for CC Dashboard
 const courseData = [
-  { course: "CS101", enrolled: 45, attendance: 92, assignments: 15, completed: 12 },
-  { course: "CS201", enrolled: 38, attendance: 88, assignments: 18, completed: 16 },
-  { course: "CS301", enrolled: 42, attendance: 95, assignments: 12, completed: 11 },
-  { course: "CS401", enrolled: 35, attendance: 85, assignments: 20, completed: 17 },
+  {
+    course: "CS101",
+    enrolled: 45,
+    attendance: 92,
+    assignments: 15,
+    completed: 12,
+  },
+  {
+    course: "CS201",
+    enrolled: 38,
+    attendance: 88,
+    assignments: 18,
+    completed: 16,
+  },
+  {
+    course: "CS301",
+    enrolled: 42,
+    attendance: 95,
+    assignments: 12,
+    completed: 11,
+  },
+  {
+    course: "CS401",
+    enrolled: 35,
+    attendance: 85,
+    assignments: 20,
+    completed: 17,
+  },
 ];
 
 const attendanceTrends = [
-  { week: 'Week 1', CS101: 88, CS201: 92, CS301: 85, CS401: 90 },
-  { week: 'Week 2', CS101: 92, CS201: 88, CS301: 93, CS401: 87 },
-  { week: 'Week 3', CS101: 85, CS301: 90, CS201: 94, CS401: 89 },
-  { week: 'Week 4', CS101: 95, CS201: 89, CS301: 88, CS401: 92 },
+  { week: "Week 1", CS101: 88, CS201: 92, CS301: 85, CS401: 90 },
+  { week: "Week 2", CS101: 92, CS201: 88, CS301: 93, CS401: 87 },
+  { week: "Week 3", CS101: 85, CS301: 90, CS201: 94, CS401: 89 },
+  { week: "Week 4", CS101: 95, CS201: 89, CS301: 88, CS401: 92 },
 ];
 
 const assignmentStats = [
-  { name: 'Submitted', value: 68, color: '#10B981' },
-  { name: 'Pending', value: 15, color: '#F59E0B' },
-  { name: 'Late', value: 8, color: '#EF4444' },
-  { name: 'Missing', value: 9, color: '#6B7280' },
+  { name: "Submitted", value: 68, color: "#10B981" },
+  { name: "Pending", value: 15, color: "#F59E0B" },
+  { name: "Late", value: 8, color: "#EF4444" },
+  { name: "Missing", value: 9, color: "#6B7280" },
 ];
 
 const performanceData = [
-  { subject: 'Theory', avg: 85, sections: [88, 82, 87, 84] },
-  { subject: 'Lab', avg: 92, sections: [94, 89, 93, 91] },
-  { subject: 'Project', avg: 78, sections: [82, 75, 80, 76] },
-  { subject: 'Assignments', avg: 88, sections: [90, 86, 89, 87] },
+  { subject: "Theory", avg: 85, sections: [88, 82, 87, 84] },
+  { subject: "Lab", avg: 92, sections: [94, 89, 93, 91] },
+  { subject: "Project", avg: 78, sections: [82, 75, 80, 76] },
+  { subject: "Assignments", avg: 88, sections: [90, 86, 89, 87] },
 ];
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = [
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#06B6D4",
+];
 
-export default function CCDashboard() {
+const CCDashboard = ({ userData }) => {
   const [filter, setFilter] = useState("overview");
   const [timeRange, setTimeRange] = useState("week");
+  console.log("Done");
   const [stats, setStats] = useState({
     totalCourses: 4,
     totalStudents: 160,
@@ -90,16 +122,51 @@ export default function CCDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userData, setUserData] = useState(null);
+  const [currentUserData, setCurrentUserData] = useState(userData);
   const [facultySubjects, setFacultySubjects] = useState([]);
-  
+
   // Todo List State
   const [todos, setTodos] = useState([
-    { id: 1, text: "Review CS101 assignments", completed: false, priority: "high", dueDate: "2025-07-10", category: "assignments" },
-    { id: 2, text: "Update course materials for CS201", completed: false, priority: "medium", dueDate: "2025-07-12", category: "materials" },
-    { id: 3, text: "Prepare midterm exam questions", completed: true, priority: "high", dueDate: "2025-07-09", category: "exams" },
-    { id: 4, text: "Meet with struggling students", completed: false, priority: "low", dueDate: "2025-07-15", category: "meetings" },
-    { id: 5, text: "Submit semester planning report", completed: false, priority: "high", dueDate: "2025-07-11", category: "reports" },
+    {
+      id: 1,
+      text: "Review CS101 assignments",
+      completed: false,
+      priority: "high",
+      dueDate: "2025-07-10",
+      category: "assignments",
+    },
+    {
+      id: 2,
+      text: "Update course materials for CS201",
+      completed: false,
+      priority: "medium",
+      dueDate: "2025-07-12",
+      category: "materials",
+    },
+    {
+      id: 3,
+      text: "Prepare midterm exam questions",
+      completed: true,
+      priority: "high",
+      dueDate: "2025-07-09",
+      category: "exams",
+    },
+    {
+      id: 4,
+      text: "Meet with struggling students",
+      completed: false,
+      priority: "low",
+      dueDate: "2025-07-15",
+      category: "meetings",
+    },
+    {
+      id: 5,
+      text: "Submit semester planning report",
+      completed: false,
+      priority: "high",
+      dueDate: "2025-07-11",
+      category: "reports",
+    },
   ]);
   const [newTodo, setNewTodo] = useState("");
   const [newTodoPriority, setNewTodoPriority] = useState("medium");
@@ -130,21 +197,27 @@ export default function CCDashboard() {
             Authorization: `Bearer ${token}`,
           },
         });
-        
+
         if (profileResponse.ok) {
           const data = await profileResponse.json();
-          setUserData(data);
-          
+          setCurrentUserData(data);
+
           // Fetch faculty subjects using employeeId
           if (data.employeeId) {
             await fetchFacultySubjects(data.employeeId, token);
           }
         } else if (profileResponse.status === 401) {
-          console.log("Token expired or invalid, user will need to login again");
+          console.log(
+            "Token expired or invalid, user will need to login again"
+          );
           localStorage.removeItem("authToken");
           localStorage.removeItem("user");
         } else {
-          console.error("Failed to fetch profile:", profileResponse.status, profileResponse.statusText);
+          console.error(
+            "Failed to fetch profile:",
+            profileResponse.status,
+            profileResponse.statusText
+          );
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -168,7 +241,7 @@ export default function CCDashboard() {
         if (data.success) {
           setFacultySubjects(data.data || []);
           // Update stats with actual subject count
-          setStats(prevStats => ({
+          setStats((prevStats) => ({
             ...prevStats,
             totalCourses: data.data?.length || 0,
           }));
@@ -181,7 +254,14 @@ export default function CCDashboard() {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, trend, description }) => (
+  const StatCard = ({
+    title,
+    value,
+    icon: Icon,
+    color,
+    trend,
+    description,
+  }) => (
     <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-gray-200/50 shadow-xl hover:shadow-2xl transition-all duration-300 group">
       <div className="flex items-center justify-between">
         <div>
@@ -191,20 +271,24 @@ export default function CCDashboard() {
             <p className="text-gray-500 text-xs">{description}</p>
           )}
           {trend && (
-            <div className={`flex items-center gap-1 text-sm ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              <TrendingUp size={16} className={trend < 0 ? 'rotate-180' : ''} />
+            <div
+              className={`flex items-center gap-1 text-sm ${
+                trend >= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              <TrendingUp size={16} className={trend < 0 ? "rotate-180" : ""} />
               <span>{Math.abs(trend)}%</span>
             </div>
           )}
         </div>
-        <div className={`p-4 rounded-xl ${color} group-hover:scale-110 transition-transform duration-300`}>
+        <div
+          className={`p-4 rounded-xl ${color} group-hover:scale-110 transition-transform duration-300`}
+        >
           <Icon size={28} className="text-white" />
         </div>
       </div>
     </div>
   );
-
-
 
   if (loading) {
     return (
@@ -217,7 +301,10 @@ export default function CCDashboard() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-gray-200/50">
+                <div
+                  key={i}
+                  className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-gray-200/50"
+                >
                   <div className="h-4 bg-gray-300 rounded mb-2"></div>
                   <div className="h-8 bg-gray-300 rounded mb-2"></div>
                   <div className="h-3 bg-gray-300 rounded w-2/3"></div>
@@ -251,13 +338,15 @@ export default function CCDashboard() {
   };
 
   const toggleTodo = (id) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
   };
 
   const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+    setTodos(todos.filter((todo) => todo.id !== id));
   };
 
   const startEditTodo = (todo) => {
@@ -266,14 +355,16 @@ export default function CCDashboard() {
   };
 
   const saveEditTodo = () => {
-    setTodos(todos.map(todo => 
-      todo.id === editingTodo ? { ...todo, text: editText.trim() } : todo
-    ));
+    setTodos(
+      todos.map((todo) =>
+        todo.id === editingTodo ? { ...todo, text: editText.trim() } : todo
+      )
+    );
     setEditingTodo(null);
     setEditText("");
   };
 
-  const filteredTodos = todos.filter(todo => {
+  const filteredTodos = todos.filter((todo) => {
     if (todoFilter === "completed") return todo.completed;
     if (todoFilter === "pending") return !todo.completed;
     if (todoFilter === "high") return todo.priority === "high";
@@ -282,10 +373,14 @@ export default function CCDashboard() {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case "high": return "text-red-600 bg-red-50 border-red-200";
-      case "medium": return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "low": return "text-green-600 bg-green-50 border-green-200";
-      default: return "text-gray-600 bg-gray-50 border-gray-200";
+      case "high":
+        return "text-red-600 bg-red-50 border-red-200";
+      case "medium":
+        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "low":
+        return "text-green-600 bg-green-50 border-green-200";
+      default:
+        return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
 
@@ -294,7 +389,7 @@ export default function CCDashboard() {
     // Each subject can have different year/section combinations
     // For now, we'll estimate based on unique year-section combinations
     const uniqueYearSections = new Set();
-    facultySubjects.forEach(subject => {
+    facultySubjects.forEach((subject) => {
       uniqueYearSections.add(`${subject.year}-${subject.section}`);
     });
     // Estimate 40-50 students per unique year-section
@@ -312,7 +407,8 @@ export default function CCDashboard() {
                 🎯 Course Coordinator Dashboard
               </h1>
               <p className="text-gray-600 text-lg">
-                Welcome back, {userData?.name || 'Course Coordinator'}! Manage your courses and track student progress.
+                Welcome back, {userData?.name || "Course Coordinator"}! Manage
+                your courses and track student progress.
               </p>
             </div>
             <div className="flex gap-3 mt-4 md:mt-0">
@@ -361,7 +457,7 @@ export default function CCDashboard() {
           />
           <StatCard
             title="Pending Tasks"
-            value={todos.filter(t => !t.completed).length}
+            value={todos.filter((t) => !t.completed).length}
             icon={ClipboardList}
             color="bg-gradient-to-r from-orange-500 to-orange-600"
             trend={-12}
@@ -386,7 +482,10 @@ export default function CCDashboard() {
         </div>
 
         {/* Faculty Todo List Section */}
-        <div id="todo-section" className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-6 mb-8">
+        <div
+          id="todo-section"
+          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-6 mb-8"
+        >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <ListTodo className="h-6 w-6 text-indigo-600" />
@@ -414,7 +513,7 @@ export default function CCDashboard() {
                 placeholder="Enter new task..."
                 value={newTodo}
                 onChange={(e) => setNewTodo(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+                onKeyPress={(e) => e.key === "Enter" && addTodo()}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <select
@@ -455,9 +554,9 @@ export default function CCDashboard() {
                 <div
                   key={todo.id}
                   className={`flex items-center gap-3 p-4 rounded-xl border transition-all duration-200 ${
-                    todo.completed 
-                      ? 'bg-green-50/50 border-green-200 opacity-75' 
-                      : 'bg-white border-gray-200 hover:shadow-md'
+                    todo.completed
+                      ? "bg-green-50/50 border-green-200 opacity-75"
+                      : "bg-white border-gray-200 hover:shadow-md"
                   }`}
                 >
                   <input
@@ -466,7 +565,7 @@ export default function CCDashboard() {
                     onChange={() => toggleTodo(todo.id)}
                     className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                   />
-                  
+
                   <div className="flex-1">
                     {editingTodo === todo.id ? (
                       <div className="flex gap-2">
@@ -475,7 +574,9 @@ export default function CCDashboard() {
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
                           className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          onKeyPress={(e) => e.key === 'Enter' && saveEditTodo()}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && saveEditTodo()
+                          }
                         />
                         <button
                           onClick={saveEditTodo}
@@ -492,11 +593,21 @@ export default function CCDashboard() {
                       </div>
                     ) : (
                       <div>
-                        <p className={`font-medium ${todo.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                        <p
+                          className={`font-medium ${
+                            todo.completed
+                              ? "line-through text-gray-500"
+                              : "text-gray-900"
+                          }`}
+                        >
                           {todo.text}
                         </p>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className={`px-2 py-1 text-xs rounded-full border ${getPriorityColor(todo.priority)}`}>
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full border ${getPriorityColor(
+                              todo.priority
+                            )}`}
+                          >
                             {todo.priority} priority
                           </span>
                           {todo.dueDate && (
@@ -535,15 +646,24 @@ export default function CCDashboard() {
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-indigo-600">{todos.filter(t => !t.completed).length}</p>
+                <p className="text-2xl font-bold text-indigo-600">
+                  {todos.filter((t) => !t.completed).length}
+                </p>
                 <p className="text-sm text-gray-600">Pending</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">{todos.filter(t => t.completed).length}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {todos.filter((t) => t.completed).length}
+                </p>
                 <p className="text-sm text-gray-600">Completed</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600">{todos.filter(t => t.priority === 'high' && !t.completed).length}</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {
+                    todos.filter((t) => t.priority === "high" && !t.completed)
+                      .length
+                  }
+                </p>
                 <p className="text-sm text-gray-600">High Priority</p>
               </div>
             </div>
@@ -559,9 +679,12 @@ export default function CCDashboard() {
                 📈 Attendance Trends
               </h2>
               <div className="flex gap-2">
-                {['CS101', 'CS201', 'CS301', 'CS401'].map((course, index) => (
+                {["CS101", "CS201", "CS301", "CS401"].map((course, index) => (
                   <div key={course} className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: COLORS[index] }}></div>
+                    <div
+                      className={`w-3 h-3 rounded-full`}
+                      style={{ backgroundColor: COLORS[index] }}
+                    ></div>
                     <span className="text-sm text-gray-600">{course}</span>
                   </div>
                 ))}
@@ -571,57 +694,60 @@ export default function CCDashboard() {
               Data Points: {attendanceTrends?.length || 0} weeks
             </div>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={attendanceTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <LineChart
+                data={attendanceTrends}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis 
-                  dataKey="week" 
-                  tick={{ fontSize: 12 }} 
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  tickLine={{ stroke: '#e5e7eb' }}
+                <XAxis
+                  dataKey="week"
+                  tick={{ fontSize: 12 }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                  tickLine={{ stroke: "#e5e7eb" }}
                 />
-                <YAxis 
-                  tick={{ fontSize: 12 }} 
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  tickLine={{ stroke: '#e5e7eb' }}
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                  tickLine={{ stroke: "#e5e7eb" }}
                   domain={[70, 100]}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                    border: 'none', 
-                    borderRadius: '8px',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-                  }} 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255, 255, 255, 0.95)",
+                    border: "none",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                  }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="CS101" 
-                  stroke={COLORS[0]} 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="CS101"
+                  stroke={COLORS[0]}
+                  strokeWidth={3}
                   dot={{ r: 4, fill: COLORS[0] }}
                   activeDot={{ r: 6, fill: COLORS[0] }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="CS201" 
-                  stroke={COLORS[1]} 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="CS201"
+                  stroke={COLORS[1]}
+                  strokeWidth={3}
                   dot={{ r: 4, fill: COLORS[1] }}
                   activeDot={{ r: 6, fill: COLORS[1] }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="CS301" 
-                  stroke={COLORS[2]} 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="CS301"
+                  stroke={COLORS[2]}
+                  strokeWidth={3}
                   dot={{ r: 4, fill: COLORS[2] }}
                   activeDot={{ r: 6, fill: COLORS[2] }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="CS401" 
-                  stroke={COLORS[3]} 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="CS401"
+                  stroke={COLORS[3]}
+                  strokeWidth={3}
                   dot={{ r: 4, fill: COLORS[3] }}
                   activeDot={{ r: 6, fill: COLORS[3] }}
                 />
@@ -648,19 +774,21 @@ export default function CCDashboard() {
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                 >
                   {assignmentStats.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                    border: 'none', 
-                    borderRadius: '8px',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
-                  }} 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255, 255, 255, 0.95)",
+                    border: "none",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+                  }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -669,4 +797,6 @@ export default function CCDashboard() {
       </div>
     </div>
   );
-}
+};
+
+export default CCDashboard;

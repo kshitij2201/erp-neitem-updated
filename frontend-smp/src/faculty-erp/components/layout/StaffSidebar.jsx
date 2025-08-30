@@ -128,9 +128,12 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
   };
 
   const getDashboardRoute = (role) => {
+
+    console.log(role)
     if (role === "HOD" || role === "hod") return "/faculty-erp/hod-dashboard";
     if (role === "principal") return "/faculty-erp/principal-dashboard";
     if (role === "cc") return "/faculty-erp/cc-dashboard";
+    if (role === "non-teaching") return "/faculty-erp/dashboard";
     return "/faculty-erp";
   };
 
@@ -384,11 +387,35 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
     return acc;
   }, {});
 
-  const filteredMenuItems = menuItems.filter(
+  let filteredMenuItems = menuItems.filter(
     (item) =>
       rolePermissions[userData?.role]?.includes(item.routeName) &&
       (!item.onlyTeaching || userData?.role === "teaching")
   );
+
+  // If user is non-teaching, limit the sidebar to only a few sections
+  const roleLower = String(userData?.role || "").toLowerCase();
+  const isNonTeachingRole = [
+    "nonteaching",
+    "non-teaching",
+    "non teaching",
+  ].includes(roleLower);
+
+  if (isNonTeachingRole) {
+    const allowed = new Set([
+      "dashboard",
+      "profile",
+      "apply_leave",
+      "apply_od_leave",
+      // include both announcement route name variants just in case
+      "announcement_nonteaching",
+      "announcement",
+    ]);
+
+    filteredMenuItems = filteredMenuItems.filter((item) =>
+      allowed.has(item.routeName)
+    );
+  }
 
   return (
     <div

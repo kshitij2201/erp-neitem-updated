@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Sun, Moon } from "lucide-react";
 
 function AdmissionForm() {
-  const [theme, setTheme] = useState("light");
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const [theme, setTheme] = useState("dark");
 
   // Theme classes based on user's specification
   const themeClasses = {
@@ -27,25 +25,6 @@ function AdmissionForm() {
       dropdownBg: "bg-gray-800",
       dropdownText: "text-gray-100",
       checkboxText: "text-gray-200",
-    },
-    light: {
-      bg: "bg-gradient-to-br from-indigo-50 via-purple-50 to-gray-100",
-      headerBg: "bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400",
-      headerBorder: "border-b-4 border-indigo-200",
-      cardBg: "bg-white/80 backdrop-blur-lg",
-      cardBorder: "border border-indigo-200",
-      textPrimary: "text-gray-800",
-      textSecondary: "text-indigo-700",
-      textAccent: "text-indigo-900",
-      buttonBg: "bg-gradient-to-r from-indigo-500 to-purple-500",
-      buttonHover: "hover:bg-indigo-600",
-      chartBg: "bg-white/80 backdrop-blur-xl",
-      glow: "bg-indigo-300/30",
-      doughnutGlow: "bg-purple-300/20",
-      errorBg: "bg-red-50 text-red-700",
-      dropdownBg: "bg-gray-50",
-      dropdownText: "text-gray-700",
-      checkboxText: "text-gray-700",
     },
   };
 
@@ -589,32 +568,9 @@ function AdmissionForm() {
         className={`${currentTheme.headerBg} py-6 px-4 md:px-8 shadow-xl ${currentTheme.headerBorder}`}
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1
-            className={`
-    text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight
-    ${
-      theme === "dark"
-        ? "text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)]"
-        : "text-indigo-900 drop-shadow-[0_2px_8px_rgba(99,102,241,0.12)]"
-    }
-    mb-6 transition-all duration-500
-  `}
-          >
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] mb-6 transition-all duration-500">
             {editingId ? "Edit Student" : "Student Admission Form"}
           </h1>
-
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-full ${
-              theme === "dark" ? "bg-indigo-700" : "bg-indigo-200"
-            } shadow-lg hover:scale-110 transition-transform`}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-5 w-5 text-yellow-300" />
-            ) : (
-              <Moon className="h-5 w-5 text-indigo-700" />
-            )}
-          </button>
         </div>
       </div>
 
@@ -653,13 +609,7 @@ function AdmissionForm() {
                     name={name}
                     value={formData[name] || ""}
                     onChange={handleChange}
-                    className={`w-full p-3 ${
-                      currentTheme.cardBorder
-                    } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                      theme === "dark"
-                        ? "bg-white/5 text-white"
-                        : "bg-white text-gray-800"
-                    }`}
+                    className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white placeholder-gray-400`}
                     placeholder={`Enter ${label}`}
                     rows={4}
                   />
@@ -669,13 +619,7 @@ function AdmissionForm() {
                     name={name}
                     value={formData[name] || ""}
                     onChange={handleChange}
-                    className={`w-full p-3 ${
-                      currentTheme.cardBorder
-                    } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                      theme === "dark"
-                        ? "bg-white/5 text-white"
-                        : "bg-white text-gray-800"
-                    }`}
+                    className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white placeholder-gray-400`}
                     placeholder={`Enter ${label}`}
                     required={required}
                   />
@@ -699,27 +643,13 @@ function AdmissionForm() {
                   className="w-full p-3 opacity-0 absolute inset-0 cursor-pointer"
                 />
                 <div
-                  className={`p-3 ${
-                    currentTheme.cardBorder
-                  } rounded-xl group-hover:bg-indigo-500/10 transition-all ${
-                    theme === "dark" ? "bg-white/5" : "bg-white"
-                  }`}
+                  className={`p-3 ${currentTheme.cardBorder} rounded-xl group-hover:bg-indigo-500/10 transition-all bg-white/5`}
                 >
                   <div className="flex items-center justify-between">
-                    <span
-                      className={`${
-                        theme === "dark" ? "text-indigo-200" : "text-indigo-700"
-                      }`}
-                    >
+                    <span className="text-indigo-200">
                       {formData.photo ? formData.photo.name : "Choose photo"}
                     </span>
-                    <span
-                      className={`px-2 py-1 ${
-                        theme === "dark"
-                          ? "bg-indigo-500/30 text-indigo-200"
-                          : "bg-indigo-500/20 text-indigo-700"
-                      } rounded-md text-xs`}
-                    >
+                    <span className="px-2 py-1 bg-indigo-500/30 text-indigo-200 rounded-md text-xs">
                       Browse
                     </span>
                   </div>
@@ -776,18 +706,12 @@ function AdmissionForm() {
                 Subjects <span className="text-red-500">*</span>
               </label>
               <div
-                className={`p-4 ${currentTheme.cardBorder} rounded-xl ${
-                  theme === "dark" ? "bg-gray-800" : "bg-gray-50"
-                } max-h-[12rem] overflow-y-auto transition-all`}
+                className={`p-4 ${currentTheme.cardBorder} rounded-xl bg-gray-800 max-h-[12rem] overflow-y-auto transition-all`}
               >
                 {loading ? (
                   <div className="flex items-center justify-center h-20">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    <span
-                      className={`ml-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-gray-600"
-                      }`}
-                    >
+                    <span className="ml-2 text-gray-300">
                       Loading subjects...
                     </span>
                   </div>
@@ -820,11 +744,7 @@ function AdmissionForm() {
                           />
                           <label
                             htmlFor={`subject-${sub._id}`}
-                            className={`ml-2 ${
-                              theme === "dark"
-                                ? "text-gray-200"
-                                : "text-gray-700"
-                            }`}
+                            className="ml-2 text-gray-200"
                           >
                             {sub.name}
                           </label>
@@ -837,11 +757,7 @@ function AdmissionForm() {
                     </div>
                   )
                 ) : (
-                  <div
-                    className={`${
-                      theme === "dark" ? "text-gray-400" : "text-gray-500"
-                    } py-2`}
-                  >
+                  <div className="text-gray-400 py-2">
                     Please select stream, department, and semester to view
                     subjects.
                   </div>
@@ -860,13 +776,7 @@ function AdmissionForm() {
                 name="gender"
                 value={formData.gender || ""}
                 onChange={handleChange}
-                className={`w-full p-3 ${
-                  currentTheme.cardBorder
-                } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                  theme === "dark"
-                    ? "bg-white/5 text-black"
-                    : "bg-white text-gray-800"
-                }`}
+                className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white`}
                 required
               >
                 <option value="">Select Gender</option>
@@ -887,13 +797,7 @@ function AdmissionForm() {
                 value={formData.casteCategory || ""}
                 onChange={handleCasteChange}
                 disabled={loadingCastes}
-                className={`w-full p-3 ${
-                  currentTheme.cardBorder
-                } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                  theme === "dark"
-                    ? "bg-white/5 text-black"
-                    : "bg-white text-gray-800"
-                }`}
+                className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white`}
                 required
               >
                 <option value="">Select Caste</option>
@@ -915,13 +819,7 @@ function AdmissionForm() {
                 name="subCaste"
                 value={formData.subCaste || ""}
                 onChange={handleChange}
-                className={`w-full p-3 ${
-                  currentTheme.cardBorder
-                } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                  theme === "dark"
-                    ? "bg-white/5 text-black"
-                    : "bg-white text-gray-800"
-                }`}
+                className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white`}
               >
                 <option value="">Select Subcaste</option>
                 {subcastes.map((sub, i) => (
@@ -942,13 +840,7 @@ function AdmissionForm() {
                 name="admissionType"
                 value={formData.admissionType || ""}
                 onChange={handleChange}
-                className={`w-full p-3 ${
-                  currentTheme.cardBorder
-                } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                  theme === "dark"
-                    ? "bg-white/5 text-black"
-                    : "bg-white text-gray-800"
-                }`}
+                className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white`}
                 required
               >
                 <option value="">Select Admission Type</option>
@@ -968,13 +860,7 @@ function AdmissionForm() {
                 name="admissionThrough"
                 value={formData.admissionThrough || ""}
                 onChange={handleChange}
-                className={`w-full p-3 ${
-                  currentTheme.cardBorder
-                } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-                  theme === "dark"
-                    ? "bg-white/5 text-black"
-                    : "bg-white text-gray-800"
-                }`}
+                className={`w-full p-3 ${currentTheme.cardBorder} rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white`}
               >
                 <option value="">Select</option>
                 <option value="Entrance Exam">Entrance Exam</option>
@@ -1070,13 +956,7 @@ function AdmissionForm() {
             name={name}
             value={formData[name] || ""}
             onChange={handleChange}
-            className={`w-full p-3 ${
-              themeClasses.cardBorder
-            } rounded-xl appearance-none focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
-              theme === "dark"
-                ? "bg-white/5 text-black"
-                : "bg-white text-gray-800"
-            }`}
+            className={`w-full p-3 ${themeClasses.cardBorder} rounded-xl appearance-none focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all bg-white/5 text-white`}
             required={required}
           >
             <option value="">Select {label}</option>

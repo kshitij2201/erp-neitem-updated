@@ -20,20 +20,25 @@ function LeavingCertificate({
   numberToWords,
   months,
   standard,
-  theme
+  theme,
 }) {
-  const dateOfBirth = student.dateOfBirth ? new Date(student.dateOfBirth) : null;
+  const dateOfBirth = student.dateOfBirth
+    ? new Date(student.dateOfBirth)
+    : null;
   let dateOfBirthInWords = "N/A";
   if (dateOfBirth) {
     const day = dateOfBirth.getDate();
     const month = months[dateOfBirth.getMonth()];
     const year = dateOfBirth.getFullYear();
-    dateOfBirthInWords = `${numberToWords(day)} ${month} ${numberToWords(year)}`;
+    dateOfBirthInWords = `${numberToWords(day)} ${month} ${numberToWords(
+      year
+    )}`;
   }
 
-  const fullRemarks = remarks && standard
-    ? `${remarks} in ${standard} examination conducted by RTMNU, Nagpur`
-    : remarks || "No dues cleared";
+  const fullRemarks =
+    remarks && standard
+      ? `${remarks} in ${standard} examination conducted by RTMNU, Nagpur`
+      : remarks || "No dues cleared";
 
   const fields = [
     {
@@ -46,19 +51,37 @@ function LeavingCertificate({
       subLabel: "Name of the Pupil in Full:",
       value: `${student.firstName} ${student.lastName || ""}`,
     },
-    { label: "3.", subLabel: "Mother's Name:", value: student.motherName || "N/A" },
+    {
+      label: "3.",
+      subLabel: "Mother's Name:",
+      value: student.motherName || "N/A",
+    },
     {
       label: "4.",
       subLabel: "Race & Caste:",
-      value: `Category: ${student.casteCategory || "-----"} Caste: ${student.subCaste || "N/A"}`,
+      value: `Category: ${student.casteCategory || "-----"} Caste: ${
+        student.subCaste || "N/A"
+      }`,
       isSplit: true,
     },
-    { label: "5.", subLabel: "Nationality:", value: student.nationality || "N/A" },
-    { label: "6.", subLabel: "Place of Birth:", value: student.placeOfBirth || "N/A" },
+    {
+      label: "5.",
+      subLabel: "Nationality:",
+      value: student.nationality || "N/A",
+    },
+    {
+      label: "6.",
+      subLabel: "Place of Birth:",
+      value: student.placeOfBirth || "N/A",
+    },
     {
       label: "7.",
       subLabel: "Date of Birth:",
-      value: `a) In Figures: ${student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString("en-GB") : "N/A"}`,
+      value: `a) In Figures: ${
+        student.dateOfBirth
+          ? new Date(student.dateOfBirth).toLocaleDateString("en-GB")
+          : "N/A"
+      }`,
     },
     {
       label: "",
@@ -73,7 +96,9 @@ function LeavingCertificate({
     {
       label: "9.",
       subLabel: "Date of Admission:",
-      value: student.createdAt ? new Date(student.createdAt).toLocaleDateString("en-GB") : "N/A",
+      value: student.createdAt
+        ? new Date(student.createdAt).toLocaleDateString("en-GB")
+        : "N/A",
     },
     {
       label: "10.",
@@ -106,7 +131,9 @@ function LeavingCertificate({
       transition={{ duration: 0.5 }}
       className={`${theme.cardBg} ${theme.cardBorder} max-w-4xl mx-auto p-6 rounded-2xl shadow-2xl`}
     >
-      <div className={`${theme.headerBg} ${theme.headerBorder} p-6 rounded-t-lg`}>
+      <div
+        className={`${theme.headerBg} ${theme.headerBorder} p-6 rounded-t-lg`}
+      >
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <motion.img
             src={logo}
@@ -116,12 +143,30 @@ function LeavingCertificate({
             whileHover={{ scale: 1.1 }}
           />
           <div className="text-center">
-            <p className={`${theme.textSecondary} text-sm uppercase font-semibold`}>Maitrey Education Society</p>
-            <h1 className={`${theme.textAccent} text-3xl font-extrabold uppercase`}>NAGARJUNA</h1>
-            <h2 className={`${theme.textPrimary} text-lg font-semibold`}>Institute of Engineering, Technology & Management</h2>
-            <p className={`${theme.textSecondary} text-sm`}>AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur</p>
-            <p className={`${theme.textSecondary} text-sm mt-2`}>Village Satnavri, Amravati Road, Nagpur 440023</p>
-            <p className={`${theme.textSecondary} text-sm`}>Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</p>
+            <p
+              className={`${theme.textSecondary} text-sm uppercase font-semibold`}
+            >
+              Maitrey Education Society
+            </p>
+            <h1
+              className={`${theme.textAccent} text-3xl font-extrabold uppercase`}
+            >
+              NAGARJUNA
+            </h1>
+            <h2 className={`${theme.textPrimary} text-lg font-semibold`}>
+              Institute of Engineering, Technology & Management
+            </h2>
+            <p className={`${theme.textSecondary} text-sm`}>
+              AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University,
+              Nagpur
+            </p>
+            <p className={`${theme.textSecondary} text-sm mt-2`}>
+              Village Satnavri, Amravati Road, Nagpur 440023
+            </p>
+            <p className={`${theme.textSecondary} text-sm`}>
+              Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone:
+              07118 322211, 12
+            </p>
           </div>
           <motion.img
             src={logo1}
@@ -139,12 +184,15 @@ function LeavingCertificate({
           animate={{ scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <h3 className={`${theme.textAccent} text-2xl font-bold uppercase`}>{type === "TC" ? "TRANSFER CERTIFICATE" : "LEAVING CERTIFICATE"}</h3>
+          <h3 className={`${theme.textAccent} text-2xl font-bold uppercase`}>
+            {type === "TC" ? "TRANSFER CERTIFICATE" : "LEAVING CERTIFICATE"}
+          </h3>
         </motion.div>
         <p className={`${theme.textSecondary} text-xs italic text-center mb-4`}>
           (See rule 17 & 32 in chapter II section 1)
           <br />
-          (No change of any entry in this certificate shall be made except by the authority issuing it...)
+          (No change of any entry in this certificate shall be made except by
+          the authority issuing it...)
         </p>
         <div className="text-right text-sm font-medium mb-4">
           <p className={theme.textPrimary}>Register No. 1: 06</p>
@@ -159,16 +207,29 @@ function LeavingCertificate({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <span className={`${theme.textAccent} w-6 font-bold`}>{label}</span>
-              <span className={`${theme.textAccent} w-64 font-bold`} style={{ whiteSpace: "pre-wrap" }}>
+              <span className={`${theme.textAccent} w-6 font-bold`}>
+                {label}
+              </span>
+              <span
+                className={`${theme.textAccent} w-64 font-bold`}
+                style={{ whiteSpace: "pre-wrap" }}
+              >
                 {subLabel}
               </span>
               {isSplit ? (
                 <>
-                  <span className={`${theme.textAccent} w-28 font-bold`}>Category:</span>
-                  <span className={`${theme.textPrimary} w-24`}>{student.casteCategory || "-----"}</span>
-                  <span className={`${theme.textAccent} w-20 font-bold`}>Caste:</span>
-                  <span className={`${theme.textPrimary} flex-1`}>{student.subCaste || "N/A"}</span>
+                  <span className={`${theme.textAccent} w-28 font-bold`}>
+                    Category:
+                  </span>
+                  <span className={`${theme.textPrimary} w-24`}>
+                    {student.casteCategory || "-----"}
+                  </span>
+                  <span className={`${theme.textAccent} w-20 font-bold`}>
+                    Caste:
+                  </span>
+                  <span className={`${theme.textPrimary} flex-1`}>
+                    {student.subCaste || "N/A"}
+                  </span>
                 </>
               ) : (
                 <span className={`${theme.textPrimary} flex-1`}>{value}</span>
@@ -178,19 +239,38 @@ function LeavingCertificate({
         </div>
         <div className="mt-8 space-y-4 text-sm">
           <div className="flex justify-between items-center">
-            <span className={`${theme.textPrimary} font-medium`}>Seal No.: _______</span>
-            <span className={`${theme.textPrimary} font-medium`}>Enrollment No.: {student.enrollmentNumber || "N/A"}</span>
+            <span className={`${theme.textPrimary} font-medium`}>
+              Seal No.: _______
+            </span>
+            <span className={`${theme.textPrimary} font-medium`}>
+              Enrollment No.: {student.enrollmentNumber || "N/A"}
+            </span>
           </div>
-          <p className={`${theme.textSecondary} text-xs italic text-center mt-4`}>
-            Certified that the above information is in accordance with the Institute Register.
+          <p
+            className={`${theme.textSecondary} text-xs italic text-center mt-4`}
+          >
+            Certified that the above information is in accordance with the
+            Institute Register.
           </p>
           <div className="flex justify-between mt-8">
-            <p className={`${theme.textPrimary} text-sm font-medium`}>Date: {new Date().toLocaleDateString("en-GB")}</p>
-            <p className={`${theme.textPrimary} text-sm font-medium text-center`}>Clerk</p>
-            <p className={`${theme.textPrimary} text-sm font-medium text-center`}>Principal</p>
+            <p className={`${theme.textPrimary} text-sm font-medium`}>
+              Date: {new Date().toLocaleDateString("en-GB")}
+            </p>
+            <p
+              className={`${theme.textPrimary} text-sm font-medium text-center`}
+            >
+              Clerk
+            </p>
+            <p
+              className={`${theme.textPrimary} text-sm font-medium text-center`}
+            >
+              Principal
+            </p>
           </div>
           {isCleared ? null : (
-            <p className={`${theme.textSecondary} text-sm italic text-center`}>He is not approved. - G</p>
+            <p className={`${theme.textSecondary} text-sm italic text-center`}>
+              He is not approved. - G
+            </p>
           )}
         </div>
       </div>
@@ -216,31 +296,13 @@ function StudentList() {
       glow: "bg-indigo-400/30",
       doughnutGlow: "bg-purple-400/20",
     },
-    light: {
-      bg: "bg-gradient-to-br from-indigo-50 via-purple-50 to-gray-100",
-      headerBg: "bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400",
-      headerBorder: "border-b-4 border-indigo-200",
-      cardBg: "bg-white/80 backdrop-blur-lg",
-      cardBorder: "border border-indigo-200",
-      textPrimary: "text-gray-800",
-      textSecondary: "text-indigo-700",
-      textAccent: "text-indigo-900",
-      buttonBg: "bg-gradient-to-r from-indigo-500 to-purple-500",
-      buttonHover: "hover:bg-indigo-600",
-      chartBg: "bg-white/80 backdrop-blur-xl",
-      glow: "bg-indigo-300/30",
-      doughnutGlow: "bg-purple-300/20",
-    },
   };
 
-  // Initialize theme from localStorage or default to 'dark'
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  // Initialize theme to dark only
+  const [theme, setTheme] = useState("dark");
   const currentTheme = themeClasses[theme];
 
-  // Save theme to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  // No need to save theme to localStorage since we only use dark theme
 
   const numberToWords = (num) => {
     const ones = [
@@ -265,7 +327,18 @@ function StudentList() {
       "EIGHTEENTH",
       "NINETEENTH",
     ];
-    const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+    const tens = [
+      "",
+      "",
+      "TWENTY",
+      "THIRTY",
+      "FORTY",
+      "FIFTY",
+      "SIXTY",
+      "SEVENTY",
+      "EIGHTY",
+      "NINETY",
+    ];
     const thousands = ["", "THOUSAND", "MILLION", "BILLION"];
     if (num === 0) return "ZERO";
 
@@ -357,10 +430,10 @@ function StudentList() {
 
   // Helper function to get auth headers
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('facultyToken'); // Use 'facultyToken' instead of 'token'
+    const token = localStorage.getItem("facultyToken"); // Use 'facultyToken' instead of 'token'
     if (!token) {
-      localStorage.removeItem('facultyToken');
-      navigate('/');
+      localStorage.removeItem("facultyToken");
+      navigate("/");
       return null;
     }
     return { Authorization: `Bearer ${token}` };
@@ -378,40 +451,39 @@ function StudentList() {
     }
   };
 
-  const fetchStudents = useCallback(
-    async () => {
-      setLoading(true);
-      try {
-        const headers = getAuthHeaders();
-        if (!headers) return;
+  const fetchStudents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const headers = getAuthHeaders();
+      if (!headers) return;
 
-        const query = admissionTypeFilter ? `?admissionType=${admissionTypeFilter}` : "";
-        const res = await fetchWithRetry(`/api/superadmin/students${query}`, {
-          headers,
-        });
-        
-        if (res.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
-          return;
-        }
-        
-        setStudents(res.data);
-        setFetchError(null);
-      } catch (err) {
-        // Handle authentication errors
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
-          return;
-        }
-        setFetchError(err.response?.data?.error || "Failed to fetch students.");
-      } finally {
-        setLoading(false);
+      const query = admissionTypeFilter
+        ? `?admissionType=${admissionTypeFilter}`
+        : "";
+      const res = await fetchWithRetry(`/api/superadmin/students${query}`, {
+        headers,
+      });
+
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/");
+        return;
       }
-    },
-    [admissionTypeFilter]
-  );
+
+      setStudents(res.data);
+      setFetchError(null);
+    } catch (err) {
+      // Handle authentication errors
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/");
+        return;
+      }
+      setFetchError(err.response?.data?.error || "Failed to fetch students.");
+    } finally {
+      setLoading(false);
+    }
+  }, [admissionTypeFilter]);
 
   useEffect(() => {
     fetchStudents();
@@ -423,18 +495,18 @@ function StudentList() {
         const res = await fetchWithRetry("/api/superadmin/semesters", {
           headers,
         });
-        
+
         if (res.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
-        
+
         setSemesters(res.data || []);
       } catch (err) {
         if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
         console.error("Failed to fetch semesters:", err);
@@ -445,7 +517,8 @@ function StudentList() {
 
   const handleSearchChange = (e) => setSearchTerm(e.target.value);
 
-  const handleAdmissionTypeFilterChange = (e) => setAdmissionTypeFilter(e.target.value);
+  const handleAdmissionTypeFilterChange = (e) =>
+    setAdmissionTypeFilter(e.target.value);
 
   const handleEdit = (student) => {
     navigate("/dashboard/admission", {
@@ -453,7 +526,9 @@ function StudentList() {
         ...student,
         nationality: student.nationality || "",
         placeOfBirth: student.placeOfBirth || "",
-        dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split("T")[0] : "",
+        dateOfBirth: student.dateOfBirth
+          ? new Date(student.dateOfBirth).toISOString().split("T")[0]
+          : "",
         schoolAttended: student.schoolAttended || "",
         nameOfInstitute: student.nameOfInstitute || "",
         address: student.address || "",
@@ -495,11 +570,14 @@ function StudentList() {
         alert("Student deleted successfully!");
       } catch (err) {
         if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
-        alert("Error deleting student: " + (err.response?.data?.error || err.message));
+        alert(
+          "Error deleting student: " +
+            (err.response?.data?.error || err.message)
+        );
       }
     }
   };
@@ -509,26 +587,31 @@ function StudentList() {
       const headers = getAuthHeaders();
       if (!headers) return;
 
-      const response = await fetchWithRetry(`/api/superadmin/students/promote/${id}`, {
-        method: "PUT",
-        headers,
-      });
-      
+      const response = await fetchWithRetry(
+        `/api/superadmin/students/promote/${id}`,
+        {
+          method: "PUT",
+          headers,
+        }
+      );
+
       if (response.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/');
+        localStorage.removeItem("token");
+        navigate("/");
         return;
       }
-      
+
       alert(response.data.message || "Student promoted successfully");
       fetchStudents();
     } catch (err) {
       if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/');
+        localStorage.removeItem("token");
+        navigate("/");
         return;
       }
-      alert("Error promoting student: " + (err.response?.data?.error || err.message));
+      alert(
+        "Error promoting student: " + (err.response?.data?.error || err.message)
+      );
     }
   };
 
@@ -537,13 +620,16 @@ function StudentList() {
       const headers = getAuthHeaders();
       if (!headers) return;
 
-      const res = await fetchWithRetry(`/api/superadmin/students/${studentId}`, {
-        headers,
-      });
-      
+      const res = await fetchWithRetry(
+        `/api/superadmin/students/${studentId}`,
+        {
+          headers,
+        }
+      );
+
       if (res.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/');
+        localStorage.removeItem("token");
+        navigate("/");
         return;
       }
       setCertificateModal({
@@ -567,7 +653,10 @@ function StudentList() {
         remarkYear: "",
       });
     } catch (err) {
-      alert("Error fetching student data: " + (err.response?.data?.error || err.message));
+      alert(
+        "Error fetching student data: " +
+          (err.response?.data?.error || err.message)
+      );
     }
   };
 
@@ -620,35 +709,67 @@ function StudentList() {
   };
 
   const handleGenerateCertificate = async () => {
-    const { studentId, type, reason, leavingDate, isCleared, completionStatus, progress, conduct, remarks, remarkSemester, remarkSession, remarkYear, standard } =
-      certificateModal;
+    const {
+      studentId,
+      type,
+      reason,
+      leavingDate,
+      isCleared,
+      completionStatus,
+      progress,
+      conduct,
+      remarks,
+      remarkSemester,
+      remarkSession,
+      remarkYear,
+      standard,
+    } = certificateModal;
 
     if (!reason.trim()) {
       setCertificateModal((prev) => ({ ...prev, error: "Reason is required" }));
       return;
     }
     if (!leavingDate || isNaN(new Date(leavingDate).getTime())) {
-      setCertificateModal((prev) => ({ ...prev, error: "Valid leaving date is required" }));
+      setCertificateModal((prev) => ({
+        ...prev,
+        error: "Valid leaving date is required",
+      }));
       return;
     }
     if (type === "LC" && !completionStatus) {
-      setCertificateModal((prev) => ({ ...prev, error: "Completion status is required for Leaving Certificate" }));
+      setCertificateModal((prev) => ({
+        ...prev,
+        error: "Completion status is required for Leaving Certificate",
+      }));
       return;
     }
     if (!progress) {
-      setCertificateModal((prev) => ({ ...prev, error: "Progress is required" }));
+      setCertificateModal((prev) => ({
+        ...prev,
+        error: "Progress is required",
+      }));
       return;
     }
     if (!conduct) {
-      setCertificateModal((prev) => ({ ...prev, error: "Conduct is required" }));
+      setCertificateModal((prev) => ({
+        ...prev,
+        error: "Conduct is required",
+      }));
       return;
     }
     if (!standard) {
-      setCertificateModal((prev) => ({ ...prev, error: "Standard is required" }));
+      setCertificateModal((prev) => ({
+        ...prev,
+        error: "Standard is required",
+      }));
       return;
     }
 
-    setCertificateModal((prev) => ({ ...prev, isGenerating: true, error: null }));
+    setCertificateModal((prev) => ({
+      ...prev,
+      isGenerating: true,
+      error: null,
+    }));
 
     try {
       const student = certificateModal.studentData;
@@ -657,16 +778,33 @@ function StudentList() {
       const headers = getAuthHeaders();
       if (!headers) return;
 
-      await fetchWithRetry(`/api/superadmin/students/generate-certificate/${studentId}`, {
-        method: "POST",
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
-        data: { type, reason, leavingDate, isCleared, completionStatus, progress, conduct, remarks, standard },
-      });
+      await fetchWithRetry(
+        `/api/superadmin/students/generate-certificate/${studentId}`,
+        {
+          method: "POST",
+          headers: {
+            ...headers,
+            "Content-Type": "application/json",
+          },
+          data: {
+            type,
+            reason,
+            leavingDate,
+            isCleared,
+            completionStatus,
+            progress,
+            conduct,
+            remarks,
+            standard,
+          },
+        }
+      );
 
-      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const marginLeft = 13;
@@ -691,7 +829,9 @@ function StudentList() {
       }
 
       doc.setFontSize(8).setFont("Helvetica", "normal");
-      doc.text("maitrey education society", pageWidth / 2, y + 3, { align: "center" });
+      doc.text("maitrey education society", pageWidth / 2, y + 3, {
+        align: "center",
+      });
       doc.setFontSize(25).setFont("Helvetica", "bold");
       doc.text("NAGARJUNA", pageWidth / 2, y + 12, { align: "center" });
       y += 23;
@@ -702,8 +842,12 @@ function StudentList() {
       y += 6;
 
       doc.setFontSize(12).setFont("Helvetica", "normal");
-      const affiliation = "(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)";
-      const affiliationLines = doc.splitTextToSize(affiliation, contentWidth - 20);
+      const affiliation =
+        "(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)";
+      const affiliationLines = doc.splitTextToSize(
+        affiliation,
+        contentWidth - 20
+      );
       doc.text(affiliationLines, pageWidth / 2, y - 2, { align: "center" });
       y += affiliationLines.length * 4;
 
@@ -712,7 +856,8 @@ function StudentList() {
       doc.text(address, pageWidth / 2, y - 2, { align: "center" });
       y += 4;
 
-      const contact = "Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12";
+      const contact =
+        "Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12";
       doc.text(contact, pageWidth / 2, y - 2, { align: "center" });
       y += 8;
 
@@ -721,9 +866,14 @@ function StudentList() {
       y += 8;
 
       doc.setFontSize(18).setFont("Helvetica", "bold");
-      doc.text(type === "TC" ? "TRANSFER CERTIFICATE" : "LEAVING CERTIFICATE", pageWidth / 2, y, {
-        align: "center",
-      });
+      doc.text(
+        type === "TC" ? "TRANSFER CERTIFICATE" : "LEAVING CERTIFICATE",
+        pageWidth / 2,
+        y,
+        {
+          align: "center",
+        }
+      );
       y += 3;
 
       doc.line(marginLeft + 5, y, pageWidth - marginRight - 5, y);
@@ -750,7 +900,14 @@ function StudentList() {
       // Create detailed remark based on selected values
       let fullRemarks = "";
       if (remarks && remarkSemester && remarkSession && remarkYear) {
-        const semesterWord = remarkSemester === "1" ? "1st" : remarkSemester === "2" ? "2nd" : remarkSemester === "3" ? "3rd" : `${remarkSemester}th`;
+        const semesterWord =
+          remarkSemester === "1"
+            ? "1st"
+            : remarkSemester === "2"
+            ? "2nd"
+            : remarkSemester === "3"
+            ? "3rd"
+            : `${remarkSemester}th`;
         const departmentName = student.department?.name || "Engineering";
         fullRemarks = `${remarks} in ${standard} ${semesterWord} semester ${departmentName} examination conducted by RTMNU, Nagpur held in ${remarkSession}-${remarkYear}`;
       } else if (remarks && standard) {
@@ -772,24 +929,48 @@ function StudentList() {
           subLabel: "Name of the Pupil in Full:",
           value: `${student.firstName} ${student.lastName || ""}`,
         },
-        { label: "3.", subLabel: "Mother's Name:", value: student.motherName || "N/A" },
+        {
+          label: "3.",
+          subLabel: "Mother's Name:",
+          value: student.motherName || "N/A",
+        },
         {
           label: "4.",
           subLabel: "Race & Caste:",
-          value: `Category: ${student.casteCategory || "-----"} Caste: ${student.subCaste || "N/A"}`,
+          value: `Category: ${student.casteCategory || "-----"} Caste: ${
+            student.subCaste || "N/A"
+          }`,
           isSplit: true,
         },
-        { label: "5.", subLabel: "Nationality:", value: student.nationality || "N/A" },
-        { label: "6.", subLabel: "Place of Birth:", value: student.placeOfBirth || "N/A" },
+        {
+          label: "5.",
+          subLabel: "Nationality:",
+          value: student.nationality || "N/A",
+        },
+        {
+          label: "6.",
+          subLabel: "Place of Birth:",
+          value: student.placeOfBirth || "N/A",
+        },
         {
           label: "7.",
           subLabel: "Date of Birth:",
-          value: `a) In Figures: ${student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString("en-GB") : "N/A"}`,
+          value: `a) In Figures: ${
+            student.dateOfBirth
+              ? new Date(student.dateOfBirth).toLocaleDateString("en-GB")
+              : "N/A"
+          }`,
         },
         {
           label: "",
           subLabel: "",
-          value: `b) In Words: ${student.dateOfBirth ? `${numberToWords(new Date(student.dateOfBirth).getDate())} ${months[new Date(student.dateOfBirth).getMonth()]} ${numberToWords(new Date(student.dateOfBirth).getFullYear())}` : "N/A"}`,
+          value: `b) In Words: ${
+            student.dateOfBirth
+              ? `${numberToWords(new Date(student.dateOfBirth).getDate())} ${
+                  months[new Date(student.dateOfBirth).getMonth()]
+                } ${numberToWords(new Date(student.dateOfBirth).getFullYear())}`
+              : "N/A"
+          }`,
         },
         {
           label: "8.",
@@ -799,7 +980,9 @@ function StudentList() {
         {
           label: "9.",
           subLabel: "Date of Admission:",
-          value: student.createdAt ? new Date(student.createdAt).toLocaleDateString("en-GB") : "N/A",
+          value: student.createdAt
+            ? new Date(student.createdAt).toLocaleDateString("en-GB")
+            : "N/A",
         },
         { label: "10.", subLabel: "Progress:", value: progress },
         { label: "11.", subLabel: "Conduct:", value: conduct },
@@ -825,7 +1008,10 @@ function StudentList() {
         doc.setFont("Helvetica", "bold");
         doc.text(label, marginLeft + 5, y);
         if (subLabel) {
-          const subLabelLines = doc.splitTextToSize(subLabel, contentWidth - 90);
+          const subLabelLines = doc.splitTextToSize(
+            subLabel,
+            contentWidth - 90
+          );
           doc.setFont("Helvetica", "bold");
           doc.text(subLabelLines, marginLeft + 15, y);
           y += (subLabelLines.length - 1) * lineHeightPerLine;
@@ -853,31 +1039,43 @@ function StudentList() {
       y += 1;
       doc.setFontSize(12).setFont("Helvetica", "normal");
       doc.text("Seal No.: _______", marginLeft + 5, y);
-      doc.text(`Enrollment No.: ${student.enrollmentNumber || "N/A"}`, marginLeft + 110, y);
+      doc.text(
+        `Enrollment No.: ${student.enrollmentNumber || "N/A"}`,
+        marginLeft + 110,
+        y
+      );
       y += 8;
 
       y += 1;
       doc.setFontSize(10).setFont("Helvetica", "italic");
-      const certText = "Certified that the above information is in accordance with the Institute Register.";
+      const certText =
+        "Certified that the above information is in accordance with the Institute Register.";
       const certLines = doc.splitTextToSize(certText, contentWidth - 10);
       doc.text(certLines, pageWidth / 2, y, { align: "center" });
       y += certLines.length * 4 + 20;
 
-
-  // Signature/date section only, no extra line
-  y = pageHeight - 22;
-  doc.setFontSize(12).setFont("Helvetica", "normal");
-  doc.text(`Date: ${new Date().toLocaleDateString("en-GB")}`, marginLeft + 5, y);
-  doc.text("Clerk", pageWidth / 2, y, { align: "center" });
-  doc.text("Principal", pageWidth - marginRight - 5, y, { align: "right" });
-  y += 3;
+      // Signature/date section only, no extra line
+      y = pageHeight - 22;
+      doc.setFontSize(12).setFont("Helvetica", "normal");
+      doc.text(
+        `Date: ${new Date().toLocaleDateString("en-GB")}`,
+        marginLeft + 5,
+        y
+      );
+      doc.text("Clerk", pageWidth / 2, y, { align: "center" });
+      doc.text("Principal", pageWidth - marginRight - 5, y, { align: "right" });
+      y += 3;
 
       if (!isCleared) {
         doc.setFontSize(12).setFont("Helvetica", "italic");
-        doc.text("He is not approved. - G", pageWidth / 2, y, { align: "center" });
+        doc.text("He is not approved. - G", pageWidth / 2, y, {
+          align: "center",
+        });
       }
 
-      const fileName = `${type}_${student.firstName}_${student.lastName || ""}.pdf`
+      const fileName = `${type}_${student.firstName}_${
+        student.lastName || ""
+      }.pdf`
         .replace(/\s+/g, "_")
         .toLowerCase();
       doc.save(fileName);
@@ -888,7 +1086,9 @@ function StudentList() {
       console.error(`${type} generation error:`, err);
       setCertificateModal((prev) => ({
         ...prev,
-        error: `Failed to generate ${type}. ${err.response?.data?.error || "Please try again."}`,
+        error: `Failed to generate ${type}. ${
+          err.response?.data?.error || "Please try again."
+        }`,
         isGenerating: false,
       }));
     }
@@ -899,16 +1099,19 @@ function StudentList() {
       const headers = getAuthHeaders();
       if (!headers) return;
 
-      const res = await fetchWithRetry(`/api/superadmin/students/${studentId}`, {
-        headers,
-      });
-      
+      const res = await fetchWithRetry(
+        `/api/superadmin/students/${studentId}`,
+        {
+          headers,
+        }
+      );
+
       if (res.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/');
+        localStorage.removeItem("token");
+        navigate("/");
         return;
       }
-      
+
       const student = res.data;
       const semesterId = student.semester?._id || "";
       let semesterSubjects = [];
@@ -921,18 +1124,18 @@ function StudentList() {
             `/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
             { headers }
           );
-          
+
           if (subjectsRes.status === 401) {
-            localStorage.removeItem('token');
-            navigate('/');
+            localStorage.removeItem("token");
+            navigate("/");
             return;
           }
-          
+
           semesterSubjects = subjectsRes.data;
         } catch (err) {
           if (err.response?.status === 401) {
-            localStorage.removeItem('token');
-            navigate('/');
+            localStorage.removeItem("token");
+            navigate("/");
             return;
           }
           console.error("Failed to fetch subjects:", err);
@@ -948,9 +1151,16 @@ function StudentList() {
         semesterId,
         semesterSubjects,
       });
-      setModalError(semesterSubjects.length === 0 && semesterId ? "No subjects available for this semester." : null);
+      setModalError(
+        semesterSubjects.length === 0 && semesterId
+          ? "No subjects available for this semester."
+          : null
+      );
     } catch (err) {
-      alert("Error fetching student data: " + (err.response?.data?.error || err.message));
+      alert(
+        "Error fetching student data: " +
+          (err.response?.data?.error || err.message)
+      );
     }
   };
 
@@ -983,24 +1193,29 @@ function StudentList() {
           `/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           { headers }
         );
-        
+
         if (res.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
-        
+
         if (res.data.length === 0) {
-          setModalError("No subjects available for this semester and department.");
+          setModalError(
+            "No subjects available for this semester and department."
+          );
         }
         setBacklogModal((prev) => ({ ...prev, semesterSubjects: res.data }));
       } catch (err) {
         if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
+          localStorage.removeItem("token");
+          navigate("/");
           return;
         }
-        setModalError("Failed to fetch subjects: " + (err.response?.data?.error || err.message));
+        setModalError(
+          "Failed to fetch subjects: " +
+            (err.response?.data?.error || err.message)
+        );
       } finally {
         setLoadingSubjects(false);
       }
@@ -1011,13 +1226,15 @@ function StudentList() {
 
   const handleSubjectStatusUpdate = async (subjectId, status) => {
     const { studentId, student, semesterId } = backlogModal;
-    
+
     if (!semesterId) {
       setModalError("Please select a semester.");
       return;
     }
 
-    const isValidSubject = backlogModal.semesterSubjects.some((sub) => sub._id === subjectId);
+    const isValidSubject = backlogModal.semesterSubjects.some(
+      (sub) => sub._id === subjectId
+    );
     if (!isValidSubject) {
       setModalError("Invalid subject selected for this semester.");
       return;
@@ -1025,75 +1242,78 @@ function StudentList() {
 
     try {
       let updatedStudent = null;
-      
+
       if (status === "Failed") {
         // Add backlog for failed subjects
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const response = await fetchWithRetry(`/api/superadmin/students/${studentId}/add-backlog`, {
-          method: "POST",
-          headers: {
-            ...headers,
-            "Content-Type": "application/json",
-          },
-          data: { subjectIds: [subjectId], semesterId },
-        });
-        
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
-          return;
-        }
-        
-        updatedStudent = response.data.student;
-      } else if (status === "Passed") {
-        // For passed subjects, check if there's an existing backlog to clear
-        const backlog = student.backlogs?.find(
-          (backlog) => {
-            const backlogSubjectId = backlog.subject?._id || backlog.subject;
-            const backlogSemesterId = backlog.semester?._id || backlog.semester;
-            return String(backlogSubjectId) === subjectId && String(backlogSemesterId) === semesterId;
-          }
-        );
-        
-        if (backlog) {
-          const headers = getAuthHeaders();
-          if (!headers) return;
-
-          const response = await fetchWithRetry(`/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`, {
-            method: "PUT",
+        const response = await fetchWithRetry(
+          `/api/superadmin/students/${studentId}/add-backlog`,
+          {
+            method: "POST",
             headers: {
               ...headers,
               "Content-Type": "application/json",
             },
-            data: { status: "Cleared" },
-          });
-          
+            data: { subjectIds: [subjectId], semesterId },
+          }
+        );
+
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/");
+          return;
+        }
+
+        updatedStudent = response.data.student;
+      } else if (status === "Passed") {
+        // For passed subjects, check if there's an existing backlog to clear
+        const backlog = student.backlogs?.find((backlog) => {
+          const backlogSubjectId = backlog.subject?._id || backlog.subject;
+          const backlogSemesterId = backlog.semester?._id || backlog.semester;
+          return (
+            String(backlogSubjectId) === subjectId &&
+            String(backlogSemesterId) === semesterId
+          );
+        });
+
+        if (backlog) {
+          const headers = getAuthHeaders();
+          if (!headers) return;
+
+          const response = await fetchWithRetry(
+            `/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
+            {
+              method: "PUT",
+              headers: {
+                ...headers,
+                "Content-Type": "application/json",
+              },
+              data: { status: "Cleared" },
+            }
+          );
+
           if (response.status === 401) {
-            localStorage.removeItem('token');
-            navigate('/');
+            localStorage.removeItem("token");
+            navigate("/");
             return;
           }
           updatedStudent = response.data.student;
         } else {
           // If no backlog exists, create or update semester record with Passed status
           const semesterRecords = [...(student.semesterRecords || [])];
-          let existingRecord = semesterRecords.find(
-            record => {
-              const recordSemesterId = record.semester?._id || record.semester;
-              return String(recordSemesterId) === semesterId;
-            }
-          );
-          
+          let existingRecord = semesterRecords.find((record) => {
+            const recordSemesterId = record.semester?._id || record.semester;
+            return String(recordSemesterId) === semesterId;
+          });
+
           if (existingRecord) {
             // Update existing semester record
-            const subjectIndex = existingRecord.subjects.findIndex(
-              sub => {
-                const subjectObjId = sub.subject?._id || sub.subject;
-                return String(subjectObjId) === subjectId;
-              }
-            );
+            const subjectIndex = existingRecord.subjects.findIndex((sub) => {
+              const subjectObjId = sub.subject?._id || sub.subject;
+              return String(subjectObjId) === subjectId;
+            });
             if (subjectIndex >= 0) {
               existingRecord.subjects[subjectIndex].status = "Passed";
               existingRecord.subjects[subjectIndex].marks = 50;
@@ -1101,88 +1321,95 @@ function StudentList() {
               existingRecord.subjects.push({
                 subject: subjectId,
                 status: "Passed",
-                marks: 50
+                marks: 50,
               });
             }
           } else {
             // Create new semester record
             semesterRecords.push({
               semester: semesterId,
-              subjects: [{
-                subject: subjectId,
-                status: "Passed",
-                marks: 50
-              }],
-              isBacklog: false
+              subjects: [
+                {
+                  subject: subjectId,
+                  status: "Passed",
+                  marks: 50,
+                },
+              ],
+              isBacklog: false,
             });
           }
-          
+
           const headers = getAuthHeaders();
           if (!headers) return;
 
-          const response = await fetchWithRetry(`/api/superadmin/students/${studentId}`, {
-            method: "PUT",
-            headers: {
-              ...headers,
-              "Content-Type": "application/json",
-            },
-            data: { semesterRecords },
-          });
-          
+          const response = await fetchWithRetry(
+            `/api/superadmin/students/${studentId}`,
+            {
+              method: "PUT",
+              headers: {
+                ...headers,
+                "Content-Type": "application/json",
+              },
+              data: { semesterRecords },
+            }
+          );
+
           if (response.status === 401) {
-            localStorage.removeItem('token');
-            navigate('/');
+            localStorage.removeItem("token");
+            navigate("/");
             return;
           }
-          
+
           updatedStudent = response.data;
         }
       }
 
       alert(`Subject status updated to ${status}!`);
-      
+
       // Use the updated student data from the API response
       if (updatedStudent) {
-        setBacklogModal((prev) => ({ 
-          ...prev, 
-          student: updatedStudent
+        setBacklogModal((prev) => ({
+          ...prev,
+          student: updatedStudent,
         }));
       }
-      
+
       // Force re-render by updating refresh counter
-      setRefreshCounter(prev => prev + 1);
-      
+      setRefreshCounter((prev) => prev + 1);
+
       // Also refresh the main student list
       fetchStudents();
-      
     } catch (err) {
-      console.error('Error in handleSubjectStatusUpdate:', err);
-      
+      console.error("Error in handleSubjectStatusUpdate:", err);
+
       // Handle authentication errors
       if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/');
+        localStorage.removeItem("token");
+        navigate("/");
         return;
       }
-      
-      setModalError(err.response?.data?.error || "Failed to update subject status.");
+
+      setModalError(
+        err.response?.data?.error || "Failed to update subject status."
+      );
     }
   };
 
   const getSubjectStatus = (subjectId, semesterId) => {
     const { student } = backlogModal;
     if (!student || !semesterId) return "Pending";
-    
+
     // First check if there's a backlog record for this subject (even without populate)
-    const backlog = student.backlogs?.find(
-      (backlog) => {
-        // Handle both populated and non-populated backlogs
-        const backlogSubjectId = backlog.subject?._id || backlog.subject;
-        const backlogSemesterId = backlog.semester?._id || backlog.semester;
-        return String(backlogSubjectId) === subjectId && String(backlogSemesterId) === semesterId;
-      }
-    );
-    
+    const backlog = student.backlogs?.find((backlog) => {
+      // Handle both populated and non-populated backlogs
+      const backlogSubjectId = backlog.subject?._id || backlog.subject;
+      const backlogSemesterId = backlog.semester?._id || backlog.semester;
+      return (
+        String(backlogSubjectId) === subjectId &&
+        String(backlogSemesterId) === semesterId
+      );
+    });
+
     if (backlog) {
       // If backlog exists, its status takes precedence
       if (backlog.status === "Cleared") {
@@ -1191,27 +1418,23 @@ function StudentList() {
         return "Failed";
       }
     }
-    
+
     // If no backlog, check semester records for passed subjects
-    const semesterRecord = student.semesterRecords?.find(
-      (record) => {
-        const recordSemesterId = record.semester?._id || record.semester;
-        return String(recordSemesterId) === semesterId;
-      }
-    );
-    
+    const semesterRecord = student.semesterRecords?.find((record) => {
+      const recordSemesterId = record.semester?._id || record.semester;
+      return String(recordSemesterId) === semesterId;
+    });
+
     if (semesterRecord) {
-      const subject = semesterRecord.subjects?.find(
-        (sub) => {
-          const subjectObjId = sub.subject?._id || sub.subject;
-          return String(subjectObjId) === subjectId;
-        }
-      );
+      const subject = semesterRecord.subjects?.find((sub) => {
+        const subjectObjId = sub.subject?._id || sub.subject;
+        return String(subjectObjId) === subjectId;
+      });
       if (subject) {
         return subject.status;
       }
     }
-    
+
     return "Pending";
   };
 
@@ -1224,25 +1447,14 @@ function StudentList() {
     >
       <style>
         {`
-          ${theme === 'dark' ? `
-            input, select, option {
-              color: white !important;
-              background-color: #1e293b !important;
-            }
-            select::-ms-expand {
-              background-color: #1e293b !important;
-              color: white !important;
-            }
-          ` : `
-            input, select, option {
-              color: black !important;
-              background-color: white !important;
-            }
-            select::-ms-expand {
-              background-color: white !important;
-              color: black !important;
-            }
-          `}
+          input, select, option {
+            color: white !important;
+            background-color: #1e293b !important;
+          }
+          select::-ms-expand {
+            background-color: #1e293b !important;
+            color: white !important;
+          }
         `}
       </style>
       <div className="max-w-7xl mx-auto">
@@ -1253,21 +1465,18 @@ function StudentList() {
           transition={{ delay: 0.2 }}
         >
           <div className="flex justify-between items-center mb-6">
-            <h2 className={`${currentTheme.textAccent} text-2xl sm:text-3xl font-extrabold`}>Student Management</h2>
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className={`${currentTheme.buttonBg} ${currentTheme.buttonHover} px-4 py-2 rounded-lg text-sm font-medium ${currentTheme.textAccent}`}
+            <h2
+              className={`${currentTheme.textAccent} text-2xl sm:text-3xl font-extrabold`}
             >
-              Toggle {theme === 'dark' ? 'Light' : 'Dark'} Theme
-            </button>
+              Student Management
+            </h2>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <motion.div
-              className="flex-1"
-              whileHover={{ scale: 1.02 }}
-            >
-              <label htmlFor="searchInput" className="sr-only">Search students</label>
+            <motion.div className="flex-1" whileHover={{ scale: 1.02 }}>
+              <label htmlFor="searchInput" className="sr-only">
+                Search students
+              </label>
               <input
                 id="searchInput"
                 type="text"
@@ -1278,11 +1487,10 @@ function StudentList() {
                 aria-label="Search students"
               />
             </motion.div>
-            <motion.div
-              className="w-full sm:w-64"
-              whileHover={{ scale: 1.02 }}
-            >
-              <label htmlFor="admissionTypeFilter" className="sr-only">Filter by admission type</label>
+            <motion.div className="w-full sm:w-64" whileHover={{ scale: 1.02 }}>
+              <label htmlFor="admissionTypeFilter" className="sr-only">
+                Filter by admission type
+              </label>
               <select
                 id="admissionType"
                 value={admissionTypeFilter}
@@ -1325,19 +1533,40 @@ function StudentList() {
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1 }}
               />
-              <span className={`${currentTheme.textSecondary} ml-3`}>Loading students...</span>
+              <span className={`${currentTheme.textSecondary} ml-3`}>
+                Loading students...
+              </span>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="text-center py-10">
-              <p className={`${currentTheme.textSecondary} text-lg`}>No students found.</p>
+              <p className={`${currentTheme.textSecondary} text-lg`}>
+                No students found.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full table-auto">
                 <thead>
-                  <tr className={`${currentTheme.headerBg} ${currentTheme.textSecondary}`}>
-                    {["Name", "Enrollment", "Stream", "department", "Semester", "Mobile", "Student ID", "DOB", "Caste", "Photo", "Actions"].map((header, index) => (
-                      <th key={index} className="px-4 py-3 text-left text-xs font-semibold uppercase">
+                  <tr
+                    className={`${currentTheme.headerBg} ${currentTheme.textSecondary}`}
+                  >
+                    {[
+                      "Name",
+                      "Enrollment",
+                      "Stream",
+                      "department",
+                      "Semester",
+                      "Mobile",
+                      "Student ID",
+                      "DOB",
+                      "Caste",
+                      "Photo",
+                      "Actions",
+                    ].map((header, index) => (
+                      <th
+                        key={index}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase"
+                      >
                         {header}
                       </th>
                     ))}
@@ -1353,21 +1582,45 @@ function StudentList() {
                       transition={{ delay: index * 0.1 }}
                     >
                       <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
-                        <span className={`${currentTheme.textPrimary} font-medium`}>{student.firstName} {student.lastName || ""}</span>
+                        <span
+                          className={`${currentTheme.textPrimary} font-medium`}
+                        >
+                          {student.firstName} {student.lastName || ""}
+                        </span>
                       </td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.enrollmentNumber || "N/A"}</td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.stream?.name || "N/A"}</td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.department?.name || "N/A"}</td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.semester?.number || "N/A"}</td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.mobileNumber || "N/A"}</td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.studentId || "N/A"}</td>
                       <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
-                        {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString("en-GB") : "N/A"}
+                        {student.enrollmentNumber || "N/A"}
                       </td>
-                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>{student.casteCategory || "N/A"}</td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.stream?.name || "N/A"}
+                      </td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.department?.name || "N/A"}
+                      </td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.semester?.number || "N/A"}
+                      </td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.mobileNumber || "N/A"}
+                      </td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.studentId || "N/A"}
+                      </td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.dateOfBirth
+                          ? new Date(student.dateOfBirth).toLocaleDateString(
+                              "en-GB"
+                            )
+                          : "N/A"}
+                      </td>
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        {student.casteCategory || "N/A"}
+                      </td>
                       <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
                         <motion.img
-                          src={student.photo || "https://via.placeholder.com/50"}
+                          src={
+                            student.photo || "https://via.placeholder.com/50"
+                          }
                           alt={`${student.firstName}'s photo`}
                           className="h-12 w-12 object-cover rounded-full"
                           whileHover={{ scale: 1.1 }}
@@ -1376,12 +1629,44 @@ function StudentList() {
                       </td>
                       <td className="px-4 py-3 flex flex-wrap gap-2">
                         {[
-                          { label: "Edit", onClick: () => handleEdit(student), color: "bg-blue-600", hover: "hover:bg-blue-700" },
-                          { label: "Delete", onClick: () => handleDelete(student._id), color: "bg-red-600", hover: "hover:bg-red-700" },
-                          { label: "Promote", onClick: () => handlePromote(student._id), color: "bg-green-600", hover: "hover:bg-green-700" },
-                          { label: "TC", onClick: () => openCertificateModal(student._id, "TC"), color: "bg-indigo-600", hover: "hover:bg-indigo-700" },
-                          { label: "LC", onClick: () => openCertificateModal(student._id, "LC"), color: "bg-indigo-600", hover: "hover:bg-indigo-700" },
-                          { label: "Backlogs", onClick: () => openBacklogModal(student._id), color: "bg-yellow-600", hover: "hover:bg-yellow-700" },
+                          {
+                            label: "Edit",
+                            onClick: () => handleEdit(student),
+                            color: "bg-blue-600",
+                            hover: "hover:bg-blue-700",
+                          },
+                          {
+                            label: "Delete",
+                            onClick: () => handleDelete(student._id),
+                            color: "bg-red-600",
+                            hover: "hover:bg-red-700",
+                          },
+                          {
+                            label: "Promote",
+                            onClick: () => handlePromote(student._id),
+                            color: "bg-green-600",
+                            hover: "hover:bg-green-700",
+                          },
+                          {
+                            label: "TC",
+                            onClick: () =>
+                              openCertificateModal(student._id, "TC"),
+                            color: "bg-indigo-600",
+                            hover: "hover:bg-indigo-700",
+                          },
+                          {
+                            label: "LC",
+                            onClick: () =>
+                              openCertificateModal(student._id, "LC"),
+                            color: "bg-indigo-600",
+                            hover: "hover:bg-indigo-700",
+                          },
+                          {
+                            label: "Backlogs",
+                            onClick: () => openBacklogModal(student._id),
+                            color: "bg-yellow-600",
+                            hover: "hover:bg-yellow-700",
+                          },
                         ].map((action, idx) => (
                           <motion.button
                             key={idx}
@@ -1403,7 +1688,8 @@ function StudentList() {
 
           <AnimatePresence>
             {backlogModal.open && (
-             <motion.div className="fixed inset-0 bg-black/30 dark:bg-neutral-900/70 backdrop-blur-sm overflow-y-auto pt-8 z-50 flex justify-center"
+              <motion.div
+                className="fixed inset-0 bg-black/30 dark:bg-neutral-900/70 backdrop-blur-sm overflow-y-auto pt-8 z-50 flex justify-center"
                 role="dialog"
                 aria-modal="label"
                 aria-labelledby="backlogModalLabel"
@@ -1412,12 +1698,18 @@ function StudentList() {
                 exit={{ opacity: 0 }}
               >
                 <motion.div
-className={`${currentTheme.cardBg} ${currentTheme.cardBorder} rounded-2xl p-8 w-full max-w-4xl max-h-[95vh] overflow-y-auto shadow-2xl`}
-initial={{ scale: 0.9, y: 20 }}
+                  className={`${currentTheme.cardBg} ${currentTheme.cardBorder} rounded-2xl p-8 w-full max-w-4xl max-h-[95vh] overflow-y-auto shadow-2xl`}
+                  initial={{ scale: 0.9, y: 20 }}
                   animate={{ scale: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 id="backlogModalLabel" className={`${currentTheme.textAccent} text-xl font-bold mb-4`}>Manage Backlogs for {backlogModal.student?.firstName} {backlogModal.student?.lastName}</h3>
+                  <h3
+                    id="backlogModalLabel"
+                    className={`${currentTheme.textAccent} text-xl font-bold mb-4`}
+                  >
+                    Manage Backlogs for {backlogModal.student?.firstName}{" "}
+                    {backlogModal.student?.lastName}
+                  </h3>
                   {modalError && (
                     <motion.div
                       className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-300 rounded-lg"
@@ -1429,20 +1721,37 @@ initial={{ scale: 0.9, y: 20 }}
                   )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}>Stream</label>
-                      <div className={`${currentTheme.cardBg} ${currentTheme.cardBorder} p-3 rounded-lg ${currentTheme.textPrimary}`}>
+                      <label
+                        className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}
+                      >
+                        Stream
+                      </label>
+                      <div
+                        className={`${currentTheme.cardBg} ${currentTheme.cardBorder} p-3 rounded-lg ${currentTheme.textPrimary}`}
+                      >
                         {backlogModal.student?.stream?.name || "N/A"}
                       </div>
                     </div>
                     <div>
-                      <label className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}>department</label>
-                      <div className={`${currentTheme.cardBg} ${currentTheme.cardBorder} p-3 rounded-lg ${currentTheme.textPrimary}`}>
+                      <label
+                        className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}
+                      >
+                        department
+                      </label>
+                      <div
+                        className={`${currentTheme.cardBg} ${currentTheme.cardBorder} p-3 rounded-lg ${currentTheme.textPrimary}`}
+                      >
                         {backlogModal.student?.department?.name || "N/A"}
                       </div>
                     </div>
                   </div>
                   <div className="mb-4">
-                    <label htmlFor="semesterLabel" className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}>Semester</label>
+                    <label
+                      htmlFor="semesterLabel"
+                      className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}
+                    >
+                      Semester
+                    </label>
                     <select
                       id="semesterLabel"
                       value={backlogModal.semesterId}
@@ -1460,8 +1769,14 @@ initial={{ scale: 0.9, y: 20 }}
                   </div>
                   {backlogModal.semesterId && (
                     <div className="mb-4">
-                      <h4 className={`${currentTheme.textSecondary} text-sm font-medium mb-2`}>Subjects</h4>
-                      <div className={`${currentTheme.cardBorder} rounded-lg divide-y divide-gray-700/20`}>
+                      <h4
+                        className={`${currentTheme.textSecondary} text-sm font-medium mb-2`}
+                      >
+                        Subjects
+                      </h4>
+                      <div
+                        className={`${currentTheme.cardBorder} rounded-lg divide-y divide-gray-700/20`}
+                      >
                         {loadingSubjects ? (
                           <div className="flex items-center justify-center h-20">
                             <motion.div
@@ -1469,13 +1784,24 @@ initial={{ scale: 0.9, y: 20 }}
                               animate={{ rotate: 360 }}
                               transition={{ repeat: Infinity, duration: 1 }}
                             />
-                            <span className={`${currentTheme.textSecondary} ml-2`}>Loading subjects...</span>
+                            <span
+                              className={`${currentTheme.textSecondary} ml-2`}
+                            >
+                              Loading subjects...
+                            </span>
                           </div>
                         ) : backlogModal.semesterSubjects.length === 0 ? (
-                          <div className={`${currentTheme.textSecondary} p-4 text-center`}>No subjects available.</div>
+                          <div
+                            className={`${currentTheme.textSecondary} p-4 text-center`}
+                          >
+                            No subjects available.
+                          </div>
                         ) : (
                           backlogModal.semesterSubjects.map((subject) => {
-                            const status = getSubjectStatus(subject._id, backlogModal.semesterId);
+                            const status = getSubjectStatus(
+                              subject._id,
+                              backlogModal.semesterId
+                            );
                             return (
                               <motion.div
                                 key={`${subject._id}-${refreshCounter}`}
@@ -1485,7 +1811,11 @@ initial={{ scale: 0.9, y: 20 }}
                               >
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                                   <div className="flex items-center gap-2">
-                                    <span className={`${currentTheme.textPrimary} font-medium`}>{subject.name}</span>
+                                    <span
+                                      className={`${currentTheme.textPrimary} font-medium`}
+                                    >
+                                      {subject.name}
+                                    </span>
                                     <span
                                       className={`px-2 py-1 text-xs font-semibold rounded-full ${
                                         status === "Passed"
@@ -1500,9 +1830,18 @@ initial={{ scale: 0.9, y: 20 }}
                                   </div>
                                   <div className="flex gap-2">
                                     <motion.button
-                                      onClick={() => handleSubjectStatusUpdate(subject._id, "Passed")}
+                                      onClick={() =>
+                                        handleSubjectStatusUpdate(
+                                          subject._id,
+                                          "Passed"
+                                        )
+                                      }
                                       disabled={status === "Passed"}
-                                      className={`px-3 py-1 rounded-lg text-sm font-medium ${status === "Passed" ? "bg-gray-600/20 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"}`}
+                                      className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                                        status === "Passed"
+                                          ? "bg-gray-600/20 cursor-not-allowed"
+                                          : "bg-green-600 text-white hover:bg-green-700"
+                                      }`}
                                       whileHover={{ scale: 1.05 }}
                                       whileTap={{ scale: 0.95 }}
                                       aria-label={`Mark ${subject.name} as passed`}
@@ -1510,9 +1849,18 @@ initial={{ scale: 0.9, y: 20 }}
                                       Pass
                                     </motion.button>
                                     <motion.button
-                                      onClick={() => handleSubjectStatusUpdate(subject._id, "Failed")}
+                                      onClick={() =>
+                                        handleSubjectStatusUpdate(
+                                          subject._id,
+                                          "Failed"
+                                        )
+                                      }
                                       disabled={status === "Failed"}
-                                      className={`px-3 py-1 rounded-lg text-sm font-medium ${status === "Failed" ? "bg-gray-600/20 cursor-not-allowed" : "bg-red-600 text-white hover:bg-red-700"}`}
+                                      className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                                        status === "Failed"
+                                          ? "bg-gray-600/20 cursor-not-allowed"
+                                          : "bg-red-600 text-white hover:bg-red-700"
+                                      }`}
                                       whileHover={{ scale: 1.05 }}
                                       whileTap={{ scale: 0.95 }}
                                       aria-label={`Mark ${subject.name} as failed`}
@@ -1547,7 +1895,7 @@ initial={{ scale: 0.9, y: 20 }}
           <AnimatePresence>
             {certificateModal.open && (
               <motion.div
- className="fixed inset-0 bg-black/30 backdrop-blur-sm overflow-y-auto pt-8 z-50 flex justify-center"
+                className="fixed inset-0 bg-black/30 backdrop-blur-sm overflow-y-auto pt-8 z-50 flex justify-center"
                 role="dialog"
                 aria-modal="label"
                 aria-labelledby="certificateModalLabel"
@@ -1556,13 +1904,19 @@ initial={{ scale: 0.9, y: 20 }}
                 exit={{ opacity: 0 }}
               >
                 <motion.div
-className={`${currentTheme.cardBg} ${currentTheme.cardBorder} rounded-2xl p-8 w-full max-w-4xl max-h-[95vh] overflow-y-auto shadow-2xl`}
-initial={{ scale: 0.9, y: 20 }}
+                  className={`${currentTheme.cardBg} ${currentTheme.cardBorder} rounded-2xl p-8 w-full max-w-4xl max-h-[95vh] overflow-y-auto shadow-2xl`}
+                  initial={{ scale: 0.9, y: 20 }}
                   animate={{ scale: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 id="certificateModalLabel" className={`${currentTheme.textAccent} text-xl font-bold mb-6`}>
-                    Generate {certificateModal.type === "TC" ? "Transfer Certificate" : "Leaving Certificate"}
+                  <h3
+                    id="certificateModalLabel"
+                    className={`${currentTheme.textAccent} text-xl font-bold mb-6`}
+                  >
+                    Generate{" "}
+                    {certificateModal.type === "TC"
+                      ? "Transfer Certificate"
+                      : "Leaving Certificate"}
                   </h3>
                   {certificateModal.error && (
                     <motion.div
@@ -1584,7 +1938,10 @@ initial={{ scale: 0.9, y: 20 }}
                           value: certificateModal.reason,
                           options: [
                             { value: "", label: "Select Reason" },
-                            { value: "term completion", label: "Term Completion" },
+                            {
+                              value: "term completion",
+                              label: "Term Completion",
+                            },
                             { value: "own request", label: "Own Request" },
                           ],
                         },
@@ -1603,7 +1960,10 @@ initial={{ scale: 0.9, y: 20 }}
                           value: certificateModal.progress,
                           options: [
                             { value: "Satisfactory", label: "Satisfactory" },
-                            { value: "Not Satisfactory", label: "Not Satisfied" },
+                            {
+                              value: "Not Satisfactory",
+                              label: "Not Satisfied",
+                            },
                           ],
                         },
                         {
@@ -1626,11 +1986,26 @@ initial={{ scale: 0.9, y: 20 }}
                           options: [
                             { value: "", label: "Select Remark" },
                             { value: "He has failed", label: "He has failed" },
-                            { value: "She has failed", label: "She has failed" },
-                            { value: "He has completed", label: "He has completed" },
-                            { value: "She has completed", label: "She has completed" },
-                            { value: "He has not appeared", label: "He has not appeared" },
-                            { value: "She has not appeared", label: "She has not appeared" },
+                            {
+                              value: "She has failed",
+                              label: "She has failed",
+                            },
+                            {
+                              value: "He has completed",
+                              label: "He has completed",
+                            },
+                            {
+                              value: "She has completed",
+                              label: "She has completed",
+                            },
+                            {
+                              value: "He has not appeared",
+                              label: "He has not appeared",
+                            },
+                            {
+                              value: "She has not appeared",
+                              label: "She has not appeared",
+                            },
                           ],
                         },
                         {
@@ -1692,14 +2067,20 @@ initial={{ scale: 0.9, y: 20 }}
                           value: certificateModal.standard,
                           options: [
                             { value: "", label: "Select Standard" },
-                            { value: "Bachelor of Engineering", label: "Bachelor of Engineering" },
+                            {
+                              value: "Bachelor of Engineering",
+                              label: "Bachelor of Engineering",
+                            },
                             { value: "B.Tech", label: "B.Tech" },
                             { value: "MCA", label: "MCA" },
                           ],
                         },
                       ].map((field) => (
                         <motion.div key={field.id} whileHover={{ scale: 1.02 }}>
-                          <label htmlFor={field.id} className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}>
+                          <label
+                            htmlFor={field.id}
+                            className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}
+                          >
                             {field.label}
                           </label>
                           {field.type === "select" ? (
@@ -1741,11 +2122,19 @@ initial={{ scale: 0.9, y: 20 }}
                           className="h-4 w-4 text-indigo-400 focus:ring-indigo-400 border-gray-700 rounded"
                           aria-label="No dues cleared"
                         />
-                        <label htmlFor="isCleared" className={`${currentTheme.textSecondary} text-sm font-medium`}>No Dues (Cleared)</label>
+                        <label
+                          htmlFor="isCleared"
+                          className={`${currentTheme.textSecondary} text-sm font-medium`}
+                        >
+                          No Dues (Cleared)
+                        </label>
                       </motion.div>
                       {certificateModal.type === "LC" && (
                         <motion.div whileHover={{ scale: 1.02 }}>
-                          <label htmlFor="completionStatus" className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}>
+                          <label
+                            htmlFor="completionStatus"
+                            className={`${currentTheme.textSecondary} block text-sm font-medium mb-1`}
+                          >
                             Completion Status
                           </label>
                           <select
@@ -1802,7 +2191,12 @@ initial={{ scale: 0.9, y: 20 }}
                       />
                       <div className="flex justify-end gap-3 mt-6">
                         <motion.button
-                          onClick={() => setCertificateModal((prev) => ({ ...prev, showPreview: false }))}
+                          onClick={() =>
+                            setCertificateModal((prev) => ({
+                              ...prev,
+                              showPreview: false,
+                            }))
+                          }
                           className={`${currentTheme.buttonBg} ${currentTheme.buttonHover} px-6 py-2 rounded-lg ${currentTheme.textAccent} font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
                           disabled={certificateModal.isGenerating}
                           whileHover={{ scale: 1.05 }}

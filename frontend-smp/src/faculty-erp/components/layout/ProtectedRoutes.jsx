@@ -9,6 +9,8 @@ const ProtectedRoute = ({ children, isAuthenticated, userRole, routeName }) => {
     return acc;
   }, {});
 
+  console.log("Role:", userRole, "Path:", isAuthenticated)
+
   if (!isAuthenticated) {
     return <Navigate to="/" state={{ from: location }} />;
   }
