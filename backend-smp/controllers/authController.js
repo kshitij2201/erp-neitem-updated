@@ -229,6 +229,7 @@ const login = async (req, res) => {
         "cc",
         "facultymanagement",
         "teaching",
+        "non-teaching"
       ];
       if (!validDashboardRoles.includes(facultyRole)) {
         return res.status(403).json({
