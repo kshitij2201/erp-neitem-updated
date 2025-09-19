@@ -765,111 +765,704 @@ export default function AddPayment() {
     if (!showReceipt || !receiptData) return null;
 
     const printReceipt = () => {
+      const receiptTemplate = `
+            <div class="receipt-container">
+              <div class="header-border"></div>
+              
+              <div class="institute-header">
+                <div class="logos-row">
+                  <img src="/logo1.png" alt="NIETM Logo" class="logo" />
+                  <div class="institute-info">
+                    <div class="society-name">maitrey education society</div>
+                    <div class="institute-name">NAGARJUNA</div>
+                    <div class="institute-subtitle">Institute of Engineering, Technology & Management</div>
+                    <div class="institute-affiliation">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
+                    <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
+                    <div class="institute-contact">📧 maitrey.ngp@gmail.com | 🌐 www.nietm.in | 📞 07118 322211, 12</div>
+                  </div>
+                  <img src="/logo.png" alt="NIETM Logo" class="logo" />
+                </div>
+              </div>
+              
+              <div class="receipt-title">FEE PAYMENT RECEIPT</div>
+              
+              <div style="text-align: center; margin: 4px 0; padding: 4px; background: #f0f9ff; border: 1px solid #2563eb; border-radius: 4px;">
+                <div style="font-weight: bold; color: #2563eb; font-size: 8px;">
+                  ${
+                    receiptData.paymentType === "specific"
+                      ? "🎯 SPECIFIC FEE PAYMENT"
+                      : receiptData.paymentType === "multiple"
+                      ? "📊 MULTIPLE FEE HEADS PAYMENT"
+                      : receiptData.paymentType === "annual"
+                      ? "📅 ANNUAL FEE PAYMENT"
+                      : receiptData.paymentType === "transport"
+                      ? "🚌 TRANSPORT FEE PAYMENT"
+                      : receiptData.paymentType === "hostel"
+                      ? "🏠 HOSTEL FEE PAYMENT"
+                      : receiptData.paymentType === "library"
+                      ? "📖 LIBRARY FEE PAYMENT"
+                      : receiptData.paymentType === "lab"
+                      ? "🔬 LABORATORY FEE PAYMENT"
+                      : receiptData.paymentType === "sports"
+                      ? "⚽ SPORTS FEE PAYMENT"
+                      : receiptData.paymentType === "development"
+                      ? "🏗️ DEVELOPMENT FEE PAYMENT"
+                      : receiptData.paymentType === "miscellaneous"
+                      ? "📋 MISCELLANEOUS FEE PAYMENT"
+                      : receiptData.paymentType === "salary"
+                      ? "💰 SALARY PAYMENT"
+                      : "💳 STUDENT FEE PAYMENT"
+                  }
+                </div>
+                <div style="font-size: 6px; color: #374151; margin-top: 2px;">
+                  Payment Type: ${receiptData.paymentType.toUpperCase()}
+                </div>
+              </div>
+              
+              <div class="receipt-details">
+                <div class="receipt-info">
+                  <div>
+                    <div class="info-row">
+                      <span class="info-label">Receipt No:</span>
+                      <span>${receiptData.receiptNumber}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Date:</span>
+                      <span>${receiptData.date}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Time:</span>
+                      <span>${receiptData.time}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="info-row">
+                      <span class="info-label">Academic Year:</span>
+                      <span>${receiptData.academicYear}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Payment Method:</span>
+                      <span>${receiptData.paymentMethod}</span>
+                    </div>
+                    ${
+                      receiptData.transactionId
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Transaction ID:</span>
+                      <span>${receiptData.transactionId}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                  </div>
+                </div>
+                
+                <div class="section-title">👤 STUDENT INFORMATION</div>
+                <div class="student-info">
+                  <div>
+                    <div class="info-row">
+                      <span class="info-label">Student Name:</span>
+                      <span>${receiptData.student?.firstName} ${
+        receiptData.student?.lastName
+      }</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Student ID:</span>
+                      <span>${receiptData.student?.studentId}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="info-row">
+                      <span class="info-label">Department:</span>
+                      <span>${
+                        typeof receiptData.student?.department === "object"
+                          ? receiptData.student?.department?.name || "N/A"
+                          : receiptData.student?.department || "N/A"
+                      }</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Program:</span>
+                      <span>${
+                        typeof receiptData.student?.program === "object"
+                          ? receiptData.student?.program?.name || "N/A"
+                          : receiptData.student?.program || "N/A"
+                      }</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="section-title">💰 FEE HEAD DETAILS</div>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 6px;">
+                  <thead>
+                    <tr style="background: #f3f4f6;">
+                      <th style="padding: 3px; text-align: left; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Fee Head</th>
+                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Total</th>
+                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Prev Paid</th>
+                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Current</th>
+                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${
+                      receiptData.multipleFees &&
+                      receiptData.multipleFees.length > 0
+                        ? receiptData.multipleFees
+                            .map(
+                              (fee, index) => `
+                      <tr style="background: ${
+                        index % 2 === 0 ? "white" : "#f9fafb"
+                      };">
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; font-size: 6px;">${
+                          fee.feeHead
+                        }</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">₹${fee.totalAmount.toLocaleString()}</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #059669; font-size: 6px;">₹${fee.paidAmount.toLocaleString()}</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold; font-size: 6px;">₹${fee.currentPayment.toLocaleString()}</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #dc2626; font-size: 6px;">₹${fee.balance.toLocaleString()}</td>
+                      </tr>
+                    `
+                            )
+                            .join("")
+                        : receiptData.feeHead
+                        ? `
+                      <tr style="background: white;">
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; font-size: 6px;">${
+                          receiptData.feeHead.title
+                        }</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">₹${
+                          receiptData.feeHead.amount
+                            ? receiptData.feeHead.amount.toLocaleString()
+                            : "N/A"
+                        }</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #059669; font-size: 6px;">₹${(receiptData
+                          .feeHead.amount
+                          ? receiptData.feeHead.amount -
+                            parseInt(receiptData.amount)
+                          : 0
+                        ).toLocaleString()}</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold; font-size: 6px;">₹${parseInt(
+                          receiptData.amount
+                        ).toLocaleString()}</td>
+                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #dc2626; font-size: 6px;">₹${(receiptData
+                          .feeHead.amount
+                          ? Math.max(
+                              0,
+                              receiptData.feeHead.amount -
+                                parseInt(receiptData.amount)
+                            )
+                          : 0
+                        ).toLocaleString()}</td>
+                      </tr>
+                    `
+                        : `
+                      <tr style="background: white;">
+                        <td style="padding: 4px 6px; border: 1px solid #d1d5db;">${
+                          receiptData.feeHead.title
+                        }</td>
+                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right;">₹${
+                          receiptData.feeHead.amount
+                            ? receiptData.feeHead.amount.toLocaleString()
+                            : "N/A"
+                        }</td>
+                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right; color: #059669;">₹${(receiptData
+                          .feeHead.amount
+                          ? Math.max(
+                              0,
+                              receiptData.feeHead.amount -
+                                parseInt(receiptData.amount)
+                            )
+                          : 0
+                        ).toLocaleString()}</td>
+                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold;">₹${parseInt(
+                          receiptData.amount
+                        ).toLocaleString()}</td>
+                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right; color: #dc2626;">₹${(receiptData
+                          .feeHead.amount
+                          ? Math.max(
+                              0,
+                              receiptData.feeHead.amount -
+                                parseInt(receiptData.amount)
+                            )
+                          : 0
+                        ).toLocaleString()}</td>
+                      </tr>
+                    `
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr style="background: #dbeafe; font-weight: bold;">
+                      <td style="padding: 3px; border: 1px solid #d1d5db; font-size: 6px;">TOTAL PAYMENT</td>
+                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">-</td>
+                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">-</td>
+                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; color: #1e40af; font-size: 8px; font-weight: bold;">₹${parseInt(
+                        receiptData.amount
+                      ).toLocaleString()}</td>
+                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">-</td>
+                    </tr>
+                  </tfoot>
+                </table>
+                
+                <div class="section-title">💳 PAYMENT DETAILS</div>
+                <div class="student-info">
+                  <div>
+                    <div class="info-row">
+                      <span class="info-label">Payment Type:</span>
+                      <span style="text-transform: capitalize; font-weight: bold; color: #2563eb;">${
+                        receiptData.paymentType
+                      }</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Fee Category:</span>
+                      <span style="font-weight: bold; color: #059669;">
+                        ${
+                          receiptData.paymentType === "specific"
+                            ? "Specific Fee Payment"
+                            : receiptData.paymentType === "multiple"
+                            ? "Multiple Fee Heads Payment"
+                            : receiptData.paymentType === "annual"
+                            ? "Annual Fee Payment"
+                            : receiptData.paymentType === "transport"
+                            ? "Transport Fee Payment"
+                            : receiptData.paymentType === "hostel"
+                            ? "Hostel Fee Payment"
+                            : receiptData.paymentType === "library"
+                            ? "Library Fee Payment"
+                            : receiptData.paymentType === "lab"
+                            ? "Laboratory Fee Payment"
+                            : receiptData.paymentType === "sports"
+                            ? "Sports Fee Payment"
+                            : receiptData.paymentType === "development"
+                            ? "Development Fee Payment"
+                            : receiptData.paymentType === "miscellaneous"
+                            ? "Miscellaneous Fee Payment"
+                            : receiptData.paymentType === "salary"
+                            ? "Salary Payment"
+                            : "Student Fee Payment"
+                        }
+                      </span>
+                    </div>
+                    ${
+                      receiptData.paymentType === "transport"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Transport Details:</span>
+                      <span style="color: #f59e0b;">🚌 Bus/Transport Fees</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "hostel"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Hostel Details:</span>
+                      <span style="color: #6366f1;">🏠 Accommodation Fees</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "library"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Library Details:</span>
+                      <span style="color: #14b8a6;">📖 Library Services</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "lab"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Lab Details:</span>
+                      <span style="color: #ec4899;">🔬 Laboratory Usage</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "sports"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Sports Details:</span>
+                      <span style="color: #10b981;">⚽ Sports Facilities</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "development"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Development Details:</span>
+                      <span style="color: #06b6d4;">🏗️ Infrastructure Development</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "annual"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Annual Details:</span>
+                      <span style="color: #f59e0b;">📅 Yearly Fee Payment</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.paymentType === "multiple" &&
+                      receiptData.multipleFees
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Multiple Fees:</span>
+                      <span style="color: #059669;">📊 ${receiptData.multipleFees.length} Fee Head(s)</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.category
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Service Category:</span>
+                      <span style="font-weight: bold; color: #1e40af;">${receiptData.feeTypeDetails.category}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.manualFeeHeadName
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Fee Head:</span>
+                      <span style="color: #059669; font-weight: bold;">💰 ${receiptData.feeTypeDetails.manualFeeHeadName}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.manualFeeDescription
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Fee Details:</span>
+                      <span style="color: #374151; font-weight: bold;">📝 ${receiptData.feeTypeDetails.manualFeeDescription}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.labType
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Laboratory Type:</span>
+                      <span style="color: #ec4899; font-weight: bold;">🔬 ${
+                        receiptData.feeTypeDetails.labType
+                          .charAt(0)
+                          .toUpperCase() +
+                        receiptData.feeTypeDetails.labType.slice(1)
+                      } Lab</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.route
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Transport Route:</span>
+                      <span style="color: #f59e0b; font-weight: bold;">🚌 ${receiptData.feeTypeDetails.route}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.block
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Hostel Details:</span>
+                      <span style="color: #6366f1; font-weight: bold;">🏠 Block ${
+                        receiptData.feeTypeDetails.block
+                      }${
+                            receiptData.feeTypeDetails.roomNumber
+                              ? ", Room " +
+                                receiptData.feeTypeDetails.roomNumber
+                              : ""
+                          }</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.feeType &&
+                      receiptData.paymentType === "library"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Library Service:</span>
+                      <span style="color: #14b8a6; font-weight: bold;">📖 ${
+                        receiptData.feeTypeDetails.feeType
+                          .charAt(0)
+                          .toUpperCase() +
+                        receiptData.feeTypeDetails.feeType
+                          .slice(1)
+                          .replace("-", " ")
+                      }</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.activity
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Sports Activity:</span>
+                      <span style="color: #10b981; font-weight: bold;">⚽ ${
+                        receiptData.feeTypeDetails.activity
+                          .charAt(0)
+                          .toUpperCase() +
+                        receiptData.feeTypeDetails.activity.slice(1)
+                      }</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.purpose &&
+                      receiptData.paymentType === "miscellaneous"
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Payment Purpose:</span>
+                      <span style="color: #6b7280; font-weight: bold;">📋 ${receiptData.feeTypeDetails.purpose}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    ${
+                      receiptData.feeTypeDetails &&
+                      receiptData.feeTypeDetails.duration
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Duration/Period:</span>
+                      <span style="color: #8b5cf6; font-weight: bold;">⏱️ ${
+                        receiptData.feeTypeDetails.duration
+                          .charAt(0)
+                          .toUpperCase() +
+                        receiptData.feeTypeDetails.duration
+                          .slice(1)
+                          .replace("-", " ")
+                      }</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    
+                    <div class="info-row">
+                      <span class="info-label">Description:</span>
+                      <span>${receiptData.description}</span>
+                    </div>
+                  </div>
+                  <div>
+                    ${
+                      receiptData.collectedBy
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Collected By:</span>
+                      <span>${receiptData.collectedBy}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.remarks
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">Remarks:</span>
+                      <span>${receiptData.remarks}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    <div class="info-row">
+                      <span class="info-label">Payment Status:</span>
+                      <span style="color: #059669; font-weight: bold;">PAID</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="payment-summary">
+                  <div class="amount-label">TOTAL AMOUNT PAID</div>
+                  <div class="amount-paid">₹${parseInt(
+                    receiptData.amount
+                  ).toLocaleString()}</div>
+                  <div class="amount-label">Amount in Words: ${numberToWords(
+                    parseInt(receiptData.amount)
+                  )} Rupees Only</div>
+                </div>
+                
+                <div class="signature-section">
+                  <div style="text-align: center;">
+                    <div class="signature-box">Cashier Signature</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="footer">
+                <p><strong>Note:</strong> This is a computer-generated receipt and is valid without signature.</p>
+                <p>Please retain this receipt for your records. For any queries, contact the accounts department.</p>
+                <p>Generated on ${receiptData.date} at ${
+        receiptData.time
+      } | Document ID: NIETM-FEE-${receiptData.receiptNumber}</p>
+              </div>
+            </div>
+      `;
+
       const printContent = `
         <!DOCTYPE html>
         <html>
         <head>
           <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
           <style>
+            @page {
+              size: A4 landscape;
+              margin: 0;
+            }
             body { 
               font-family: 'Times New Roman', serif; 
               margin: 0; 
-              padding: 20px; 
+              padding: 8px; 
               background: white;
-              line-height: 1.4;
+              line-height: 1.2;
               color: #000;
+              width: 100%;
+              height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .receipts-wrapper {
+              display: flex;
+              gap: 15px;
+              justify-content: space-between;
+              align-items: flex-start;
+              width: 100%;
+              max-width: 100%;
+              height: auto;
+              margin: 0;
             }
             .receipt-container {
-              max-width: 800px;
-              margin: 0 auto;
-              border: 2px solid #000;
+              width: 49%;
+              border: 1.5px solid #000;
               background: white;
+              flex-shrink: 0;
+              height: auto;
+              max-height: 95vh;
+              overflow: hidden;
             }
             .header-border {
-              height: 4px;
+              height: 2px;
               background: linear-gradient(90deg, #1e40af, #3b82f6, #1e40af);
             }
             .institute-header {
-              padding: 20px;
+              padding: 8px;
               text-align: center;
-              border-bottom: 2px solid #000;
+              border-bottom: 1.5px solid #000;
             }
             .logos-row {
               display: flex;
               align-items: center;
               justify-content: space-between;
-              margin-bottom: 15px;
+              margin-bottom: 6px;
             }
             .logo {
-              width: 70px;
-              height: 70px;
+              width: 35px;
+              height: 35px;
               object-fit: contain;
             }
             .institute-info {
               flex: 1;
               text-align: center;
-              padding: 0 20px;
+              padding: 0 10px;
             }
             .society-name {
-              font-size: 10px;
+              font-size: 6px;
               color: #666;
-              margin-bottom: 5px;
+              margin-bottom: 2px;
               text-transform: lowercase;
             }
             .institute-name {
-              font-size: 28px;
+              font-size: 14px;
               font-weight: bold;
               color: #1e40af;
-              letter-spacing: 3px;
-              margin-bottom: 8px;
+              letter-spacing: 1px;
+              margin-bottom: 3px;
             }
             .institute-subtitle {
-              font-size: 16px;
+              font-size: 8px;
               font-weight: 600;
               color: #374151;
-              margin-bottom: 6px;
+              margin-bottom: 2px;
             }
             .institute-affiliation {
-              font-size: 11px;
+              font-size: 6px;
               color: #6b7280;
-              margin-bottom: 4px;
+              margin-bottom: 2px;
               font-style: italic;
             }
             .institute-address {
-              font-size: 11px;
+              font-size: 6px;
               color: #6b7280;
-              margin-bottom: 4px;
+              margin-bottom: 2px;
             }
             .institute-contact {
-              font-size: 10px;
+              font-size: 5px;
               color: #6b7280;
             }
             .receipt-title {
               background: #1e40af;
               color: white;
-              padding: 12px;
+              padding: 6px;
               margin: 0;
               text-align: center;
-              font-size: 20px;
+              font-size: 12px;
               font-weight: bold;
-              letter-spacing: 2px;
+              letter-spacing: 1px;
             }
             .receipt-details {
-              padding: 20px;
+              padding: 8px;
             }
             .receipt-info {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-bottom: 20px;
-              font-size: 12px;
+              gap: 8px;
+              margin-bottom: 8px;
+              font-size: 7px;
             }
             .info-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 6px;
+              margin-bottom: 2px;
               border-bottom: 1px dotted #ddd;
-              padding-bottom: 2px;
+              padding-bottom: 1px;
             }
             .info-label {
               font-weight: bold;
@@ -877,645 +1470,110 @@ export default function AddPayment() {
             }
             .section-title {
               background: #f3f4f6;
-              padding: 8px 15px;
-              margin: 20px 0 10px 0;
+              padding: 3px 6px;
+              margin: 8px 0 4px 0;
               font-weight: bold;
               color: #1f2937;
-              border-left: 4px solid #1e40af;
-              font-size: 14px;
+              border-left: 2px solid #1e40af;
+              font-size: 8px;
             }
             .student-info {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-bottom: 15px;
-              font-size: 12px;
+              gap: 8px;
+              margin-bottom: 6px;
+              font-size: 7px;
             }
             .payment-summary {
               background: linear-gradient(135deg, #10b981, #059669);
               color: white;
-              padding: 20px;
+              padding: 8px;
               text-align: center;
-              margin: 20px 0;
-              border-radius: 8px;
+              margin: 8px 0;
+              border-radius: 4px;
             }
             .amount-paid {
-              font-size: 32px;
+              font-size: 16px;
               font-weight: bold;
-              margin-bottom: 5px;
+              margin-bottom: 2px;
             }
             .amount-label {
-              font-size: 14px;
+              font-size: 7px;
               opacity: 0.9;
             }
             .footer {
               background: #f9fafb;
-              padding: 15px;
+              padding: 6px;
               text-align: center;
               border-top: 1px solid #e5e7eb;
-              font-size: 10px;
+              font-size: 5px;
               color: #6b7280;
             }
             .signature-section {
               display: flex;
               justify-content: center;
-              margin-top: 30px;
-              padding-top: 20px;
+              margin-top: 10px;
+              padding-top: 8px;
               border-top: 1px solid #e5e7eb;
-              font-size: 11px;
+              font-size: 6px;
             }
             .signature-box {
               text-align: center;
               border-top: 1px solid #000;
-              padding-top: 5px;
-              margin-top: 40px;
-              width: 200px;
+              padding-top: 2px;
+              margin-top: 15px;
+              width: 100px;
             }
             .watermark {
               position: fixed;
               top: 50%;
               left: 50%;
               transform: translate(-50%, -50%) rotate(-45deg);
-              font-size: 120px;
-              color: rgba(30, 64, 175, 0.05);
+              font-size: 50px;
+              color: rgba(30, 64, 175, 0.02);
               font-weight: bold;
               pointer-events: none;
               z-index: 0;
             }
             @media print {
-              body { background: white; }
-              .receipt-container { border: 2px solid #000; }
+              @page {
+                size: A4 landscape;
+                margin: 0;
+              }
+              body { 
+                background: white;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+              .receipts-wrapper {
+                gap: 10px;
+                width: 100%;
+                height: auto;
+              }
+              .receipt-container { 
+                border: 1px solid #000;
+                page-break-inside: avoid;
+                width: 49%;
+                height: auto;
+                max-height: none;
+              }
+              .watermark {
+                font-size: 40px;
+                color: rgba(30, 64, 175, 0.015);
+              }
             }
           </style>
         </head>
         <body>
           <div class="watermark">NIETM</div>
-          <div class="receipt-container">
-            <div class="header-border"></div>
-            
-            <div class="institute-header">
-              <div class="logos-row">
-                <img src="/logo1.png" alt="NIETM Logo" class="logo" />
-                <div class="institute-info">
-                  <div class="society-name">maitrey education society</div>
-                  <div class="institute-name">NAGARJUNA</div>
-                  <div class="institute-subtitle">Institute of Engineering, Technology & Management</div>
-                  <div class="institute-affiliation">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                  <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                  <div class="institute-contact">📧 maitrey.ngp@gmail.com | 🌐 www.nietm.in | 📞 07118 322211, 12</div>
-                </div>
-                <img src="/logo.png" alt="NIETM Logo" class="logo" />
-              </div>
-            </div>
-            
-            <div class="receipt-title">FEE PAYMENT RECEIPT</div>
-            
-            <div style="text-align: center; margin: 10px 0; padding: 8px; background: #f0f9ff; border: 2px solid #2563eb; border-radius: 8px;">
-              <div style="font-weight: bold; color: #2563eb; font-size: 14px;">
-                ${
-                  receiptData.paymentType === "specific"
-                    ? "🎯 SPECIFIC FEE PAYMENT"
-                    : receiptData.paymentType === "multiple"
-                    ? "📊 MULTIPLE FEE HEADS PAYMENT"
-                    : receiptData.paymentType === "annual"
-                    ? "📅 ANNUAL FEE PAYMENT"
-                    : receiptData.paymentType === "transport"
-                    ? "🚌 TRANSPORT FEE PAYMENT"
-                    : receiptData.paymentType === "hostel"
-                    ? "🏠 HOSTEL FEE PAYMENT"
-                    : receiptData.paymentType === "library"
-                    ? "📖 LIBRARY FEE PAYMENT"
-                    : receiptData.paymentType === "lab"
-                    ? "🔬 LABORATORY FEE PAYMENT"
-                    : receiptData.paymentType === "sports"
-                    ? "⚽ SPORTS FEE PAYMENT"
-                    : receiptData.paymentType === "development"
-                    ? "🏗️ DEVELOPMENT FEE PAYMENT"
-                    : receiptData.paymentType === "miscellaneous"
-                    ? "📋 MISCELLANEOUS FEE PAYMENT"
-                    : receiptData.paymentType === "salary"
-                    ? "💰 SALARY PAYMENT"
-                    : "💳 STUDENT FEE PAYMENT"
-                }
-              </div>
-              <div style="font-size: 12px; color: #374151; margin-top: 4px;">
-                Payment Type: ${receiptData.paymentType.toUpperCase()}
-              </div>
-            </div>
-            
-            <div class="receipt-details">
-              <div class="receipt-info">
-                <div>
-                  <div class="info-row">
-                    <span class="info-label">Receipt No:</span>
-                    <span>${receiptData.receiptNumber}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Date:</span>
-                    <span>${receiptData.date}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Time:</span>
-                    <span>${receiptData.time}</span>
-                  </div>
-                </div>
-                <div>
-                  <div class="info-row">
-                    <span class="info-label">Academic Year:</span>
-                    <span>${receiptData.academicYear}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Payment Method:</span>
-                    <span>${receiptData.paymentMethod}</span>
-                  </div>
-                  ${
-                    receiptData.transactionId
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Transaction ID:</span>
-                    <span>${receiptData.transactionId}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                </div>
-              </div>
-              
-              <div class="section-title">👤 STUDENT INFORMATION</div>
-              <div class="student-info">
-                <div>
-                  <div class="info-row">
-                    <span class="info-label">Student Name:</span>
-                    <span>${receiptData.student?.firstName} ${
-        receiptData.student?.lastName
-      }</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Student ID:</span>
-                    <span>${receiptData.student?.studentId}</span>
-                  </div>
-                </div>
-                <div>
-                  <div class="info-row">
-                    <span class="info-label">Department:</span>
-                    <span>${
-                      typeof receiptData.student?.department === "object"
-                        ? receiptData.student?.department?.name || "N/A"
-                        : receiptData.student?.department || "N/A"
-                    }</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Program:</span>
-                    <span>${
-                      typeof receiptData.student?.program === "object"
-                        ? receiptData.student?.program?.name || "N/A"
-                        : receiptData.student?.program || "N/A"
-                    }</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="section-title">� FEE HEAD DETAILS</div>
-              <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px;">
-                <thead>
-                  <tr style="background: #f3f4f6;">
-                    <th style="padding: 8px; text-align: left; border: 1px solid #d1d5db; font-weight: bold;">Fee Head</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db; font-weight: bold;">Total Amount</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db; font-weight: bold;">Previous Paid</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db; font-weight: bold;">Current Payment</th>
-                    <th style="padding: 8px; text-align: right; border: 1px solid #d1d5db; font-weight: bold;">Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${
-                    receiptData.multipleFees &&
-                    receiptData.multipleFees.length > 0
-                      ? receiptData.multipleFees
-                          .map(
-                            (fee, index) => `
-                    <tr style="background: ${
-                      index % 2 === 0 ? "white" : "#f9fafb"
-                    };">
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db;">${
-                        fee.feeHead
-                      }</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right;">₹${fee.totalAmount.toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #059669;">₹${fee.paidAmount.toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold;">₹${fee.currentPayment.toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #dc2626;">₹${fee.balance.toLocaleString()}</td>
-                    </tr>
-                  `
-                          )
-                          .join("")
-                      : receiptData.feeHead
-                      ? `
-                    <tr style="background: white;">
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db;">${
-                        receiptData.feeHead.title
-                      }</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right;">₹${
-                        receiptData.feeHead.amount
-                          ? receiptData.feeHead.amount.toLocaleString()
-                          : "N/A"
-                      }</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #059669;">₹${(receiptData
-                        .feeHead.amount
-                        ? receiptData.feeHead.amount -
-                          parseInt(receiptData.amount)
-                        : 0
-                      ).toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold;">₹${parseInt(
-                        receiptData.amount
-                      ).toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #dc2626;">₹${(receiptData
-                        .feeHead.amount
-                        ? Math.max(
-                            0,
-                            receiptData.feeHead.amount -
-                              parseInt(receiptData.amount)
-                          )
-                        : 0
-                      ).toLocaleString()}</td>
-                    </tr>
-                  `
-                      : `
-                    <tr style="background: white;">
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db;">${
-                        receiptData.feeHead.title
-                      }</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right;">₹${
-                        receiptData.feeHead.amount
-                          ? receiptData.feeHead.amount.toLocaleString()
-                          : "N/A"
-                      }</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #059669;">₹${(receiptData
-                        .feeHead.amount
-                        ? Math.max(
-                            0,
-                            receiptData.feeHead.amount -
-                              parseInt(receiptData.amount)
-                          )
-                        : 0
-                      ).toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold;">₹${parseInt(
-                        receiptData.amount
-                      ).toLocaleString()}</td>
-                      <td style="padding: 6px 8px; border: 1px solid #d1d5db; text-align: right; color: #dc2626;">₹${(receiptData
-                        .feeHead.amount
-                        ? Math.max(
-                            0,
-                            receiptData.feeHead.amount -
-                              parseInt(receiptData.amount)
-                          )
-                        : 0
-                      ).toLocaleString()}</td>
-                    </tr>
-                  `
-                  }
-                </tbody>
-                <tfoot>
-                  <tr style="background: #dbeafe; font-weight: bold;">
-                    <td style="padding: 8px; border: 1px solid #d1d5db;">TOTAL PAYMENT</td>
-                    <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">-</td>
-                    <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">-</td>
-                    <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right; color: #1e40af; font-size: 14px;">₹${parseInt(
-                      receiptData.amount
-                    ).toLocaleString()}</td>
-                    <td style="padding: 8px; border: 1px solid #d1d5db; text-align: right;">-</td>
-                  </tr>
-                </tfoot>
-              </table>
-              
-              <div class="section-title">�💳 PAYMENT DETAILS</div>
-              <div class="student-info">
-                <div>
-                  <div class="info-row">
-                    <span class="info-label">Payment Type:</span>
-                    <span style="text-transform: capitalize; font-weight: bold; color: #2563eb;">${
-                      receiptData.paymentType
-                    }</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Fee Category:</span>
-                    <span style="font-weight: bold; color: #059669;">
-                      ${
-                        receiptData.paymentType === "specific"
-                          ? "Specific Fee Payment"
-                          : receiptData.paymentType === "multiple"
-                          ? "Multiple Fee Heads Payment"
-                          : receiptData.paymentType === "annual"
-                          ? "Annual Fee Payment"
-                          : receiptData.paymentType === "transport"
-                          ? "Transport Fee Payment"
-                          : receiptData.paymentType === "hostel"
-                          ? "Hostel Fee Payment"
-                          : receiptData.paymentType === "library"
-                          ? "Library Fee Payment"
-                          : receiptData.paymentType === "lab"
-                          ? "Laboratory Fee Payment"
-                          : receiptData.paymentType === "sports"
-                          ? "Sports Fee Payment"
-                          : receiptData.paymentType === "development"
-                          ? "Development Fee Payment"
-                          : receiptData.paymentType === "miscellaneous"
-                          ? "Miscellaneous Fee Payment"
-                          : receiptData.paymentType === "salary"
-                          ? "Salary Payment"
-                          : "Student Fee Payment"
-                      }
-                    </span>
-                  </div>
-                  ${
-                    receiptData.paymentType === "transport"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Transport Details:</span>
-                    <span style="color: #f59e0b;">🚌 Bus/Transport Fees</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "hostel"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Hostel Details:</span>
-                    <span style="color: #6366f1;">🏠 Accommodation Fees</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "library"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Library Details:</span>
-                    <span style="color: #14b8a6;">📖 Library Services</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "lab"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Lab Details:</span>
-                    <span style="color: #ec4899;">🔬 Laboratory Usage</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "sports"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Sports Details:</span>
-                    <span style="color: #10b981;">⚽ Sports Facilities</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "development"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Development Details:</span>
-                    <span style="color: #06b6d4;">🏗️ Infrastructure Development</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "annual"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Annual Details:</span>
-                    <span style="color: #f59e0b;">📅 Yearly Fee Payment</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.paymentType === "multiple" &&
-                    receiptData.multipleFees
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Multiple Fees:</span>
-                    <span style="color: #059669;">📊 ${receiptData.multipleFees.length} Fee Head(s)</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.category
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Service Category:</span>
-                    <span style="font-weight: bold; color: #1e40af;">${receiptData.feeTypeDetails.category}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.manualFeeHeadName
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Fee Head:</span>
-                    <span style="color: #059669; font-weight: bold;">💰 ${receiptData.feeTypeDetails.manualFeeHeadName}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.manualFeeDescription
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Fee Details:</span>
-                    <span style="color: #374151; font-weight: bold;">📝 ${receiptData.feeTypeDetails.manualFeeDescription}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.labType
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Laboratory Type:</span>
-                    <span style="color: #ec4899; font-weight: bold;">🔬 ${
-                      receiptData.feeTypeDetails.labType
-                        .charAt(0)
-                        .toUpperCase() +
-                      receiptData.feeTypeDetails.labType.slice(1)
-                    } Lab</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.route
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Transport Route:</span>
-                    <span style="color: #f59e0b; font-weight: bold;">🚌 ${receiptData.feeTypeDetails.route}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.block
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Hostel Details:</span>
-                    <span style="color: #6366f1; font-weight: bold;">🏠 Block ${
-                      receiptData.feeTypeDetails.block
-                    }${
-                          receiptData.feeTypeDetails.roomNumber
-                            ? ", Room " + receiptData.feeTypeDetails.roomNumber
-                            : ""
-                        }</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.feeType &&
-                    receiptData.paymentType === "library"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Library Service:</span>
-                    <span style="color: #14b8a6; font-weight: bold;">📖 ${
-                      receiptData.feeTypeDetails.feeType
-                        .charAt(0)
-                        .toUpperCase() +
-                      receiptData.feeTypeDetails.feeType
-                        .slice(1)
-                        .replace("-", " ")
-                    }</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.activity
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Sports Activity:</span>
-                    <span style="color: #10b981; font-weight: bold;">⚽ ${
-                      receiptData.feeTypeDetails.activity
-                        .charAt(0)
-                        .toUpperCase() +
-                      receiptData.feeTypeDetails.activity.slice(1)
-                    }</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.purpose &&
-                    receiptData.paymentType === "miscellaneous"
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Payment Purpose:</span>
-                    <span style="color: #6b7280; font-weight: bold;">📋 ${receiptData.feeTypeDetails.purpose}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  ${
-                    receiptData.feeTypeDetails &&
-                    receiptData.feeTypeDetails.duration
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Duration/Period:</span>
-                    <span style="color: #8b5cf6; font-weight: bold;">⏱️ ${
-                      receiptData.feeTypeDetails.duration
-                        .charAt(0)
-                        .toUpperCase() +
-                      receiptData.feeTypeDetails.duration
-                        .slice(1)
-                        .replace("-", " ")
-                    }</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  
-                  <div class="info-row">
-                    <span class="info-label">Description:</span>
-                    <span>${receiptData.description}</span>
-                  </div>
-                </div>
-                <div>
-                  ${
-                    receiptData.collectedBy
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Collected By:</span>
-                    <span>${receiptData.collectedBy}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    receiptData.remarks
-                      ? `
-                  <div class="info-row">
-                    <span class="info-label">Remarks:</span>
-                    <span>${receiptData.remarks}</span>
-                  </div>
-                  `
-                      : ""
-                  }
-                  <div class="info-row">
-                    <span class="info-label">Payment Status:</span>
-                    <span style="color: #059669; font-weight: bold;">PAID</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="payment-summary">
-                <div class="amount-label">TOTAL AMOUNT PAID</div>
-                <div class="amount-paid">₹${parseInt(
-                  receiptData.amount
-                ).toLocaleString()}</div>
-                <div class="amount-label">Amount in Words: ${numberToWords(
-                  parseInt(receiptData.amount)
-                )} Rupees Only</div>
-              </div>
-              
-              <div class="signature-section">
-                <div style="text-align: center;">
-                  <div class="signature-box">Cashier Signature</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="footer">
-              <p><strong>Note:</strong> This is a computer-generated receipt and is valid without signature.</p>
-              <p>Please retain this receipt for your records. For any queries, contact the accounts department.</p>
-              <p>Generated on ${receiptData.date} at ${
-        receiptData.time
-      } | Document ID: NIETM-FEE-${receiptData.receiptNumber}</p>
-            </div>
+          <div class="receipts-wrapper">
+            ${receiptTemplate}
+            ${receiptTemplate}
           </div>
         </body>
         </html>

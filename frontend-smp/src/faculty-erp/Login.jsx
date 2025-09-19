@@ -119,7 +119,7 @@ const Login = ({ onLogin = () => {} }) => {
               <div className="ml-3">
                 <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
-            </div>
+            </div> 
           </div>
         )}
 

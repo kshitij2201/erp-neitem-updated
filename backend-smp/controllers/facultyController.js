@@ -112,12 +112,12 @@ const facultyRegister = async (req, res) => {
       "bankBranchName",
       "ifscCode",
       "pfApplicable",
-      "dateOfRetirement",
       "type",
     ];
     const missingFields = requiredFields.filter(
       (field) => !formData[field] || formData[field].toString().trim() === ""
     );
+
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
@@ -178,15 +178,28 @@ const facultyRegister = async (req, res) => {
 
     const dob = new Date(formData.dateOfBirth);
     const doj = new Date(formData.dateOfJoining);
-    const dor = new Date(formData.dateOfRetirement);
     const today = new Date();
-    if (isNaN(dob) || isNaN(doj) || isNaN(dor)) {
+
+    // Validate required dates
+    if (isNaN(dob) || isNaN(doj)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid date format for dateOfBirth, dateOfJoining, or dateOfRetirement",
+        message: "Invalid date format for dateOfBirth or dateOfJoining",
       });
     }
+
+    // Validate optional dateOfRetirement if provided
+    let dor = null;
+    if (formData.dateOfRetirement && formData.dateOfRetirement.trim() !== "") {
+      dor = new Date(formData.dateOfRetirement);
+      if (isNaN(dor)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format for dateOfRetirement",
+        });
+      }
+    }
+
     if (dob >= doj) {
       return res.status(400).json({
         success: false,
@@ -199,7 +212,9 @@ const facultyRegister = async (req, res) => {
         message: "Date of Joining cannot be in the future",
       });
     }
-    if (dor <= doj) {
+
+    // Only validate retirement date if it's provided
+    if (dor && dor <= doj) {
       return res.status(400).json({
         success: false,
         message: "Date of Retirement must be after Date of Joining",
@@ -236,6 +251,10 @@ const facultyRegister = async (req, res) => {
     formData.dateOfIncrement = formData.dateOfIncrement
       ? new Date(formData.dateOfIncrement)
       : null;
+    formData.dateOfRetirement =
+      formData.dateOfRetirement && formData.dateOfRetirement.trim() !== ""
+        ? new Date(formData.dateOfRetirement)
+        : null;
     formData.relievingDate = formData.relievingDate
       ? new Date(formData.relievingDate)
       : null;

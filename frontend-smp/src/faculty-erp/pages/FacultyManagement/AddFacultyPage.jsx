@@ -442,7 +442,6 @@ const FacultyRegistrationForm = () => {
       "address",
       "employmentStatus",
       "fathersName",
-      "dateOfRetirement",
       "motherTongue",
       "designationNature",
       "pf",
@@ -490,6 +489,11 @@ const FacultyRegistrationForm = () => {
           formDataToSubmit.append(key, JSON.stringify(skillsArray));
         } else if (key === "imageUpload" || key === "signatureUpload") {
           if (value) formDataToSubmit.append(key, value);
+        } else if (key === "dateOfRetirement") {
+          // Only append dateOfRetirement if it has a value
+          if (value && value.trim() !== "") {
+            formDataToSubmit.append(key, value);
+          }
         } else if (key !== "password") {
           formDataToSubmit.append(key, value);
         }
@@ -497,7 +501,7 @@ const FacultyRegistrationForm = () => {
 
       // 1. Register Faculty
       const facultyResponse = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty/register",
+        "http://localhost:4000/api/faculty/register",
         {
           method: "POST",
           body: formDataToSubmit,
@@ -518,16 +522,13 @@ const FacultyRegistrationForm = () => {
         type: formData.type,
       };
 
-      const salaryResponse = await fetch(
-        "https://erpbackend.tarstech.in/api/salary",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(salaryData),
-        }
-      );
+      const salaryResponse = await fetch("http://localhost:4000/api/salary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(salaryData),
+      });
 
       const salaryDataResponse = await salaryResponse.json();
       if (!salaryResponse.ok) {
@@ -866,7 +867,7 @@ const FacultyRegistrationForm = () => {
                       htmlFor="fathersName"
                       className="block text-xs font-medium text-gray-700"
                     >
-                      Father's Name <span className="text-red-500">*</span>
+                      Father's Name/Husband Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="fathersName"
@@ -1473,7 +1474,7 @@ const FacultyRegistrationForm = () => {
                       className="text-xs font-medium text-gray-700 flex items-center gap-1"
                     >
                       <Calendar className="h-3 w-3 text-gray-500" />
-                      Date of Retirement <span className="text-red-500">*</span>
+                      Date of Retirement
                     </label>
                     <input
                       id="dateOfRetirement"
