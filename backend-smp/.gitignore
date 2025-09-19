@@ -13,6 +13,7 @@ bower_components/
 dist/
 build/
 out/
+uploads/
 
 # OS-specific files
 .DS_Store
@@ -31,3 +32,4 @@ Thumbs.db
 *.pyc
 *.class
 *.swp
+
