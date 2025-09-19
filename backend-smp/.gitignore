@@ -27,7 +27,7 @@ Thumbs.db
 
 # Git
 .git/
-
+.env
 # Optional: prevent committing any generated files
 *.pyc
 *.class
