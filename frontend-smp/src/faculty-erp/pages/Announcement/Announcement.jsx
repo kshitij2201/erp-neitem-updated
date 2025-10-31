@@ -30,7 +30,7 @@ const TeachingAnnouncements = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "https://erpbackend.tarstech.in/api/auth/profile",
+            "http://167.172.216.231:4000/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -64,7 +64,7 @@ const TeachingAnnouncements = () => {
         }`
       );
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/announcements/teaching_staff${queryParams}`
+        `http://167.172.216.231:4000/api/announcements/teaching_staff${queryParams}`
       );
       console.log(`Found ${res.data.length} announcements`);
       setAnnouncements(res.data.reverse()); // latest first

@@ -43,7 +43,7 @@ export default function SalaryRecords() {
     const fetchRecords = async () => {
       try {
         const response = await axios.get(
-          "https://erpbackend.tarstech.in/api/salary"
+          "http://167.172.216.231:4000/api/salary"
         );
         setRecords(Array.isArray(response.data) ? response.data : []);
       } catch (err) {
@@ -65,7 +65,7 @@ export default function SalaryRecords() {
         setDetailLoading(true);
         try {
           const response = await axios.get(
-            `https://erpbackend.tarstech.in/api/salary/${selectedEmployeeId}`
+            `http://167.172.216.231:4000/api/salary/${selectedEmployeeId}`
           );
           const record = {
             ...response.data,
@@ -218,7 +218,7 @@ export default function SalaryRecords() {
       setValidationErrors({});
 
       const response = await axios.put(
-        `https://erpbackend.tarstech.in/api/salary/${selectedEmployeeId}`,
+        `http://167.172.216.231:4000/api/salary/${selectedEmployeeId}`,
         editFormData
       );
 

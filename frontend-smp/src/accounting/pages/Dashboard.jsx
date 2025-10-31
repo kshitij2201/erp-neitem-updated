@@ -59,8 +59,8 @@ export default function Dashboard() {
       try {
         // Only fetch from APIs that likely exist based on the backend routes
         const results = await Promise.allSettled([
-          safeFetch("https://erpbackend.tarstech.in/api/students", []),
-          safeFetch("https://erpbackend.tarstech.in/api/faculty/faculties", []),
+          safeFetch("http://167.172.216.231:4000/api/students", []),
+          safeFetch("http://167.172.216.231:4000/api/faculty/faculties", []),
         ]);
 
         const [students, faculty] = results.map((r) =>

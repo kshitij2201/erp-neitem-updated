@@ -174,8 +174,13 @@ export const issueBookHandler = async (req, res) => {
     
     const issueRecordEntry = new IssueRecord(issueRecordData);
 
-    // Update book quantity
+    // Update book quantity and status
     book.quantity -= 1;
+    // Support both QUANTITY (schema) and quantity (legacy) fields
+    book.QUANTITY = book.quantity;
+    
+    // Update book status - if quantity becomes 0, set to ISSUE, otherwise keep PRESENT
+    book.STATUS = book.quantity <= 0 ? 'ISSUE' : 'PRESENT';
 
     // Save all records
     await Promise.all([
@@ -193,7 +198,12 @@ export const issueBookHandler = async (req, res) => {
       data: {
         issueRecord,
         issueRecordEntry,
-        remainingQuantity: book.quantity
+        remainingQuantity: book.quantity,
+        book: {
+          ACCNO: book.ACCNO,
+          QUANTITY: book.QUANTITY,
+          STATUS: book.STATUS
+        }
       }
     });
 
@@ -208,6 +218,66 @@ export const issueBookHandler = async (req, res) => {
 };
 
 // 📁 controllers/issueController.js
+
+// Get all active borrowed books (for analytics)
+export const getAllBorrowedBooks = async (req, res) => {
+  try {
+    // Query both models for all active issues
+    const [issueModelBooks, issueRecordBooks] = await Promise.all([
+      IssueModel.find({
+        status: 'active',
+        transactionType: { $in: ['issue', 'renew'] }
+      }).lean(),
+      
+      IssueRecord.find({
+        status: 'active',
+        transactionType: { $in: ['issue', 'renew'] }
+      }).lean()
+    ]);
+
+    console.log(`Found ${issueModelBooks.length} books in Issue model and ${issueRecordBooks.length} books in IssueRecord model`);
+
+    // Map IssueRecord books to match Issue model format for consistency
+    const mappedIssueRecordBooks = issueRecordBooks.map(book => ({
+      ...book,
+      ACCNO: book.bookId, // Map bookId to ACCNO for frontend consistency
+      bookId: book.bookId // Keep bookId for reference
+    }));
+
+    // Merge both arrays, avoiding duplicates by checking ACCNO/bookId
+    const seenAccnos = new Set();
+    const allBorrowedBooks = [];
+    
+    // Add Issue model books first
+    issueModelBooks.forEach(book => {
+      if (book.ACCNO && !seenAccnos.has(book.ACCNO)) {
+        seenAccnos.add(book.ACCNO);
+        allBorrowedBooks.push(book);
+      }
+    });
+    
+    // Then add IssueRecord books if not already included
+    mappedIssueRecordBooks.forEach(book => {
+      const accno = book.ACCNO || book.bookId;
+      if (accno && !seenAccnos.has(accno)) {
+        seenAccnos.add(accno);
+        allBorrowedBooks.push(book);
+      }
+    });
+
+    console.log(`Returning ${allBorrowedBooks.length} total active borrowed books`);
+
+    res.status(200).json({ 
+      success: true, 
+      data: allBorrowedBooks,
+      borrowedBooks: allBorrowedBooks, // Include both formats for backward compatibility
+      totalCount: allBorrowedBooks.length
+    });
+  } catch (error) {
+    console.error('Error getting all borrowed books:', error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
 
 export const getBorrowedBooksByBorrower = async (req, res) => {
   try {
@@ -326,13 +396,19 @@ export const returnBookHandler = async (req, res) => {
     // Process updates for both models if they exist
     const updates = [];
 
-    // Update book quantity
+    // Update book quantity and status
     console.log('Updating book with ACCNO:', ACCNO);
     const book = await Book.findOne({ ACCNO });
     if (book) {
       book.quantity = (book.quantity || 0) + 1;
+      // Support both QUANTITY (schema) and quantity (legacy) fields
+      book.QUANTITY = book.quantity;
+      
+      // Update status back to PRESENT when book is returned
+      book.STATUS = 'PRESENT';
+      
       updates.push(book.save());
-      console.log('Book quantity updated');
+      console.log('Book quantity updated and status set to PRESENT');
     } else {
       console.log('Book not found with ACCNO:', ACCNO);
     }
@@ -392,3 +468,4 @@ export const returnBookHandler = async (req, res) => {
     });
   }
 };
+

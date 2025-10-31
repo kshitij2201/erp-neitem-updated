@@ -8,8 +8,7 @@ const Timetable = ({ department, semester, section }) => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const API_URL =
-    import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in";
+  const API_URL = import.meta.env.VITE_API_URL || "http://167.172.216.231:4000";
 
   // Color schemes for different subjects
   const subjectColors = [

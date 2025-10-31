@@ -21,7 +21,7 @@ function TestTicketCreation() {
     try {
       console.log("Frontend: Sending request...");
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/maintenance/tickets",
+        "http://167.172.216.231:4000/api/maintenance/tickets",
         {
           method: "POST",
           headers: {

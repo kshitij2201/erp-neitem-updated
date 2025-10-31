@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "https://erpbackend.tarstech.in/api",
+  baseURL: "http://167.172.216.231:4000/api",
   headers: {
     "Content-Type": "application/json",
   },

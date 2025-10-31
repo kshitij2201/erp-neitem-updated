@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "https://erpbackend.tarstech.in/api";
+const API_BASE = "http://167.172.216.231:4000/api";
 
 // Set up axios interceptors for authentication
 const api = axios.create({
@@ -35,9 +35,9 @@ api.interceptors.response.use(
 );
 
 export const getAllBuses = () => {
-  console.log("busServices: Making request to /buses");
+  // ("busServices: Making request to /buses");
   const token = localStorage.getItem("token");
-  console.log("busServices: Using token:", !!token);
+  // ("busServices: Using token:", !!token);
   return api.get("/buses");
 };
 

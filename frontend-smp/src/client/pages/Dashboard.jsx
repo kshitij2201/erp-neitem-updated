@@ -18,8 +18,7 @@ const Dashboard = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("");
 
-  const API_URL =
-    import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in";
+  const API_URL = import.meta.env.VITE_API_URL || "http://167.172.216.231:4000";
 
   useEffect(() => {
     // Get student data from localStorage (set during login)

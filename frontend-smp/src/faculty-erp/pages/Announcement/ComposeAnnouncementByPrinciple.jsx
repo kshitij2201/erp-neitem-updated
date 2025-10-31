@@ -122,7 +122,7 @@ const ComposeAnnouncementByPrincipal = () => {
       };
 
       await axios.post(
-        "https://erpbackend.tarstech.in/api/announcements",
+        "http://167.172.216.231:4000/api/announcements",
         announcementData
       );
       setMessage({
@@ -157,7 +157,7 @@ const ComposeAnnouncementByPrincipal = () => {
   const fetchAnnouncements = async () => {
     try {
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/announcements/${currentDashboard}`
+        `http://167.172.216.231:4000/api/announcements/${currentDashboard}`
       );
       setAnnouncements(res.data);
       setLoading(false);

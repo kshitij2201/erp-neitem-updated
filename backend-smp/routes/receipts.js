@@ -1,21 +1,21 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
 import Payment from "../models/Payment.js";
 import Student from "../models/StudentManagement.js";
 import Salary from "../models/Salary.js";
 
 // GET: All receipts with pagination and filtering
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      search, 
-      type, 
-      status, 
-      startDate, 
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      type,
+      status,
+      startDate,
       endDate,
-      department 
+      department,
     } = req.query;
 
     const pageNum = parseInt(page);
@@ -25,13 +25,14 @@ router.get('/', async (req, res) => {
     let allReceipts = [];
 
     // Fetch student payment receipts
-    if (!type || type === 'student') {
+    if (!type || type === "student") {
       let studentPaymentQuery = {};
-      
+
       // Date range filter
       if (startDate || endDate) {
         studentPaymentQuery.paymentDate = {};
-        if (startDate) studentPaymentQuery.paymentDate.$gte = new Date(startDate);
+        if (startDate)
+          studentPaymentQuery.paymentDate.$gte = new Date(startDate);
         if (endDate) studentPaymentQuery.paymentDate.$lte = new Date(endDate);
       }
 
@@ -42,73 +43,83 @@ router.get('/', async (req, res) => {
       if (search) {
         const studentQuery = {
           $or: [
-            { firstName: { $regex: search, $options: 'i' } },
-            { lastName: { $regex: search, $options: 'i' } },
-            { studentId: { $regex: search, $options: 'i' } },
+            { firstName: { $regex: search, $options: "i" } },
+            { lastName: { $regex: search, $options: "i" } },
+            { studentId: { $regex: search, $options: "i" } },
           ],
         };
-        const matchingStudents = await Student.find(studentQuery).select('_id');
-        const studentIds = matchingStudents.map(s => s._id);
+        const matchingStudents = await Student.find(studentQuery).select("_id");
+        const studentIds = matchingStudents.map((s) => s._id);
 
         studentPaymentQuery = {
           ...studentPaymentQuery,
           $or: [
             { studentId: { $in: studentIds } },
-            { paymentId: { $regex: search, $options: 'i' } },
-            { receiptNumber: { $regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } },
-            { transactionId: { $regex: search, $options: 'i' } },
-            { remarks: { $regex: search, $options: 'i' } },
+            { paymentId: { $regex: search, $options: "i" } },
+            { receiptNumber: { $regex: search, $options: "i" } },
+            { description: { $regex: search, $options: "i" } },
+            { transactionId: { $regex: search, $options: "i" } },
+            { remarks: { $regex: search, $options: "i" } },
           ],
         };
       }
 
       const studentPayments = await Payment.find(studentPaymentQuery)
-        .populate('studentId', 'firstName lastName studentId department casteCategory')
-        .populate('feeHead', 'title')
+        .populate(
+          "studentId",
+          "firstName lastName studentId department casteCategory"
+        )
+        .populate("feeHead", "title")
         .sort({ paymentDate: -1 })
         .lean();
 
       // Filter by department if specified
-      const filteredStudentPayments = department 
-        ? studentPayments.filter(p => p.studentId?.department === department)
+      const filteredStudentPayments = department
+        ? studentPayments.filter((p) => p.studentId?.department === department)
         : studentPayments;
 
       // Transform student payments
-      const transformedStudentReceipts = filteredStudentPayments.map(payment => ({
-        _id: payment._id,
-        type: 'student',
-        receiptNumber: payment.receiptNumber,
-        paymentId: payment.paymentId || `SP-${payment._id.toString().slice(-8)}`,
-        amount: payment.amount,
-        paymentMethod: payment.paymentMethod,
-        paymentDate: payment.paymentDate,
-        status: payment.status,
-        description: payment.description || `Fee payment for ${payment.studentId?.firstName} ${payment.studentId?.lastName}`,
-        recipientName: `${payment.studentId?.firstName || ''} ${payment.studentId?.lastName || ''}`.trim(),
-        studentId: payment.studentId?.studentId,
-        department: payment.studentId?.department,
-        casteCategory: payment.studentId?.casteCategory,
-        feeHead: payment.feeHead?.title,
-        transactionId: payment.transactionId,
-        remarks: payment.remarks,
-        collectedBy: payment.collectedBy,
-        semester: payment.semester
-      }));
+      const transformedStudentReceipts = filteredStudentPayments.map(
+        (payment) => ({
+          _id: payment._id,
+          type: "student",
+          receiptNumber: payment.receiptNumber,
+          paymentId:
+            payment.paymentId || `SP-${payment._id.toString().slice(-8)}`,
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          paymentDate: payment.paymentDate,
+          status: payment.status,
+          description:
+            payment.description ||
+            `Fee payment for ${payment.studentId?.firstName} ${payment.studentId?.lastName}`,
+          recipientName: `${payment.studentId?.firstName || ""} ${
+            payment.studentId?.lastName || ""
+          }`.trim(),
+          studentId: payment.studentId?.studentId,
+          department: payment.studentId?.department,
+          casteCategory: payment.studentId?.casteCategory,
+          feeHead: payment.feeHead?.title,
+          transactionId: payment.transactionId,
+          remarks: payment.remarks,
+          collectedBy: payment.collectedBy,
+          semester: payment.semester,
+        })
+      );
 
       allReceipts = [...allReceipts, ...transformedStudentReceipts];
     }
 
     // Fetch salary payment receipts
-    if (!type || type === 'salary') {
+    if (!type || type === "salary") {
       let salaryQuery = {};
-      
+
       if (search) {
         salaryQuery = {
           $or: [
-            { name: { $regex: search, $options: 'i' } },
-            { month: { $regex: search, $options: 'i' } },
-            { employeeId: { $regex: search, $options: 'i' } },
+            { name: { $regex: search, $options: "i" } },
+            { month: { $regex: search, $options: "i" } },
+            { employeeId: { $regex: search, $options: "i" } },
           ],
         };
       }
@@ -120,33 +131,35 @@ router.get('/', async (req, res) => {
         .lean();
 
       // Transform salary payments
-      const transformedSalaryReceipts = salaryPayments.map(salary => ({
+      const transformedSalaryReceipts = salaryPayments.map((salary) => ({
         _id: salary._id,
-        type: 'salary',
+        type: "salary",
         receiptNumber: `SAL-${salary._id.toString().slice(-8)}`,
         paymentId: `SAL-${salary._id.toString().slice(-8)}`,
         amount: salary.amount,
-        paymentMethod: 'Bank Transfer',
+        paymentMethod: "Bank Transfer",
         paymentDate: salary.createdAt || new Date(),
         status: salary.status,
         description: `Salary payment for ${salary.month}`,
         recipientName: salary.name,
-        studentId: '',
-        department: salary.department || '',
-        casteCategory: '',
-        feeHead: '',
-        transactionId: '',
+        studentId: "",
+        department: salary.department || "",
+        casteCategory: "",
+        feeHead: "",
+        transactionId: "",
         remarks: `Monthly salary for ${salary.month}`,
-        collectedBy: 'System',
+        collectedBy: "System",
         semester: null,
-        employeeId: salary.employeeId
+        employeeId: salary.employeeId,
       }));
 
       allReceipts = [...allReceipts, ...transformedSalaryReceipts];
     }
 
     // Sort by payment date (newest first)
-    allReceipts.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    allReceipts.sort(
+      (a, b) => new Date(b.paymentDate) - new Date(a.paymentDate)
+    );
 
     // Apply pagination
     const paginatedReceipts = allReceipts.slice(skip, skip + limitNum);
@@ -161,175 +174,201 @@ router.get('/', async (req, res) => {
         totalReceipts,
         limit: limitNum,
         hasNext: pageNum < totalPages,
-        hasPrev: pageNum > 1
-      }
+        hasPrev: pageNum > 1,
+      },
     });
-
   } catch (err) {
-    console.error('Error fetching receipts:', err);
-    res.status(500).json({ message: 'Error fetching receipts: ' + err.message });
+    console.error("Error fetching receipts:", err);
+    res
+      .status(500)
+      .json({ message: "Error fetching receipts: " + err.message });
   }
 });
 
 // GET: Receipt by ID (student payment receipt)
-router.get('/student/:id', async (req, res) => {
+router.get("/student/:id", async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
-      .populate('studentId', 'firstName lastName studentId department casteCategory')
-      .populate('feeHead', 'title');
-    
+      .populate(
+        "studentId",
+        "firstName lastName studentId department casteCategory"
+      )
+      .populate("feeHead", "title");
+
     if (!payment) {
-      return res.status(404).json({ message: 'Receipt not found' });
+      return res.status(404).json({ message: "Receipt not found" });
     }
-    
+
     res.json(payment);
   } catch (err) {
-    console.error('Error fetching receipt:', err);
-    res.status(500).json({ message: 'Error fetching receipt details' });
+    console.error("Error fetching receipt:", err);
+    res.status(500).json({ message: "Error fetching receipt details" });
   }
 });
 
 // GET: Receipt by receipt number
-router.get('/number/:receiptNumber', async (req, res) => {
+router.get("/number/:receiptNumber", async (req, res) => {
   try {
-    const payment = await Payment.findOne({ receiptNumber: req.params.receiptNumber })
-      .populate('studentId', 'firstName lastName studentId department casteCategory')
-      .populate('feeHead', 'title');
-    
+    const payment = await Payment.findOne({
+      receiptNumber: req.params.receiptNumber,
+    })
+      .populate(
+        "studentId",
+        "firstName lastName studentId department casteCategory"
+      )
+      .populate("feeHead", "title");
+
     if (!payment) {
-      return res.status(404).json({ message: 'Receipt not found' });
+      return res.status(404).json({ message: "Receipt not found" });
     }
-    
+
     res.json(payment);
   } catch (err) {
-    console.error('Error fetching receipt:', err);
-    res.status(500).json({ message: 'Error fetching receipt by number' });
+    console.error("Error fetching receipt:", err);
+    res.status(500).json({ message: "Error fetching receipt by number" });
   }
 });
 
 // GET: Salary receipt by ID
-router.get('/salary/:id', async (req, res) => {
+router.get("/salary/:id", async (req, res) => {
   try {
     const salary = await Salary.findById(req.params.id);
-    
+
     if (!salary) {
-      return res.status(404).json({ message: 'Salary receipt not found' });
+      return res.status(404).json({ message: "Salary receipt not found" });
     }
-    
+
     // Transform to receipt format
     const receipt = {
       _id: salary._id,
-      type: 'salary',
+      type: "salary",
       receiptNumber: `SAL-${salary._id.toString().slice(-8)}`,
       paymentId: `SAL-${salary._id.toString().slice(-8)}`,
       amount: salary.amount,
-      paymentMethod: 'Bank Transfer',
+      paymentMethod: "Bank Transfer",
       paymentDate: salary.createdAt || new Date(),
       status: salary.status,
       description: `Salary payment for ${salary.month}`,
       recipient: {
         name: salary.name,
         employeeId: salary.employeeId,
-        department: salary.department
+        department: salary.department,
       },
       remarks: `Monthly salary for ${salary.month}`,
-      collectedBy: 'System'
+      collectedBy: "System",
     };
-    
+
     res.json(receipt);
   } catch (err) {
-    console.error('Error fetching salary receipt:', err);
-    res.status(500).json({ message: 'Error fetching salary receipt details' });
+    console.error("Error fetching salary receipt:", err);
+    res.status(500).json({ message: "Error fetching salary receipt details" });
   }
 });
 
 // GET: Receipt statistics
-router.get('/stats', async (req, res) => {
+router.get("/stats", async (req, res) => {
   try {
     const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const startOfYear = new Date(today.getFullYear(), 0, 1);
 
     // Today's receipts
     const todayReceipts = await Payment.countDocuments({
-      paymentDate: { $gte: startOfDay }
+      paymentDate: { $gte: startOfDay },
     });
     const todayAmount = await Payment.aggregate([
       { $match: { paymentDate: { $gte: startOfDay } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
     // This month's receipts
     const monthReceipts = await Payment.countDocuments({
-      paymentDate: { $gte: startOfMonth }
+      paymentDate: { $gte: startOfMonth },
     });
     const monthAmount = await Payment.aggregate([
       { $match: { paymentDate: { $gte: startOfMonth } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
     // This year's receipts
     const yearReceipts = await Payment.countDocuments({
-      paymentDate: { $gte: startOfYear }
+      paymentDate: { $gte: startOfYear },
     });
     const yearAmount = await Payment.aggregate([
       { $match: { paymentDate: { $gte: startOfYear } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
     // Receipt status distribution
     const statusDistribution = await Payment.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 }, amount: { $sum: '$amount' } } }
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+          amount: { $sum: "$amount" },
+        },
+      },
     ]);
 
     // Payment method distribution
     const methodDistribution = await Payment.aggregate([
-      { $group: { _id: '$paymentMethod', count: { $sum: 1 }, amount: { $sum: '$amount' } } }
+      {
+        $group: {
+          _id: "$paymentMethod",
+          count: { $sum: 1 },
+          amount: { $sum: "$amount" },
+        },
+      },
     ]);
 
     res.json({
       today: {
         count: todayReceipts,
-        amount: todayAmount[0]?.total || 0
+        amount: todayAmount[0]?.total || 0,
       },
       month: {
         count: monthReceipts,
-        amount: monthAmount[0]?.total || 0
+        amount: monthAmount[0]?.total || 0,
       },
       year: {
         count: yearReceipts,
-        amount: yearAmount[0]?.total || 0
+        amount: yearAmount[0]?.total || 0,
       },
       statusDistribution,
-      methodDistribution
+      methodDistribution,
     });
-
   } catch (err) {
-    console.error('Error fetching receipt stats:', err);
-    res.status(500).json({ message: 'Error fetching receipt statistics' });
+    console.error("Error fetching receipt stats:", err);
+    res.status(500).json({ message: "Error fetching receipt statistics" });
   }
 });
 
 // POST: Generate bulk receipts (for record keeping)
-router.post('/bulk-generate', async (req, res) => {
+router.post("/bulk-generate", async (req, res) => {
   try {
-    const { startDate, endDate, type = 'student' } = req.body;
+    const { startDate, endDate, type = "student" } = req.body;
 
     if (!startDate || !endDate) {
-      return res.status(400).json({ message: 'Start date and end date are required' });
+      return res
+        .status(400)
+        .json({ message: "Start date and end date are required" });
     }
 
     let query = {
       paymentDate: {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      }
+        $lte: new Date(endDate),
+      },
     };
 
     const payments = await Payment.find(query)
-      .populate('studentId', 'firstName lastName studentId department')
-      .populate('feeHead', 'title')
+      .populate("studentId", "firstName lastName studentId department")
+      .populate("feeHead", "title")
       .sort({ paymentDate: -1 });
 
     // Generate receipt summary
@@ -337,25 +376,110 @@ router.post('/bulk-generate', async (req, res) => {
       totalReceipts: payments.length,
       totalAmount: payments.reduce((sum, p) => sum + p.amount, 0),
       dateRange: { startDate, endDate },
-      receipts: payments.map(payment => ({
+      receipts: payments.map((payment) => ({
         receiptNumber: payment.receiptNumber,
         paymentId: payment.paymentId,
-        studentName: `${payment.studentId?.firstName || ''} ${payment.studentId?.lastName || ''}`.trim(),
+        studentName: `${payment.studentId?.firstName || ""} ${
+          payment.studentId?.lastName || ""
+        }`.trim(),
         amount: payment.amount,
         paymentMethod: payment.paymentMethod,
         paymentDate: payment.paymentDate,
-        status: payment.status
-      }))
+        status: payment.status,
+      })),
     };
 
     res.json(receiptSummary);
-
   } catch (err) {
-    console.error('Error generating bulk receipts:', err);
-    res.status(500).json({ message: 'Error generating bulk receipts' });
+    console.error("Error generating bulk receipts:", err);
+    res.status(500).json({ message: "Error generating bulk receipts" });
+  }
+});
+
+// PUT: Update student payment receipt
+router.put("/student/:id", async (req, res) => {
+  try {
+    const { amount, status, remarks, lastEditedBy } = req.body;
+
+    const payment = await Payment.findById(req.params.id);
+    if (!payment) {
+      return res.status(404).json({ message: "Receipt not found" });
+    }
+
+    // Update fields
+    if (amount !== undefined) payment.amount = amount;
+    if (status !== undefined) payment.status = status;
+    if (remarks !== undefined) payment.remarks = remarks;
+    if (lastEditedBy) payment.lastEditedBy = lastEditedBy;
+
+    payment.updatedAt = new Date();
+
+    await payment.save();
+
+    res.json(payment);
+  } catch (err) {
+    console.error("Error updating receipt:", err);
+    res.status(500).json({ message: "Error updating receipt details" });
+  }
+});
+
+// PUT: Update salary receipt
+router.put("/salary/:id", async (req, res) => {
+  try {
+    const { amount, status, remarks, lastEditedBy } = req.body;
+
+    const salary = await Salary.findById(req.params.id);
+    if (!salary) {
+      return res.status(404).json({ message: "Salary receipt not found" });
+    }
+
+    // Update fields
+    if (amount !== undefined) salary.amount = amount;
+    if (status !== undefined) salary.status = status;
+    if (remarks !== undefined) salary.remarks = remarks;
+    if (lastEditedBy) salary.lastEditedBy = lastEditedBy;
+
+    salary.updatedAt = new Date();
+
+    await salary.save();
+
+    res.json(salary);
+  } catch (err) {
+    console.error("Error updating salary receipt:", err);
+    res.status(500).json({ message: "Error updating salary receipt details" });
+  }
+});
+
+// DELETE: Delete student payment receipt
+router.delete("/student/:id", async (req, res) => {
+  try {
+    const payment = await Payment.findByIdAndDelete(req.params.id);
+
+    if (!payment) {
+      return res.status(404).json({ message: "Receipt not found" });
+    }
+
+    res.json({ message: "Receipt deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting receipt:", err);
+    res.status(500).json({ message: "Error deleting receipt" });
+  }
+});
+
+// DELETE: Delete salary receipt
+router.delete("/salary/:id", async (req, res) => {
+  try {
+    const salary = await Salary.findByIdAndDelete(req.params.id);
+
+    if (!salary) {
+      return res.status(404).json({ message: "Salary receipt not found" });
+    }
+
+    res.json({ message: "Salary receipt deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting salary receipt:", err);
+    res.status(500).json({ message: "Error deleting salary receipt" });
   }
 });
 
 export default router;
-
-

@@ -38,7 +38,7 @@ const UnifiedLogin = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
+        import.meta.env.REACT_APP_API_URL || "http://167.172.216.231:4000";
 
       const response = await axios.post(`${API_URL}/api/student/auth/login`, {
         studentId: studentId.trim(),
@@ -82,7 +82,7 @@ const UnifiedLogin = () => {
 
     try {
       const res = await axios.post(
-        "https://erpbackend.tarstech.in/api/faculty/rolelogin",
+        "http://167.172.216.231:4000/api/faculty/rolelogin",
         {
           employeeId: employeeId.trim(),
           password: password.trim(),

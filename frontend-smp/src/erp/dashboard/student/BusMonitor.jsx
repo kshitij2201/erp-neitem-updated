@@ -47,7 +47,7 @@ const BusMonitor = () => {
         }
 
         const studentResponse = await axios.get(
-          `https://erpbackend.tarstech.in/api/students/${userId}`,
+          `http://167.172.216.231:4000/api/students/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

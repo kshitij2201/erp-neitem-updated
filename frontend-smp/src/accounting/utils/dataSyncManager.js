@@ -141,7 +141,7 @@ class DataSyncManager {
   async syncSalaryToPF(salaryData) {
     try {
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/employee/${salaryData.name}/auto-generate-pf`,
+        `http://167.172.216.231:4000/api/faculty/employee/${salaryData.name}/auto-generate-pf`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -165,7 +165,7 @@ class DataSyncManager {
     try {
       // Check if income tax record exists
       const existingResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/income-tax?employeeName=${pfData.employeeName}`
+        `http://167.172.216.231:4000/api/income-tax?employeeName=${pfData.employeeName}`
       );
       const existing = await existingResponse.json();
 
@@ -178,7 +178,7 @@ class DataSyncManager {
       if (existing.length > 0) {
         // Update existing record
         await fetch(
-          `https://erpbackend.tarstech.in/api/income-tax/${existing[0]._id}`,
+          `http://167.172.216.231:4000/api/income-tax/${existing[0]._id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -187,7 +187,7 @@ class DataSyncManager {
         );
       } else {
         // Create new record
-        await fetch("https://erpbackend.tarstech.in/api/income-tax", {
+        await fetch("http://167.172.216.231:4000/api/income-tax", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -211,7 +211,7 @@ class DataSyncManager {
     try {
       // Fetch applicable fee heads
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/fee-heads/applicable/${studentData._id}`
+        `http://167.172.216.231:4000/api/fee-heads/applicable/${studentData._id}`
       );
       const feeHeads = await response.json();
 
@@ -258,9 +258,9 @@ class DataSyncManager {
   async getSystemHealth() {
     try {
       const endpoints = [
-        "https://erpbackend.tarstech.in/api/students/stats/overview",
-        "https://erpbackend.tarstech.in/api/faculty/status",
-        "https://erpbackend.tarstech.in/api/students/fees/status",
+        "http://167.172.216.231:4000/api/students/stats/overview",
+        "http://167.172.216.231:4000/api/faculty/status",
+        "http://167.172.216.231:4000/api/students/fees/status",
       ];
 
       const results = await Promise.allSettled(
@@ -295,7 +295,7 @@ class DataSyncManager {
     try {
       // 1. Sync all salary records to PF
       const salaryResponse = await fetch(
-        "https://erpbackend.tarstech.in/api/salary"
+        "http://167.172.216.231:4000/api/salary"
       );
       const salaryRecords = await salaryResponse.json();
 
@@ -304,7 +304,7 @@ class DataSyncManager {
       }
 
       // 2. Sync all PF records to Income Tax
-      const pfResponse = await fetch("https://erpbackend.tarstech.in/api/pf");
+      const pfResponse = await fetch("http://167.172.216.231:4000/api/pf");
       const pfRecords = await pfResponse.json();
 
       for (const pf of pfRecords) {

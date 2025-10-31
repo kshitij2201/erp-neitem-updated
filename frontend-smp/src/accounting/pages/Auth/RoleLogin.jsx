@@ -12,7 +12,7 @@ const RoleLogin = () => {
   const { login } = useAuth();
 
   const roleRedirectMap = {
-    "Account Section Management": "/accounting/"
+    "Account Section Management": "/accounting/",
   };
 
   const handleLogin = async (e) => {
@@ -23,7 +23,7 @@ const RoleLogin = () => {
     try {
       // Use AuthContext login method directly
       const result = await login(employeeId, password);
-      
+
       if (!result.success) {
         setError(result.error);
         setLoading(false);

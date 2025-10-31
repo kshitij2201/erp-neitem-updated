@@ -63,7 +63,7 @@ export default function Insurance() {
         }
       });
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/insurance",
+        "http://167.172.216.231:4000/api/insurance",
         {
           params,
           headers,
@@ -87,7 +87,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/students",
+        "http://167.172.216.231:4000/api/students",
         {
           headers,
         }
@@ -108,7 +108,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/insurance/stats",
+        "http://167.172.216.231:4000/api/insurance/stats",
         { headers }
       );
       setStats(response.data);
@@ -129,13 +129,13 @@ export default function Insurance() {
 
       if (editingPolicy) {
         await axios.put(
-          `https://erpbackend.tarstech.in/api/insurance/${editingPolicy._id}`,
+          `http://167.172.216.231:4000/api/insurance/${editingPolicy._id}`,
           formData,
           { headers }
         );
       } else {
         await axios.post(
-          "https://erpbackend.tarstech.in/api/insurance",
+          "http://167.172.216.231:4000/api/insurance",
           formData,
           {
             headers,
@@ -181,12 +181,9 @@ export default function Insurance() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        await axios.delete(
-          `https://erpbackend.tarstech.in/api/insurance/${id}`,
-          {
-            headers,
-          }
-        );
+        await axios.delete(`http://167.172.216.231:4000/api/insurance/${id}`, {
+          headers,
+        });
         fetchPolicies();
         fetchStats();
       } catch (error) {
@@ -205,7 +202,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       await axios.patch(
-        `https://erpbackend.tarstech.in/api/insurance/${id}/payment`,
+        `http://167.172.216.231:4000/api/insurance/${id}/payment`,
         {
           paymentStatus,
           lastPaymentDate:
@@ -229,7 +226,7 @@ export default function Insurance() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       await axios.patch(
-        `https://erpbackend.tarstech.in/api/insurance/${id}/status`,
+        `http://167.172.216.231:4000/api/insurance/${id}/status`,
         { status },
         { headers }
       );

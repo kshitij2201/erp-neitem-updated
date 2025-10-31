@@ -198,7 +198,7 @@ const corsOptions = {
 
     // Define allowed origins
     const allowedOrigins = [
-      "https://erpbackend.tarstech.in",
+      "http://167.172.216.231:4000",
       "http://localhost:5173",
       "http://localhost:5174",
       "http://127.0.0.1:4000",
@@ -377,8 +377,8 @@ app.use("/api/superadmin/events", eventRoutes);
 app.use("/api/superadmin/semesters", semesterRoutes);
 app.use("/api/faculty/auth", facultyAuthRoutes);
 app.use("/api/student/auth", studentAuthRoutes);
-app.use("/api/students", protect, studentManagementRoutes);
-app.use("/api/students/fees", protect, studentsFeeRoutes);
+app.use("/api/students", protect, studentsFeeRoutes);
+app.use("/api/students/management", protect, studentManagementRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/fee-headers", protect, feeHeaderRoutes);
 app.use("/api/fee-heads", protect, feeHeadsRoutes);

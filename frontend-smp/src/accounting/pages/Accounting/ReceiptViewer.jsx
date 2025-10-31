@@ -19,7 +19,7 @@ const ReceiptViewer = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/payments/receipt/${receiptNumber}`,
+        `http://167.172.216.231:4000/api/payments/receipt/${receiptNumber}`,
         { headers }
       );
       setReceipt(response.data);

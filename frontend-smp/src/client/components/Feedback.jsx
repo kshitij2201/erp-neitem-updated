@@ -5,7 +5,7 @@ const Feedback = () => {
   const enrollmentNumber = "123456";
   const departmentId = "Computer Science"; // Use department name instead of ObjectId
   const API_URL =
-    import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
+    import.meta.env.REACT_APP_API_URL || "http://167.172.216.231:4000";
 
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState("");

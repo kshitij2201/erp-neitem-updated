@@ -44,7 +44,7 @@ const Receipts = () => {
 
       console.log("Fetching receipts with params:", params.toString());
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts?${params}`,
+        `http://167.172.216.231:4000/api/receipts?${params}`,
         { headers }
       );
 
@@ -109,7 +109,7 @@ const Receipts = () => {
       if (receipt.type === "student") {
         // Fetch full payment details with student info
         const paymentResponse = await fetch(
-          `https://erpbackend.tarstech.in/api/receipts/student/${receipt._id}`,
+          `http://167.172.216.231:4000/api/receipts/student/${receipt._id}`,
           { headers }
         );
         if (!paymentResponse.ok) {
@@ -288,7 +288,7 @@ const Receipts = () => {
           }
           .payment-summary {
             background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
+            color: black;
             padding: 12px;
             text-align: center;
             margin: 12px 0;
@@ -514,7 +514,7 @@ const Receipts = () => {
 
       // Fetch faculty data to get complete employee information
       const facultyRes = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty",
+        "http://167.172.216.231:4000/api/faculty",
         {
           headers,
         }
@@ -540,7 +540,7 @@ const Receipts = () => {
 
       // Fetch salary record details
       const salaryRes = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/salary`,
+        `http://167.172.216.231:4000/api/faculty/salary`,
         {
           headers,
         }
@@ -1163,7 +1163,9 @@ const Receipts = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const checkResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`,
+        `http://167.172.216.231:4000/api/receipts/${
+          receipt.type === "student" ? "student" : "salary"
+        }/${receipt._id}`,
         { headers }
       );
 
@@ -1223,7 +1225,9 @@ const Receipts = () => {
 
       // First, verify the receipt exists by trying to fetch it
       const checkResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${editReceipt._id}`,
+        `http://167.172.216.231:4000/api/receipts/${
+          editReceipt.type === "student" ? "student" : "salary"
+        }/${editReceipt._id}`,
         { headers }
       );
       if (!checkResponse.ok) {
@@ -1258,10 +1262,15 @@ const Receipts = () => {
       // If receipt exists, proceed with update
       const lastEditedBy = window.currentUser?.name || "Unknown User";
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${editReceipt._id}`,
+        `http://167.172.216.231:4000/api/receipts/${
+          editReceipt.type === "student" ? "student" : "salary"
+        }/${editReceipt._id}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             amount: Number(editForm.amount),
             status: editForm.status,
@@ -1319,8 +1328,14 @@ const Receipts = () => {
       setError("");
 
       // First verify the receipt exists on the backend
+      const token = localStorage.getItem("token");
       const checkResponse = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`
+        `http://167.172.216.231:4000/api/receipts/${
+          receipt.type === "student" ? "student" : "salary"
+        }/${receipt._id}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
       );
       if (!checkResponse.ok) {
         if (checkResponse.status === 404) {
@@ -1342,10 +1357,15 @@ const Receipts = () => {
 
       // Receipt exists, proceed with deletion
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`,
+        `http://167.172.216.231:4000/api/receipts/${
+          receipt.type === "student" ? "student" : "salary"
+        }/${receipt._id}`,
         {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
         }
       );
 
@@ -1389,8 +1409,14 @@ const Receipts = () => {
         if (!receipt._id) continue;
 
         try {
+          const token = localStorage.getItem("token");
           const checkResponse = await fetch(
-            `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`
+            `http://167.172.216.231:4000/api/receipts/${
+              receipt.type === "student" ? "student" : "salary"
+            }/${receipt._id}`,
+            {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            }
           );
           if (checkResponse.ok) {
             validReceipts.push(receipt);
@@ -1435,10 +1461,14 @@ const Receipts = () => {
         await Promise.all(
           batch.map(async (receipt) => {
             try {
+              const token = localStorage.getItem("token");
               const checkResponse = await fetch(
-                `https://erpbackend.tarstech.in/api/receipts/${receipt._id}`,
+                `http://167.172.216.231:4000/api/receipts/${
+                  receipt.type === "student" ? "student" : "salary"
+                }/${receipt._id}`,
                 {
                   method: "HEAD", // Use HEAD instead of GET to avoid downloading data
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
                 }
               );
               if (checkResponse.ok) {

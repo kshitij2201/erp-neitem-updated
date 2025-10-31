@@ -43,7 +43,7 @@ export default function Expenses() {
         );
 
         const res = await axios.get(
-          "https://erpbackend.tarstech.in/api/expenses",
+          "http://167.172.216.231:4000/api/expenses",
           {
             params: { search: searchTerm },
             headers,
@@ -66,7 +66,7 @@ export default function Expenses() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const res = await axios.get(
-          "https://erpbackend.tarstech.in/api/expenses/total",
+          "http://167.172.216.231:4000/api/expenses/total",
           {
             headers,
           }
@@ -166,7 +166,7 @@ export default function Expenses() {
       console.log("Headers being sent:", headers);
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/expenses",
+        "http://167.172.216.231:4000/api/expenses",
         payload,
         { headers }
       );
@@ -184,18 +184,15 @@ export default function Expenses() {
       });
 
       // Refetch expenses
-      const res = await axios.get(
-        "https://erpbackend.tarstech.in/api/expenses",
-        {
-          params: { search: searchTerm },
-          headers,
-        }
-      );
+      const res = await axios.get("http://167.172.216.231:4000/api/expenses", {
+        params: { search: searchTerm },
+        headers,
+      });
       setExpenses(res.data);
 
       // Refetch total
       const totalRes = await axios.get(
-        "https://erpbackend.tarstech.in/api/expenses/total",
+        "http://167.172.216.231:4000/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -244,7 +241,7 @@ export default function Expenses() {
       console.log("Updating expense status:", { id, status });
       // Send both status and action to backend for audit clarity
       const response = await axios.patch(
-        `https://erpbackend.tarstech.in/api/expenses/${id}/status`,
+        `http://167.172.216.231:4000/api/expenses/${id}/status`,
         { status, action: status },
         { headers }
       );
@@ -278,7 +275,7 @@ export default function Expenses() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      await axios.delete(`https://erpbackend.tarstech.in/api/expenses/${id}`, {
+      await axios.delete(`http://167.172.216.231:4000/api/expenses/${id}`, {
         headers,
       });
 
@@ -287,7 +284,7 @@ export default function Expenses() {
 
       // Refetch total since we deleted an expense
       const totalRes = await axios.get(
-        "https://erpbackend.tarstech.in/api/expenses/total",
+        "http://167.172.216.231:4000/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -365,7 +362,7 @@ export default function Expenses() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/expenses/export/${format}`,
+        `http://167.172.216.231:4000/api/expenses/export/${format}`,
         {
           responseType: "blob",
           params: { headerInfo: JSON.stringify(headerInfo) },
@@ -586,35 +583,6 @@ export default function Expenses() {
             </select>
           </div>
 
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <input
-              name="department"
-              placeholder="Enter department (optional)"
-              value={form.department}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-            <select
-              name="paymentMethod"
-              value={form.paymentMethod}
-              onChange={handleChange}
-              className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-              <option value="Cash">Cash</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Credit Card">Credit Card</option>
-              <option value="Debit Card">Debit Card</option>
-              <option value="UPI">UPI</option>
-              <option value="Online">Online</option>
-            </select>
-          </div>
-           */}
           <div className="md:col-span-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Remarks

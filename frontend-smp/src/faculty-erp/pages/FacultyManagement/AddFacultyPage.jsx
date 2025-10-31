@@ -501,7 +501,7 @@ const FacultyRegistrationForm = () => {
 
       // 1. Register Faculty
       const facultyResponse = await fetch(
-        "http://localhost:4000/api/faculty/register",
+        "http://167.172.216.231:4000/api/faculty/register",
         {
           method: "POST",
           body: formDataToSubmit,
@@ -522,13 +522,16 @@ const FacultyRegistrationForm = () => {
         type: formData.type,
       };
 
-      const salaryResponse = await fetch("http://localhost:4000/api/salary", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(salaryData),
-      });
+      const salaryResponse = await fetch(
+        "http://167.172.216.231:4000/api/salary",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(salaryData),
+        }
+      );
 
       const salaryDataResponse = await salaryResponse.json();
       if (!salaryResponse.ok) {
@@ -867,7 +870,8 @@ const FacultyRegistrationForm = () => {
                       htmlFor="fathersName"
                       className="block text-xs font-medium text-gray-700"
                     >
-                      Father's Name/Husband Name <span className="text-red-500">*</span>
+                      Father's Name/Husband Name{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="fathersName"

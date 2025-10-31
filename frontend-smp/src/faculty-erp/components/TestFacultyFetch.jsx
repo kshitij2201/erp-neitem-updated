@@ -25,7 +25,7 @@ export default function TestFacultyFetch() {
 
           const response = await fetch(
             `${
-              import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"
+              import.meta.env.VITE_API_URL || "http://167.172.216.231:4000"
             }/api/faculty/department/${encodeURIComponent(dept)}`
           );
 

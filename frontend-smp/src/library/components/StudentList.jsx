@@ -20,7 +20,7 @@ const StudentList = () => {
 
       // First try the main API with includeRenewed parameter
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/issues/borrowed-books`,
+        `http://167.172.216.231:4000/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId,
@@ -58,7 +58,7 @@ const StudentList = () => {
         );
         try {
           const altResponse = await axios.get(
-            `https://erpbackend.tarstech.in/api/issues/borrowed-books`,
+            `http://167.172.216.231:4000/api/issues/borrowed-books`,
             {
               params: {
                 [`${borrowerType}Id`]: borrowerId,
@@ -110,7 +110,7 @@ const StudentList = () => {
           );
 
           const historyResponse = await axios.get(
-            `https://erpbackend.tarstech.in/api/issues/history`,
+            `http://167.172.216.231:4000/api/issues/history`,
             {
               params: historyParams,
             }
@@ -192,7 +192,7 @@ const StudentList = () => {
           // Try alternative history API call
           try {
             const altHistoryResponse = await axios.get(
-              `https://erpbackend.tarstech.in/api/issues/history`,
+              `http://167.172.216.231:4000/api/issues/history`,
               {
                 params: {
                   [`${borrowerType}Id`]: borrowerId,
@@ -358,7 +358,7 @@ const StudentList = () => {
       setError(null);
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/students",
+        "http://167.172.216.231:4000/api/students",
         {
           params: {
             page: 1,
@@ -828,19 +828,19 @@ const StudentList = () => {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
-                    Name
+                    <span className="text-blue-800">Name</span>
                   </th>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
-                    Student ID & Sem
+                    <span className="text-blue-800">Student ID & Sem</span>
                   </th>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
-                    Department
+                    <span className="text-blue-800">Department</span>
                   </th>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
-                    Contact
+                    <span className="text-blue-800">Contact</span>
                   </th>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
-                    Actions
+                    <span className="text-blue-800">Actions</span>
                   </th>
                 </tr>
               </thead>
@@ -848,7 +848,7 @@ const StudentList = () => {
                 {filteredStudents.map((student) => (
                   <tr key={student._id} className="hover:bg-gray-50">
                     <td className="py-2 px-2 md:px-4 border max-w-xs">
-                      <div className="font-medium truncate">
+                      <div className="font-medium text-gray-700 truncate">
                         {student.name || "N/A"}
                       </div>
                       <div className="text-xs md:text-sm text-gray-500">
@@ -857,7 +857,7 @@ const StudentList = () => {
                       </div>
                     </td>
                     <td className="py-2 px-2 md:px-4 border max-w-xs">
-                      <div className="font-medium truncate">
+                      <div className="font-medium text-gray-700 truncate">
                         {student.studentId || student._id || "N/A"}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -870,7 +870,7 @@ const StudentList = () => {
                       </div>
                     </td>
                     <td className="py-2 px-2 md:px-4 border max-w-xs">
-                      <div className="font-medium truncate">
+                      <div className="font-medium text-gray-700 truncate">
                         {student.department || "N/A"}
                       </div>
                       <div className="text-xs md:text-sm text-gray-500">

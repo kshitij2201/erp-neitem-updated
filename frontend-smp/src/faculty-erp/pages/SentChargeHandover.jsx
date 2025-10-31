@@ -17,7 +17,7 @@ export default function SentChargeHandover() {
     try {
       const token = userData?.token || localStorage.getItem("authToken");
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/tasks/sent/${employeeId}`,
+        `http://167.172.216.231:4000/api/tasks/sent/${employeeId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setRequests(res.data || []);

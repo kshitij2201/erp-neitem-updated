@@ -700,14 +700,11 @@ const IncomeTax = () => {
         },
       };
 
-      const response = await fetch(
-        "https://erpbackend.tarstech.in/api/salary",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(salaryRecord),
-        }
-      );
+      const response = await fetch("http://167.172.216.231:4000/api/salary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(salaryRecord),
+      });
 
       if (response.ok) {
         alert(
@@ -826,7 +823,7 @@ const IncomeTax = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty/faculties",
+        "http://167.172.216.231:4000/api/faculty/faculties",
         { headers }
       );
       if (!response.ok) {
@@ -871,7 +868,7 @@ const IncomeTax = () => {
       setHistoryLoading(true);
 
       // Fetch real salary history from API
-      const response = await fetch("https://erpbackend.tarstech.in/api/salary");
+      const response = await fetch("http://167.172.216.231:4000/api/salary");
 
       if (!response.ok) {
         throw new Error("Failed to fetch salary history");
@@ -1003,7 +1000,7 @@ const IncomeTax = () => {
 
       // Fetch specific faculty data using search endpoint
       const facultyRes = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/search/${encodeURIComponent(
+        `http://167.172.216.231:4000/api/faculty/search/${encodeURIComponent(
           employeeIdentifier
         )}`
       );
@@ -1014,9 +1011,7 @@ const IncomeTax = () => {
 
         // Try User model (Faculties collection) first
         try {
-          const userRes = await fetch(
-            "https://erpbackend.tarstech.in/api/users"
-          );
+          const userRes = await fetch("http://167.172.216.231:4000/api/users");
           if (userRes.ok) {
             const usersResponse = await userRes.json();
             const users = Array.isArray(usersResponse)
@@ -1045,7 +1040,7 @@ const IncomeTax = () => {
 
         // Finally try faculty endpoint
         const fallbackRes = await fetch(
-          "https://erpbackend.tarstech.in/api/faculty"
+          "http://167.172.216.231:4000/api/faculty"
         );
         if (!fallbackRes.ok) {
           throw new Error("Failed to fetch faculty data from all endpoints");
@@ -1803,9 +1798,7 @@ const IncomeTax = () => {
 
       // Fetch faculty data
       console.log("Fetching faculty data...");
-      const facultyRes = await fetch(
-        "https://erpbackend.tarstech.in/api/faculty"
-      );
+      const facultyRes = await fetch("http://167.172.216.231:4000/api/faculty");
       if (!facultyRes.ok) {
         throw new Error(`Faculty API failed: ${facultyRes.status}`);
       }
@@ -1872,7 +1865,7 @@ Please make sure the employee name exactly matches one of the above names.`);
 
       // Fetch salary records from our calculator saved data - include year in query
       console.log("Fetching salary records...");
-      const salaryUrl = `https://erpbackend.tarstech.in/api/faculty/salary?name=${encodeURIComponent(
+      const salaryUrl = `http://167.172.216.231:4000/api/faculty/salary?name=${encodeURIComponent(
         selectedFacultyName
       )}&month=${salarySlipMonth}&year=${salarySlipYear}`;
       console.log("Salary API URL:", salaryUrl);
@@ -1923,7 +1916,7 @@ Please:
 
       // Fetch income tax data for the employee
       const incomeTaxRes = await fetch(
-        `https://erpbackend.tarstech.in/api/income-tax?employeeName=${encodeURIComponent(
+        `http://167.172.216.231:4000/api/income-tax?employeeName=${encodeURIComponent(
           selectedFacultyName
         )}`
       );
@@ -2633,7 +2626,7 @@ Please:
       });
 
       // Fetch salary data from API
-      const salaryUrl = `https://erpbackend.tarstech.in/api/salary?name=${encodeURIComponent(
+      const salaryUrl = `http://167.172.216.231:4000/api/salary?name=${encodeURIComponent(
         employeeName
       )}&month=${month}&year=${year}`;
       console.log("Fetching from URL:", salaryUrl);
@@ -2650,7 +2643,7 @@ Please:
       // Fetch income tax data if available
       let taxDetails = null;
       try {
-        const taxUrl = `https://erpbackend.tarstech.in/api/faculty/incometax?name=${encodeURIComponent(
+        const taxUrl = `http://167.172.216.231:4000/api/faculty/incometax?name=${encodeURIComponent(
           employeeName
         )}&year=${year}`;
         const taxResponse = await fetch(taxUrl);

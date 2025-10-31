@@ -23,7 +23,10 @@ export default function TimetableSimple({ userData }) {
   });
   console.log("Timetable state:", timetable);
 
-  console.log("TOkebn Generated", decodeToken(localStorage.getItem("authToken")));
+  console.log(
+    "TOkebn Generated",
+    decodeToken(localStorage.getItem("authToken"))
+  );
   const [faculties, setFaculties] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [subjectFacultyMap, setSubjectFacultyMap] = useState({}); // Maps subject to its assigned faculties
@@ -95,7 +98,6 @@ export default function TimetableSimple({ userData }) {
       id: faculty.id || faculty.employeeId,
     }));
   }, [faculties]);
- 
 
   // Fetch user's CC assignment
   const fetchCCAssignment = async () => {
@@ -112,7 +114,7 @@ export default function TimetableSimple({ userData }) {
       }
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/cc/my-cc-assignments",
+        "http://167.172.216.231:4000/api/cc/my-cc-assignments",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -190,7 +192,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const subjectsRes = await axios.get(
-          `https://erpbackend.tarstech.in/api/subjects/department/${encodeURIComponent(
+          `http://167.172.216.231:4000/api/subjects/department/${encodeURIComponent(
             department
           )}`,
           { headers }
@@ -206,7 +208,7 @@ export default function TimetableSimple({ userData }) {
           console.log("Subjects API failed, trying alternative approach...");
           // Try alternative API endpoint
           const altSubjectsRes = await axios.get(
-            `https://erpbackend.tarstech.in/api/superadmin/subjects`,
+            `http://167.172.216.231:4000/api/superadmin/subjects`,
             { headers, params: { department: department } }
           );
 
@@ -229,7 +231,7 @@ export default function TimetableSimple({ userData }) {
         // Fallback: Load subjects from faculty-department-subject mapping
         try {
           const fdsRes = await axios.get(
-            `https://erpbackend.tarstech.in/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
+            `http://167.172.216.231:4000/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
               department
             )}`,
             { headers }
@@ -258,7 +260,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/faculty/faculties",
+          "http://167.172.216.231:4000/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
 
@@ -284,7 +286,7 @@ export default function TimetableSimple({ userData }) {
         // Try alternative approach
         try {
           const altFacultiesRes = await axios.get(
-            "https://erpbackend.tarstech.in/api/faculty",
+            "http://167.172.216.231:4000/api/faculty",
             { headers }
           );
 
@@ -351,7 +353,7 @@ export default function TimetableSimple({ userData }) {
 
       // First, get all AdminSubjects for this department
       const subjectsResponse = await axios.get(
-        `https://erpbackend.tarstech.in/api/subjects/department/${encodeURIComponent(
+        `http://167.172.216.231:4000/api/subjects/department/${encodeURIComponent(
           department
         )}`,
         { headers }
@@ -375,7 +377,7 @@ export default function TimetableSimple({ userData }) {
             );
 
             const facultiesResponse = await axios.get(
-              `https://erpbackend.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
+              `http://167.172.216.231:4000/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -449,7 +451,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/faculty/faculties",
+          "http://167.172.216.231:4000/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
         facultyList =
@@ -459,7 +461,7 @@ export default function TimetableSimple({ userData }) {
       } catch (error) {
         console.log("Primary faculty API failed, trying alternative...");
         const altFacultiesRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/faculty",
+          "http://167.172.216.231:4000/api/faculty",
           { headers }
         );
         const allFaculties =
@@ -598,7 +600,7 @@ export default function TimetableSimple({ userData }) {
 
       // Step 1: Get AdminSubjects for department
       const subjectsResponse = await axios.get(
-        `https://erpbackend.tarstech.in/api/subjects/department/${encodeURIComponent(
+        `http://167.172.216.231:4000/api/subjects/department/${encodeURIComponent(
           ccAssignment.department
         )}`,
         { headers }
@@ -619,7 +621,7 @@ export default function TimetableSimple({ userData }) {
 
           try {
             const facultiesResponse = await axios.get(
-              `https://erpbackend.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
+              `http://167.172.216.231:4000/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -669,7 +671,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/timetable",
+        "http://167.172.216.231:4000/api/timetable",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -1038,7 +1040,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
+        `http://167.172.216.231:4000/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
           subjectName
         )}`,
         {
@@ -1142,7 +1144,7 @@ export default function TimetableSimple({ userData }) {
       console.log("Saving timetable payload:", payload);
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/timetable",
+        "http://167.172.216.231:4000/api/timetable",
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -1196,7 +1198,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/timetable",
+        "http://167.172.216.231:4000/api/timetable",
         {
           params: {
             department: ccAssignment.department,
@@ -1316,7 +1318,7 @@ export default function TimetableSimple({ userData }) {
       const token = localStorage.getItem("authToken");
 
       const response = await axios.delete(
-        `https://erpbackend.tarstech.in/api/timetable/${currentTimetableId}`,
+        `http://167.172.216.231:4000/api/timetable/${currentTimetableId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -2115,20 +2117,19 @@ export default function TimetableSimple({ userData }) {
   );
 }
 
-
 const decodeToken = (token) => {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error('Failed to decode token', error);
+    console.error("Failed to decode token", error);
     return null;
   }
 };

@@ -5,7 +5,7 @@ import Book from '../models/Book.js';
 import Student from "../models/student.js";
 import Faculty from "../models/faculty.js";
 import Issue from "../models/Issue.js";
-import { issueBookHandler, returnBookHandler, getBorrowedBooksByBorrower } from '../controllers/issueController.js';
+import { issueBookHandler, returnBookHandler, getBorrowedBooksByBorrower, getAllBorrowedBooks } from '../controllers/issueController.js';
 
 
 
@@ -14,12 +14,8 @@ const router = express.Router();
 
 // Issue a book
 router.post('/issue', issueBookHandler);
-//     // Update book quantity
-//     book.quantity -= 1;
 
-//     // Save both records
-//     await Promise.all([
-//       issueRecord.save(),
+// Update book quantity
 //       book.save()
 //     ]);
 
@@ -29,8 +25,8 @@ router.post('/issue', issueBookHandler);
 //       data: {
 //         issueRecord: issueRecord,
 //         remainingQuantity: book.quantity
-//       }   
-//     });
+//       }   
+//     });
 
 //     // await issueRecord.save();
 //     // res.status(201).json({
@@ -491,6 +487,7 @@ router.post('/issue', async (req, res) => {
 
 // routes/issueRoutes.js
 
+router.get('/borrowed-books/all', getAllBorrowedBooks); // New endpoint for all borrowed books
 router.get('/borrowed-books', getBorrowedBooksByBorrower);
 
 
@@ -1092,6 +1089,33 @@ router.post('/lost', async (req, res) => {
   } catch (error) {
     console.error('Error recording lost book:', error);
     res.status(500).json({ success: false, message: 'Failed to record lost book', error: error.message });
+  }
+});
+
+// Get all issues (for analytics)
+router.get('/all', async (req, res) => {
+  try {
+    const { status = 'active', transactionType = 'issue' } = req.query;
+    
+    const query = {};
+    if (status !== 'all') query.status = status;
+    if (transactionType !== 'all') query.transactionType = transactionType;
+    
+    const issues = await IssueModel.find(query)
+      .sort({ issueDate: -1 });
+    
+    res.json({
+      success: true,
+      data: issues,
+      count: issues.length
+    });
+  } catch (error) {
+    console.error('Error fetching all issues:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch issues',
+      error: error.message
+    });
   }
 });
 

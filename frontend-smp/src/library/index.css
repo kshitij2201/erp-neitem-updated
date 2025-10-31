@@ -12,10 +12,9 @@ code {
     monospace;
 } */
 
-
 /* src/index.css */
-@tailwind base;
-@tailwind components;
+/* @tailwind base;
+@tailwind components; */
 @tailwind utilities;
 
 /* Hide scrollbars globally */
@@ -28,7 +27,8 @@ code {
   display: none; /* WebKit */
 }
 
-html, body {
+html,
+body {
   overflow-x: hidden;
   height: 100%;
 }
@@ -36,4 +36,8 @@ html, body {
 #root {
   height: 100%;
   overflow: hidden;
+}
+
+body {
+  text: black;
 }

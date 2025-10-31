@@ -21,9 +21,7 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
 
   const fetchFeeHeads = async () => {
     try {
-      const response = await fetch(
-        "https://erpbackend.tarstech.in/api/fee-heads"
-      );
+      const response = await fetch("http://167.172.216.231:4000/api/fee-heads");
       if (response.ok) {
         const data = await response.json();
         // Filter fee heads based on student's stream and caste category
@@ -68,16 +66,13 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
 
       console.log("Sending payment data:", paymentData);
 
-      const response = await fetch(
-        "https://erpbackend.tarstech.in/api/payments",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(paymentData),
-        }
-      );
+      const response = await fetch("http://167.172.216.231:4000/api/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(paymentData),
+      });
 
       const result = await response.json();
 

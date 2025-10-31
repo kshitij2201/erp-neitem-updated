@@ -11,7 +11,7 @@ const PaymentHistory = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          "https://erpbackend.tarstech.in/api/dues/history/all"
+          "http://167.172.216.231:4000/api/dues/history/all"
         );
         // Convert dummy/test bookId to valid ObjectId-like string if needed
         const fixed = Array.isArray(response.data)
@@ -46,29 +46,29 @@ const PaymentHistory = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Student Name
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase">
+                <span className="text-blue-800">Student Name</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Student ID
+                <span className="text-blue-800">Student ID</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Book
+                <span className="text-blue-800">Book</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Amount
+                <span className="text-blue-800">Amount</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Method
+                <span className="text-blue-800">Method</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Txn ID
+                <span className="text-blue-800">Txn ID</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Date
+                <span className="text-blue-800">Date</span>
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Invoice
+                <span className="text-blue-800">Invoice</span>
               </th>
             </tr>
           </thead>

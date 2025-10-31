@@ -110,7 +110,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/students",
+        "http://167.172.216.231:4000/api/students",
         {
           headers,
         }
@@ -139,7 +139,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/fee-heads",
+        "http://167.172.216.231:4000/api/fee-heads",
         {
           headers,
         }
@@ -172,7 +172,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/payments?limit=50",
+        "http://167.172.216.231:4000/api/payments?limit=50",
         { headers }
       );
       setRecentPayments(response.data);
@@ -194,7 +194,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `https://erpbackend.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+        `http://167.172.216.231:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
         { headers }
       );
       setPendingFees(response.data || []);
@@ -212,7 +212,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const paymentsResponse = await axios.get(
-        `https://erpbackend.tarstech.in/api/payments?studentId=${studentId}`,
+        `http://167.172.216.231:4000/api/payments?studentId=${studentId}`,
         { headers }
       );
       const payments = paymentsResponse.data || [];
@@ -368,7 +368,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/payments",
+        "http://167.172.216.231:4000/api/payments",
         paymentData,
         { headers }
       );
@@ -1486,7 +1486,7 @@ export default function AddPayment() {
             }
             .payment-summary {
               background: linear-gradient(135deg, #10b981, #059669);
-              color: white;
+              color: black;
               padding: 8px;
               text-align: center;
               margin: 8px 0;
@@ -1885,15 +1885,6 @@ export default function AddPayment() {
                           <th className="px-4 py-3 text-right font-semibold text-gray-700 border-b">
                             Total Amount
                           </th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700 border-b">
-                            Previous Paid
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700 border-b">
-                            Current Payment
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700 border-b">
-                            Balance
-                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1913,15 +1904,6 @@ export default function AddPayment() {
                               <td className="px-4 py-3 border-b border-gray-200 text-right">
                                 ₹{fee.totalAmount.toLocaleString()}
                               </td>
-                              <td className="px-4 py-3 border-b border-gray-200 text-right text-green-600">
-                                ₹{fee.paidAmount.toLocaleString()}
-                              </td>
-                              <td className="px-4 py-3 border-b border-gray-200 text-right text-blue-600 font-semibold">
-                                ₹{fee.currentPayment.toLocaleString()}
-                              </td>
-                              <td className="px-4 py-3 border-b border-gray-200 text-right text-red-600">
-                                ₹{fee.balance.toLocaleString()}
-                              </td>
                             </tr>
                           ))
                         ) : receiptData.feeHead ? (
@@ -1936,31 +1918,6 @@ export default function AddPayment() {
                                 ? receiptData.feeHead.amount.toLocaleString()
                                 : "N/A"}
                             </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right text-green-600">
-                              ₹
-                              {(receiptData.feeHead.amount
-                                ? Math.max(
-                                    0,
-                                    receiptData.feeHead.amount -
-                                      parseInt(receiptData.amount)
-                                  )
-                                : 0
-                              ).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right text-blue-600 font-semibold">
-                              ₹{parseInt(receiptData.amount).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right text-red-600">
-                              ₹
-                              {(receiptData.feeHead.amount
-                                ? Math.max(
-                                    0,
-                                    receiptData.feeHead.amount -
-                                      parseInt(receiptData.amount)
-                                  )
-                                : 0
-                              ).toLocaleString()}
-                            </td>
                           </tr>
                         ) : (
                           // Show general payment
@@ -1974,31 +1931,6 @@ export default function AddPayment() {
                                 ? receiptData.feeHead.amount.toLocaleString()
                                 : "N/A"}
                             </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right text-green-600">
-                              ₹
-                              {(receiptData.feeHead.amount
-                                ? Math.max(
-                                    0,
-                                    receiptData.feeHead.amount -
-                                      parseInt(receiptData.amount)
-                                  )
-                                : 0
-                              ).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right text-blue-600 font-semibold">
-                              ₹{parseInt(receiptData.amount).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right text-red-600">
-                              ₹
-                              {(receiptData.feeHead.amount
-                                ? Math.max(
-                                    0,
-                                    receiptData.feeHead.amount -
-                                      parseInt(receiptData.amount)
-                                  )
-                                : 0
-                              ).toLocaleString()}
-                            </td>
                           </tr>
                         )}
                       </tbody>
@@ -2006,15 +1938,6 @@ export default function AddPayment() {
                         <tr>
                           <td className="px-4 py-3 font-bold text-gray-800">
                             TOTAL PAYMENT
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-800">
-                            -
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-800">
-                            -
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-blue-800 text-lg">
-                            ₹{parseInt(receiptData.amount).toLocaleString()}
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-gray-800">
                             -
@@ -3768,8 +3691,8 @@ export default function AddPayment() {
                       value={formData.amount}
                       onChange={handleInputChange}
                       required
-                      min="0"
-                      step="0.01"
+                      // min="0"
+                      // step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter amount"
                     />

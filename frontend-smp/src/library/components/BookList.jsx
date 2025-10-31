@@ -15,7 +15,7 @@ import html2canvas from "html2canvas"; // Static import
 
 // Now connected to real MongoDB data with fallback to mock data
 // Fetches real book data from MongoDB Atlas cluster
-const API_URL = "https://erpbackend.tarstech.in/api/books";
+const API_URL = "http://167.172.216.231:4000/api/books";
 
 const BookList = () => {
   const { isAuthenticated } = useContext(AuthContext);
@@ -79,6 +79,24 @@ const BookList = () => {
         let booksData = data.books || [];
 
         console.log(`Loaded ${booksData.length} real books from MongoDB`);
+
+        // Check for locally edited books and merge them
+        try {
+          const editedBooks = localStorage.getItem("editedBooks");
+          if (editedBooks) {
+            const parsedEditedBooks = JSON.parse(editedBooks);
+            // Merge edited books with API data
+            booksData = booksData.map((apiBook) => {
+              const editedBook = parsedEditedBooks.find(
+                (edited) => edited._id === apiBook._id
+              );
+              return editedBook ? { ...apiBook, ...editedBook } : apiBook;
+            });
+            console.log("Merged locally edited books with API data");
+          }
+        } catch (error) {
+          console.warn("Error loading edited books from localStorage:", error);
+        }
 
         // Apply search filters
         if (searchTerm.trim()) {
@@ -402,6 +420,36 @@ const BookList = () => {
     }
   }, [searchTerm, books]);
 
+  // Listen for book issue/return events to refresh book data
+  useEffect(() => {
+    const handleBookIssue = (event) => {
+      const { bookId } = event.detail;
+      console.log(
+        "BookList: Book issue event received, refreshing data for book:",
+        bookId
+      );
+      fetchBooks(); // Refresh the entire list to get updated quantities
+    };
+
+    const handleBookReturn = (event) => {
+      const { bookId } = event.detail;
+      console.log(
+        "BookList: Book return event received, refreshing data for book:",
+        bookId
+      );
+      fetchBooks(); // Refresh the entire list to get updated quantities
+    };
+
+    // Add event listeners
+    window.addEventListener("bookIssued", handleBookIssue);
+    window.addEventListener("bookReturned", handleBookReturn);
+
+    return () => {
+      window.removeEventListener("bookIssued", handleBookIssue);
+      window.removeEventListener("bookReturned", handleBookReturn);
+    };
+  }, []);
+
   const requestSort = (key) => {
     let direction = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -442,6 +490,7 @@ const BookList = () => {
     }
     setSelectedBook({
       ...book,
+      _id: book._id, // Preserve the original _id
       TITLENAME: book.TITLENAME || "",
       AUTHOR: book.AUTHOR || "",
       "PUBLISHER NAME": book["PUBLISHER NAME"] || "",
@@ -464,30 +513,97 @@ const BookList = () => {
     }
 
     try {
-      // Since backend doesn't exist, simulate the update locally
-      console.log("Simulating book update:", bookId, updatedDetails);
+      // Try to update via backend API first
+      console.log("Attempting to update book via API:", bookId, updatedDetails);
 
-      // Update the local state to reflect changes
+      const updateResponse = await fetch(`${API_URL}/${bookId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(updatedDetails),
+      });
+
+      console.log("API Response status:", updateResponse.status);
+
+      if (updateResponse.ok) {
+        const responseData = await updateResponse.json();
+        console.log("Book updated successfully via API:", responseData);
+
+        // Update local state with the response from backend
+        const updatedBook = responseData.book || {
+          ...updatedDetails,
+          _id: bookId,
+        };
+
+        setBooks((prevBooks) =>
+          prevBooks.map((book) =>
+            book._id === bookId ? { ...book, ...updatedBook } : book
+          )
+        );
+        setFilteredBooks((prevFiltered) =>
+          prevFiltered.map((book) =>
+            book._id === bookId ? { ...book, ...updatedBook } : book
+          )
+        );
+
+        // Clear localStorage since backend update was successful
+        localStorage.removeItem("editedBooks");
+
+        // Dispatch custom event to notify Analytics component
+        window.dispatchEvent(
+          new CustomEvent("localBooksUpdated", {
+            detail: { bookId, updatedDetails: updatedBook },
+          })
+        );
+
+        setShowEditModal(false);
+        setModalType("success");
+        setModalMessage("Book details updated successfully in database!");
+        setShowModal(true);
+      } else {
+        const errorText = await updateResponse.text();
+        console.error("API Error Response:", errorText);
+        throw new Error(`API Error: ${updateResponse.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.warn("API update failed, using local simulation:", error.message);
+
+      // Fallback to local simulation
+      // Update the local state to reflect changes - use _id to match the specific book
       setBooks((prevBooks) =>
         prevBooks.map((book) =>
-          book.bookId === bookId ? { ...book, ...updatedDetails } : book
+          book._id === bookId ? { ...book, ...updatedDetails } : book
         )
       );
       setFilteredBooks((prevFiltered) =>
         prevFiltered.map((book) =>
-          book.bookId === bookId ? { ...book, ...updatedDetails } : book
+          book._id === bookId ? { ...book, ...updatedDetails } : book
         )
+      );
+
+      // Save to localStorage as backup
+      const updatedBooksForStorage = books.map((book) =>
+        book._id === bookId ? { ...book, ...updatedDetails } : book
+      );
+      localStorage.setItem(
+        "editedBooks",
+        JSON.stringify(updatedBooksForStorage)
+      );
+
+      // Dispatch custom event to notify Analytics component
+      window.dispatchEvent(
+        new CustomEvent("localBooksUpdated", {
+          detail: { bookId, updatedDetails },
+        })
       );
 
       setShowEditModal(false);
       setModalType("success");
       setModalMessage(
-        "Book details updated successfully! (Note: This is a demo update using mock data)"
+        "Book details updated locally! (Note: Changes will persist until page refresh as backend is not available)"
       );
-      setShowModal(true);
-    } catch (error) {
-      setModalType("error");
-      setModalMessage(error.message || "Failed to update book details.");
       setShowModal(true);
     }
   };
@@ -821,7 +937,7 @@ const BookList = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br flex flex-col py-6 px-4 md:px-8 overflow-y-auto overflow-x-hidden bg-gray-100">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 via-teal-50 to-indigo-100 opacity-50"></div>
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="relative max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <header className="mb-8">
           <div className="bg-gradient-to-r from-indigo-600 to-teal-600 text-white rounded-2xl p-6 md:p-8 shadow-lg">
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold flex items-center space-x-3">
@@ -849,7 +965,7 @@ const BookList = () => {
             </div>
           </div>
 
-          <div className="lg:w-3/4 order-1 lg:order-2">
+          <div className="lg:w-6/4 order-1 lg:order-2 max-w-full">
             <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
               {materialTypes.map((materialType) => (
                 <button
@@ -1021,10 +1137,10 @@ const BookList = () => {
                       {filteredBooks.map((book) => (
                         <tr
                           key={book._id}
-                          className="hover:bg-gray-50 transition-all duration-200"
+                          className="hover:bg-gray-100 transition-all duration-200"
                         >
-                          <td className="px-6 py-4 text-sm text-gray-800 font-medium">
-                            {book.ACCNO}
+                          <td className="px-6 py-4 text-sm font-medium">
+                            <span style={{ color: "#000" }}>{book.ACCNO}</span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-semibold text-gray-900">
@@ -1035,7 +1151,7 @@ const BookList = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-700">
-                            {book.AUTHOR}
+                            <span style={{ color: "#000" }}>{book.AUTHOR}</span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-700">
@@ -1045,8 +1161,10 @@ const BookList = () => {
                               {book.CITY}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
-                            {book.SERIESCODE}
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            <span style={{ color: "#000" }}>
+                              {book.SERIESCODE}
+                            </span>
                           </td>
                           <td className="px-6 py-4">
                             <span
@@ -1228,8 +1346,8 @@ const BookList = () => {
         )}
 
         {showEditModal && isAuthenticated && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300 ease-out">
-            <div className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl backdrop-blur-md bg-opacity-90">
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300 ease-out overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl backdrop-blur-md bg-opacity-90 my-8 max-h-[90vh] overflow-y-auto">
               <h3 className="text-2xl font-bold text-gray-800 mb-6">
                 Edit Item Details
               </h3>
@@ -1527,7 +1645,7 @@ const BookList = () => {
                 </button>
                 <button
                   onClick={() =>
-                    updateBookDetails(selectedBook.bookId, {
+                    updateBookDetails(selectedBook._id, {
                       TITLENAME: selectedBook.TITLENAME,
                       AUTHOR: selectedBook.AUTHOR,
                       "PUBLISHER NAME": selectedBook["PUBLISHER NAME"],

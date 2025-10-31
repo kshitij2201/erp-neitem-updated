@@ -27,7 +27,7 @@ export default function ChargeHandoverApp() {
     setError(null);
     try {
       const response = await axios.get(
-        "https://erpbackend.tarstech.in/api/tasks",
+        "http://167.172.216.231:4000/api/tasks",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -151,7 +151,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `https://erpbackend.tarstech.in/api/tasks/${id}${endpoint}`,
+        `http://167.172.216.231:4000/api/tasks/${id}${endpoint}`,
         {
           decision: "approved",
           approverId: approverId,
@@ -198,7 +198,7 @@ export default function ChargeHandoverApp() {
       });
 
       await axios.put(
-        `https://erpbackend.tarstech.in/api/tasks/${id}${endpoint}`,
+        `http://167.172.216.231:4000/api/tasks/${id}${endpoint}`,
         {
           decision: "rejected",
           approverId: approverId,

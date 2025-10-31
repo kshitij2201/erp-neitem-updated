@@ -18,7 +18,7 @@ export default function FeePayment() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const localRes = await axios.get(
-          "https://erpbackend.tarstech.in/api/students",
+          "http://167.172.216.231:4000/api/students",
           {
             headers,
           }
@@ -51,7 +51,7 @@ export default function FeePayment() {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
             const feeRes = await axios.get(
-              `https://erpbackend.tarstech.in/api/fee-heads/applicable/${student._id}`,
+              `http://167.172.216.231:4000/api/fee-heads/applicable/${student._id}`,
               { headers }
             );
             const heads = feeRes.data;

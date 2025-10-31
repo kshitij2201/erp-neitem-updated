@@ -66,7 +66,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
           department,
         });
         const response = await fetch(
-          `https://erpbackend.tarstech.in/api/faculty/cc-assignments?department=${encodeURIComponent(
+          `http://167.172.216.231:4000/api/faculty/cc-assignments?department=${encodeURIComponent(
             department
           )}`,
           {
@@ -128,8 +128,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
   };
 
   const getDashboardRoute = (role) => {
-
-    console.log(role)
+    console.log(role);
     if (role === "HOD" || role === "hod") return "/faculty-erp/hod-dashboard";
     if (role === "principal") return "/faculty-erp/principal-dashboard";
     if (role === "cc") return "/faculty-erp/cc-dashboard";

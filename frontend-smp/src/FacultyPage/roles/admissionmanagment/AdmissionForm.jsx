@@ -141,7 +141,7 @@ function AdmissionForm() {
         }
 
         const res = await axios.get(
-          "https://erpbackend.tarstech.in/api/superadmin/castes",
+          "http://167.172.216.231:4000/api/superadmin/castes",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -175,35 +175,29 @@ function AdmissionForm() {
 
         const [streamRes, departmentRes, semesterRes, subjectRes] =
           await Promise.all([
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/streams", {
+            axios.get("http://167.172.216.231:4000/api/superadmin/streams", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
             axios.get(
-              "https://erpbackend.tarstech.in/api/superadmin/departments",
+              "http://167.172.216.231:4000/api/superadmin/departments",
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
                 },
               }
             ),
-            axios.get(
-              "https://erpbackend.tarstech.in/api/superadmin/semesters",
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ),
-            axios.get(
-              "https://erpbackend.tarstech.in/api/superadmin/subjects",
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            ),
+            axios.get("http://167.172.216.231:4000/api/superadmin/semesters", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }),
+            axios.get("http://167.172.216.231:4000/api/superadmin/subjects", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }),
           ]);
 
         const streamsData = Array.isArray(streamRes.data) ? streamRes.data : [];
@@ -272,7 +266,7 @@ function AdmissionForm() {
           }
 
           const res = await axios.get(
-            `https://erpbackend.tarstech.in/api/students/subjects/${formData.semester}/${formData.department}`,
+            `http://167.172.216.231:4000/api/students/subjects/${formData.semester}/${formData.department}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -494,14 +488,14 @@ function AdmissionForm() {
 
       if (editingId) {
         await axios.put(
-          `https://erpbackend.tarstech.in/api/students/${editingId}`,
+          `http://167.172.216.231:4000/api/students/${editingId}`,
           formPayload,
           { headers }
         );
         alert("Student updated successfully!");
       } else {
         await axios.post(
-          "https://erpbackend.tarstech.in/api/students",
+          "http://167.172.216.231:4000/api/students",
           formPayload,
           {
             headers,

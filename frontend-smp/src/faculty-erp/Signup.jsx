@@ -36,7 +36,7 @@ const Signup = () => {
 
     try {
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/auth/register",
+        "http://167.172.216.231:4000/api/auth/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

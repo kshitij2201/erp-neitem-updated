@@ -141,6 +141,13 @@ const AddBook = ({ initialData }) => {
       return false;
     }
 
+    if (!formData.ACCNO) {
+      setModalType("error");
+      setModalMessage("Please enter an accession number");
+      setShowModal(true);
+      return false;
+    }
+
     return true;
   };
 
@@ -149,40 +156,65 @@ const AddBook = ({ initialData }) => {
     if (!validateForm()) return;
 
     try {
-      const bookData = {
-        ACCDATE: formData.ACCDATE,
-        STATUS: formData.STATUS,
-        ACCNO: formData.ACCNO,
-        SERIESCODE: formData.SERIESCODE,
-        CLASSNO: formData.CLASSNO,
-        AUTHOR: formData.AUTHOR,
-        TITLENAME: formData.TITLENAME,
-        "PUBLISHER NAME": formData["PUBLISHER NAME"],
-        CITY: formData.CITY,
-        "PUB.YEAR": formData["PUB.YEAR"],
-        PAGES: formData.PAGES,
-        "VENDER CITY": formData["VENDER CITY"],
-        INVOICENO: formData.INVOICENO,
-        INVOICE_DATE: formData.INVOICE_DATE,
-        "SUB.Subject NAME": formData["SUB.Subject NAME"],
-        PRINTPRICE: formData.PRINTPRICE,
-        PURPRICE: formData.PURPRICE,
-        REFCIR: formData.REFCIR,
-        QUANTITY: parseInt(formData.QUANTITY),
-        materialType: formData.materialType,
-      };
+      const quantity = parseInt(formData.QUANTITY);
+      const baseAccNo = formData.ACCNO;
 
-      const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/books",
-        bookData
-      );
+      // Create an array of books with sequential accession numbers
+      const books = Array.from({ length: quantity }, (_, index) => {
+        // If baseAccNo is numeric, increment it; otherwise append numbers
+        const isNumeric = /^\d+$/.test(baseAccNo);
+        const newAccNo = isNumeric
+          ? String(parseInt(baseAccNo) + index).padStart(baseAccNo.length, "0")
+          : `${baseAccNo}-${index + 1}`;
 
-      if (response.data) {
-        setModalType("success");
-        setModalMessage("Book added successfully!");
-        setShowModal(true);
-        resetForm();
+        return {
+          ACCDATE: formData.ACCDATE,
+          STATUS: formData.STATUS,
+          ACCNO: newAccNo,
+          SERIESCODE: formData.SERIESCODE,
+          CLASSNO: formData.CLASSNO,
+          AUTHOR: formData.AUTHOR,
+          TITLENAME: formData.TITLENAME,
+          "PUBLISHER NAME": formData["PUBLISHER NAME"],
+          CITY: formData.CITY,
+          "PUB.YEAR": formData["PUB.YEAR"],
+          PAGES: formData.PAGES,
+          "VENDER CITY": formData["VENDER CITY"],
+          INVOICENO: formData.INVOICENO,
+          INVOICE_DATE: formData.INVOICE_DATE,
+          "SUB.Subject NAME": formData["SUB.Subject NAME"],
+          PRINTPRICE: formData.PRINTPRICE,
+          PURPRICE: formData.PURPRICE,
+          REFCIR: formData.REFCIR,
+          QUANTITY: 1, // Each book entry has quantity 1
+          materialType: formData.materialType,
+        };
+      });
+
+      // Create barcodes for each book
+      const newBarcodes = books.map((book, index) => ({
+        id: uuidv4(),
+        title: book.TITLENAME,
+        author: book.AUTHOR,
+        barcodeValue: book.ACCNO,
+        copyNumber: index + 1,
+      }));
+
+      // Set the barcodes for display
+      setBarcodes(newBarcodes);
+
+      // Submit each book individually
+      for (const bookData of books) {
+        const response = await axios.post(
+          "http://167.172.216.231:4000/api/books",
+          bookData
+        );
       }
+
+      setModalType("success");
+      setModalMessage(`${books.length} book(s) added successfully!`);
+      setShowModal(true);
+      resetForm();
     } catch (error) {
       console.error("Error adding book:", error);
       setModalType("error");
@@ -215,15 +247,11 @@ const AddBook = ({ initialData }) => {
       };
 
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/books",
+        "http://167.172.216.231:4000/api/books",
         formattedData
       );
-
-      if (response.data) {
-        setModalType("success");
-        setModalMessage("Book added successfully!");
-        setShowModal(true);
-      }
+      setModalMessage("Book added successfully!");
+      setShowModal(true);
     } catch (error) {
       setModalType("error");
       setModalMessage(error.response?.data?.message || "Error adding book");
