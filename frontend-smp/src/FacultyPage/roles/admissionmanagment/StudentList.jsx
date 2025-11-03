@@ -393,6 +393,11 @@ function StudentList() {
   const [fetchError, setFetchError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [admissionTypeFilter, setAdmissionTypeFilter] = useState("");
+  const [streamFilter, setStreamFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [semesterFilter, setSemesterFilter] = useState("");
+  const [streams, setStreams] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [backlogModal, setBacklogModal] = useState({
     open: false,
     studentId: null,
@@ -512,13 +517,74 @@ function StudentList() {
         console.error("Failed to fetch semesters:", err);
       }
     };
+
+    const fetchStreams = async () => {
+      try {
+        const headers = getAuthHeaders();
+        if (!headers) return;
+
+        const res = await fetchWithRetry("/api/superadmin/streams", {
+          headers,
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/");
+          return;
+        }
+
+        setStreams(res.data || []);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/");
+          return;
+        }
+        console.error("Failed to fetch streams:", err);
+      }
+    };
+
+    const fetchDepartments = async () => {
+      try {
+        const headers = getAuthHeaders();
+        if (!headers) return;
+
+        const res = await fetchWithRetry("/api/superadmin/departments", {
+          headers,
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/");
+          return;
+        }
+
+        setDepartments(res.data || []);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/");
+          return;
+        }
+        console.error("Failed to fetch departments:", err);
+      }
+    };
+
     fetchSemesters();
+    fetchStreams();
+    fetchDepartments();
   }, [fetchStudents]);
 
   const handleSearchChange = (e) => setSearchTerm(e.target.value);
 
   const handleAdmissionTypeFilterChange = (e) =>
     setAdmissionTypeFilter(e.target.value);
+
+  const handleStreamFilterChange = (e) => setStreamFilter(e.target.value);
+
+  const handleDepartmentFilterChange = (e) => setDepartmentFilter(e.target.value);
+
+  const handleSemesterFilterChange = (e) => setSemesterFilter(e.target.value);
 
   const handleEdit = (student) => {
     navigate("/dashboard/admission", {
@@ -540,7 +606,9 @@ function StudentList() {
 
   const filteredStudents = students.filter((student) => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    
+    // Search filter
+    const matchesSearch = !searchTerm || (
       student.firstName?.toLowerCase().includes(searchLower) ||
       student.lastName?.toLowerCase().includes(searchLower) ||
       student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
@@ -554,6 +622,25 @@ function StudentList() {
       student.mobileNumber?.toLowerCase().includes(searchLower) ||
       student.casteCategory?.toLowerCase().includes(searchLower)
     );
+
+    // Admission type filter
+    const matchesAdmissionType = !admissionTypeFilter || 
+      student.admissionType === admissionTypeFilter;
+
+    // Stream filter
+    const matchesStream = !streamFilter || 
+      (student.stream && student.stream._id === streamFilter);
+
+    // Department filter  
+    const matchesDepartment = !departmentFilter || 
+      (student.department && student.department._id === departmentFilter);
+
+    // Semester filter
+    const matchesSemester = !semesterFilter || 
+      (student.semester && student.semester._id === semesterFilter);
+
+    return matchesSearch && matchesAdmissionType && matchesStream && 
+           matchesDepartment && matchesSemester;
   });
 
   const handleDelete = async (id) => {
@@ -1472,8 +1559,8 @@ function StudentList() {
             </h2>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <motion.div className="flex-1" whileHover={{ scale: 1.02 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <motion.div className="lg:col-span-2" whileHover={{ scale: 1.02 }}>
               <label htmlFor="searchInput" className="sr-only">
                 Search students
               </label>
@@ -1487,6 +1574,69 @@ function StudentList() {
                 aria-label="Search students"
               />
             </motion.div>
+            
+            <motion.div whileHover={{ scale: 1.02 }}>
+              <label htmlFor="streamFilter" className="sr-only">
+                Filter by stream
+              </label>
+              <select
+                id="streamFilter"
+                value={streamFilter}
+                onChange={handleStreamFilterChange}
+                className={`${currentTheme.cardBg} ${currentTheme.cardBorder} w-full p-3 rounded-lg ${currentTheme.textPrimary} focus:ring-2 focus:ring-indigo-400`}
+                aria-label="Select stream"
+              >
+                <option value="">All Streams</option>
+                {streams.map((stream) => (
+                  <option key={stream._id} value={stream._id}>
+                    {stream.name}
+                  </option>
+                ))}
+              </select>
+            </motion.div>
+
+            <motion.div whileHover={{ scale: 1.02 }}>
+              <label htmlFor="departmentFilter" className="sr-only">
+                Filter by department
+              </label>
+              <select
+                id="departmentFilter"
+                value={departmentFilter}
+                onChange={handleDepartmentFilterChange}
+                className={`${currentTheme.cardBg} ${currentTheme.cardBorder} w-full p-3 rounded-lg ${currentTheme.textPrimary} focus:ring-2 focus:ring-indigo-400`}
+                aria-label="Select department"
+              >
+                <option value="">All Departments</option>
+                {departments.map((department) => (
+                  <option key={department._id} value={department._id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+            </motion.div>
+
+            <motion.div whileHover={{ scale: 1.02 }}>
+              <label htmlFor="semesterFilter" className="sr-only">
+                Filter by semester
+              </label>
+              <select
+                id="semesterFilter"
+                value={semesterFilter}
+                onChange={handleSemesterFilterChange}
+                className={`${currentTheme.cardBg} ${currentTheme.cardBorder} w-full p-3 rounded-lg ${currentTheme.textPrimary} focus:ring-2 focus:ring-indigo-400`}
+                aria-label="Select semester"
+              >
+                <option value="">All Semesters</option>
+                {semesters.map((semester) => (
+                  <option key={semester._id} value={semester._id}>
+                    Semester {semester.number}
+                  </option>
+                ))}
+              </select>
+            </motion.div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <motion.div className="w-full sm:w-64" whileHover={{ scale: 1.02 }}>
               <label htmlFor="admissionTypeFilter" className="sr-only">
                 Filter by admission type
