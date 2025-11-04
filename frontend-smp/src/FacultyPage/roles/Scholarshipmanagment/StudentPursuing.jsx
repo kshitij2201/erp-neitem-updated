@@ -151,6 +151,8 @@ const StudentPursuing = () => {
   });
 
   const openScholarshipModal = (student) => {
+    console.log("Opening scholarship modal for:", student.firstName, student.lastName);
+    console.log("Student data:", student);
     setScholarshipModal({
       open: true,
       studentId: student.studentId,
@@ -158,6 +160,7 @@ const StudentPursuing = () => {
       status: "",
       studentData: student,
     });
+    console.log("Modal state set to open");
   };
 
   const closeScholarshipModal = () => {
@@ -441,7 +444,14 @@ const StudentPursuing = () => {
                       </td>
                       <td className="px-4 py-2 flex gap-2">
                         <button
-                          onClick={() => openScholarshipModal(student)}
+                          onClick={(e) => {
+                            console.log("Button clicked!", student);
+                            console.log("Is button disabled?", student.scholarshipStatus === "Yes" || student.scholarshipStatus === "No");
+                            console.log("Student scholarship status:", student.scholarshipStatus);
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openScholarshipModal(student);
+                          }}
                           disabled={
                             student.scholarshipStatus === "Yes" ||
                             student.scholarshipStatus === "No"
@@ -470,26 +480,57 @@ const StudentPursuing = () => {
 
           {scholarshipModal.open && (
             <div
-              className={`fixed inset-0 ${
-                theme === "dark" ? "bg-black/70" : "bg-black/50"
-              } flex items-center justify-center p-4 z-50`}
+              className="modal-force-visible"
               role="dialog"
               aria-modal="true"
               aria-labelledby="scholarshipModalTitle"
+              onClick={(e) => {
+                // Close modal when clicking on backdrop
+                if (e.target === e.currentTarget) {
+                  console.log("Backdrop clicked, closing modal");
+                  closeScholarshipModal();
+                }
+              }}
             >
               <div
-                className={`${currentTheme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 ${currentTheme.cardBorder} animate-fade-in`}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border-2 border-gray-300 relative"
+                style={{ 
+                  zIndex: 100000,
+                  backgroundColor: theme === "dark" ? "#1f2937" : "#ffffff",
+                  color: theme === "dark" ? "#ffffff" : "#000000"
+                }}
+                onClick={(e) => {
+                  console.log("Modal content clicked");
+                  e.stopPropagation();
+                }}
               >
+                {/* Test visibility */}
+                <div style={{ 
+                  padding: '10px', 
+                  backgroundColor: 'red', 
+                  color: 'white', 
+                  marginBottom: '10px',
+                  textAlign: 'center'
+                }}>
+                  🚨 MODAL IS VISIBLE! 🚨
+                </div>
+                
                 <h3
                   id="scholarshipModalTitle"
-                  className={`text-xl font-bold ${currentTheme.textPrimary} mb-4`}
+                  style={{ 
+                    fontSize: '20px', 
+                    fontWeight: 'bold', 
+                    marginBottom: '16px',
+                    color: theme === "dark" ? "#ffffff" : "#000000"
+                  }}
                 >
                   Set Scholarship Status for {scholarshipModal.studentName}
                 </h3>
                 <p
-                  className={`${
-                    theme === "dark" ? "text-gray-300" : "text-gray-600"
-                  } mb-4`}
+                  style={{ 
+                    marginBottom: '16px',
+                    color: theme === "dark" ? "#d1d5db" : "#4b5563"
+                  }}
                 >
                   Select the scholarship status for{" "}
                   {scholarshipModal.studentName}:
@@ -598,6 +639,20 @@ const StudentPursuing = () => {
               opacity: 1;
               transform: translateY(0);
             }
+          }
+          
+          /* Force modal visibility */
+          .modal-force-visible {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 999999 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background-color: rgba(0, 0, 0, 0.8) !important;
           }
         `}
       </style>
