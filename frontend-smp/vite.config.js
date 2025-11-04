@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0", // Make sure Vite binds to all IPs, so it's accessible externally
       strictPort: true, // Ensure the port is strictly enforced
       origin: isDevelopment
-        ? "http://localhost:5174"
+        ? "http://167.172.216.231:5174"
         : "https://erp.tarstech.in",
       hmr: isDevelopment
         ? {
