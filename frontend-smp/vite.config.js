@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => {
     plugins: [tailwindcss(), react()],
     server: {
       port: 5174,
-      host: "0.0.0.0", // Make sure it binds to external IPs
-      strictPort: true,
+      host: "0.0.0.0", // Make sure Vite binds to all IPs, so it's accessible externally
+      strictPort: true, // Ensure the port is strictly enforced
       origin: isDevelopment
         ? "http://localhost:5174"
         : "https://erp.tarstech.in",
@@ -30,14 +30,14 @@ export default defineConfig(({ mode }) => {
         "localhost",
         "127.0.0.1",
         "erp.tarstech.in",
-        ".tarstech.in",
-        "localhost",
+        ".tarstech.in", // This allows any subdomain of tarstech.in
+        "167.172.216.231", // Add your server IP here for direct access if needed
       ],
       proxy: {
         "/api": {
-          target: "http://167.172.216.231:4000", // use localhost if backend is on same server
-          changeOrigin: true,
-          secure: false,
+          target: "http://167.172.216.231:4000", // Backend API URL
+          changeOrigin: true, // Important for API calls, especially if your backend is on a different port or domain
+          secure: false, // Disable SSL validation (useful for local dev with non-https backend)
         },
       },
     },
