@@ -61,7 +61,7 @@ const DepartmentStudents = ({ userData }) => {
       console.log("Fetching students for department:", userData.department);
 
       const response = await axios.get(
-        `http://167.172.216.231:4000/api/faculty/students/department/${encodeURIComponent(
+        `https://backenderp.tarstech.in/api/faculty/students/department/${encodeURIComponent(
           userData.department
         )}`,
         {

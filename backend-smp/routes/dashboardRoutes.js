@@ -65,6 +65,7 @@ router.get("/hod-stats", authMiddleware, async (req, res) => {
     }
 
     const hodDepartment = faculty.department;
+    console.log("🏢 HOD Department:", hodDepartment);
 
     // Get faculty count from HOD's department
     const totalFaculty = await Faculty.countDocuments({
@@ -72,14 +73,30 @@ router.get("/hod-stats", authMiddleware, async (req, res) => {
       status: { $ne: "Inactive" },
     });
 
-    // Get student count from HOD's department - need to find by department name since Student model references AcademicDepartment ObjectId
-    const departmentDoc = await Department.findOne({ name: hodDepartment });
-    const totalStudents = departmentDoc
-      ? await Student.countDocuments({
-          department: departmentDoc._id,
-          status: { $ne: "Inactive" },
-        })
-      : 0;
+    // Debug: Check all departments in database
+    const allDepartments = await Department.find({}, 'name').lean();
+    console.log("📚 All Departments in DB:", allDepartments.map(d => d.name));
+
+    // Since Department collection is empty but students have populated department names,
+    // let's count students by the populated department name directly
+    const studentsWithDepartments = await Student.find({
+      status: { $ne: "Inactive" }
+    }).populate('department', 'name').lean();
+
+    // Count students that belong to the HOD's department
+    const totalStudents = studentsWithDepartments.filter(student => 
+      student.department?.name === hodDepartment
+    ).length;
+
+    console.log(`🎯 Students in ${hodDepartment}:`, totalStudents);
+    console.log("🔍 All student departments:", [...new Set(studentsWithDepartments.map(s => s.department?.name).filter(Boolean))]);
+
+    // Debug: Check all students and their departments
+    const allStudents = await Student.find({}, 'firstName lastName department').populate('department', 'name').lean();
+    console.log("🎓 Sample students and their departments:", allStudents.slice(0, 5).map(s => ({
+      name: s.firstName + ' ' + s.lastName,
+      department: s.department?.name || 'No Department'
+    })));
 
     // Get pending tasks assigned to HOD
     const pendingTasks = await Task.countDocuments({
@@ -98,6 +115,8 @@ router.get("/hod-stats", authMiddleware, async (req, res) => {
       department: hodDepartment,
       status: "pending",
     });
+
+    console.log("📊 Final stats:", { totalFaculty, totalStudents, pendingTasks, completedTasks, pendingLeaves });
 
     const stats = {
       totalFaculty,

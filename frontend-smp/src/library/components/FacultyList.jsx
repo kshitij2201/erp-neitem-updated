@@ -15,7 +15,7 @@ const FacultyList = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://167.172.216.231:4000/api/faculty/faculties"
+        "https://backenderp.tarstech.in/api/faculty/faculties"
       );
       console.log("Faculty API Response:", response.data);
 
@@ -158,7 +158,7 @@ const FacultyList = () => {
 
           try {
             const borrowedResponse = await axios.get(
-              `localhost:5000/api/issues/borrowed-books`,
+              `backenderp.tarstech.in/api/issues/borrowed-books`,
               {
                 params: {
                   borrowerId: borrowerId,
@@ -185,7 +185,7 @@ const FacultyList = () => {
           // Also check history for additional/more recent transactions
           try {
             const historyResponse = await axios.get(
-              `localhost:5000/api/issues/history`,
+              `backenderp.tarstech.in/api/issues/history`,
               {
                 params: {
                   employeeId: borrowerId,

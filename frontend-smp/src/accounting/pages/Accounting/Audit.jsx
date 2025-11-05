@@ -17,7 +17,7 @@ export default function Audit() {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await fetch(
-      `http://167.172.216.231:4000/api/audit?${params.toString()}`,
+      `https://backenderp.tarstech.in/api/audit?${params.toString()}`,
       { headers }
     );
     const data = await res.json();
@@ -32,7 +32,7 @@ export default function Audit() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await fetch(
-        "http://167.172.216.231:4000/api/audit/stats/overview",
+        "https://backenderp.tarstech.in/api/audit/stats/overview",
         {
           headers,
         }

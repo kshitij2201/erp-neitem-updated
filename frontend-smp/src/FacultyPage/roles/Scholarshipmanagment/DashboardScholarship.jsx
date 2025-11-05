@@ -192,13 +192,13 @@ const DashboardScholarship = () => {
     setLoading(true);
     try {
       const studentRes = await fetchWithRetry(
-        "http://167.172.216.231:4000/api/superadmin/students",
+        "https://backenderp.tarstech.in/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }
       );
       const scholarshipRes = await fetchWithRetry(
-        "http://167.172.216.231:4000/api/scholarships",
+        "https://backenderp.tarstech.in/api/scholarships",
         {
           headers: getAuthHeaders(),
         }

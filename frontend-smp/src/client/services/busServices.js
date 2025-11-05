@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "http://167.172.216.231:4000/api";
+const API_BASE = "https://backenderp.tarstech.in/api";
 
 // Set up axios interceptors for authentication
 const api = axios.create({

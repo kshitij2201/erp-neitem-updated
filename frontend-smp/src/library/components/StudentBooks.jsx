@@ -21,7 +21,7 @@ const StudentBooks = () => {
 
       // Use the history endpoint to get the most recent transactions
       const response = await axios.get(
-        `localhost:5000/api/issues/history`,
+        `backenderp.tarstech.in/api/issues/history`,
         {
           params: {
             studentId: studentId,
@@ -177,7 +177,7 @@ const StudentBooks = () => {
 
           try {
             const response = await axios.get(
-              `localhost:5000/api/students`
+              `backenderp.tarstech.in/api/students`
             );
             const students = Array.isArray(response.data) ? response.data : [];
 

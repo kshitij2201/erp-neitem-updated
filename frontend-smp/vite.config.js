@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       ],
       proxy: {
         "/api": {
-          target: "http://167.172.216.231:4000", // Backend API URL
+          target: "https://backenderp.tarstech.in", // Backend API URL
           changeOrigin: true, // Important for API calls, especially if your backend is on a different port or domain
           secure: false, // Disable SSL validation (useful for local dev with non-https backend)
         },

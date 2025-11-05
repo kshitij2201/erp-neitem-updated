@@ -20,7 +20,7 @@ const StudentList = () => {
 
       // First try the main API with includeRenewed parameter
       const response = await axios.get(
-        `http://167.172.216.231:4000/api/issues/borrowed-books`,
+        `https://backenderp.tarstech.in/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId,
@@ -58,7 +58,7 @@ const StudentList = () => {
         );
         try {
           const altResponse = await axios.get(
-            `http://167.172.216.231:4000/api/issues/borrowed-books`,
+            `https://backenderp.tarstech.in/api/issues/borrowed-books`,
             {
               params: {
                 [`${borrowerType}Id`]: borrowerId,
@@ -110,7 +110,7 @@ const StudentList = () => {
           );
 
           const historyResponse = await axios.get(
-            `http://167.172.216.231:4000/api/issues/history`,
+            `https://backenderp.tarstech.in/api/issues/history`,
             {
               params: historyParams,
             }
@@ -192,7 +192,7 @@ const StudentList = () => {
           // Try alternative history API call
           try {
             const altHistoryResponse = await axios.get(
-              `http://167.172.216.231:4000/api/issues/history`,
+              `https://backenderp.tarstech.in/api/issues/history`,
               {
                 params: {
                   [`${borrowerType}Id`]: borrowerId,
@@ -358,7 +358,7 @@ const StudentList = () => {
       setError(null);
 
       const response = await axios.get(
-        "http://167.172.216.231:4000/api/students",
+        "https://backenderp.tarstech.in/api/students",
         {
           params: {
             page: 1,

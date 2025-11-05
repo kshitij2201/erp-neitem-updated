@@ -11,7 +11,7 @@ const MyLeaveRequests = ({ userData }) => {
     setLoading(true);
     axios
       .get(
-        `http://167.172.216.231:4000/api/leave/my-leaves/${userData.employeeId}`
+        `https://backenderp.tarstech.in/api/leave/my-leaves/${userData.employeeId}`
       )
       .then((res) => {
         setLeaves(res.data.leaves || []);

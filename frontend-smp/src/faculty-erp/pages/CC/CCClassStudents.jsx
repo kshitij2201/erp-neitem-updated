@@ -51,7 +51,7 @@ const CCClassStudents = ({ userData }) => {
       }
 
       const response = await fetch(
-        "http://167.172.216.231:4000/api/faculty/get-cc-class-students",
+        "https://backenderp.tarstech.in/api/faculty/get-cc-class-students",
         {
           method: "GET",
           headers: {

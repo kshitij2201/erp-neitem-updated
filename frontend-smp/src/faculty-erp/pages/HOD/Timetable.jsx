@@ -114,7 +114,7 @@ export default function TimetableSimple({ userData }) {
       }
 
       const response = await axios.get(
-        "http://167.172.216.231:4000/api/cc/my-cc-assignments",
+        "https://backenderp.tarstech.in/api/cc/my-cc-assignments",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -192,7 +192,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const subjectsRes = await axios.get(
-          `http://167.172.216.231:4000/api/subjects/department/${encodeURIComponent(
+          `https://backenderp.tarstech.in/api/subjects/department/${encodeURIComponent(
             department
           )}`,
           { headers }
@@ -208,7 +208,7 @@ export default function TimetableSimple({ userData }) {
           console.log("Subjects API failed, trying alternative approach...");
           // Try alternative API endpoint
           const altSubjectsRes = await axios.get(
-            `http://167.172.216.231:4000/api/superadmin/subjects`,
+            `https://backenderp.tarstech.in/api/superadmin/subjects`,
             { headers, params: { department: department } }
           );
 
@@ -231,7 +231,7 @@ export default function TimetableSimple({ userData }) {
         // Fallback: Load subjects from faculty-department-subject mapping
         try {
           const fdsRes = await axios.get(
-            `http://167.172.216.231:4000/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
+            `https://backenderp.tarstech.in/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
               department
             )}`,
             { headers }
@@ -260,7 +260,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "http://167.172.216.231:4000/api/faculty/faculties",
+          "https://backenderp.tarstech.in/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
 
@@ -286,7 +286,7 @@ export default function TimetableSimple({ userData }) {
         // Try alternative approach
         try {
           const altFacultiesRes = await axios.get(
-            "http://167.172.216.231:4000/api/faculty",
+            "https://backenderp.tarstech.in/api/faculty",
             { headers }
           );
 
@@ -353,7 +353,7 @@ export default function TimetableSimple({ userData }) {
 
       // First, get all AdminSubjects for this department
       const subjectsResponse = await axios.get(
-        `http://167.172.216.231:4000/api/subjects/department/${encodeURIComponent(
+        `https://backenderp.tarstech.in/api/subjects/department/${encodeURIComponent(
           department
         )}`,
         { headers }
@@ -377,7 +377,7 @@ export default function TimetableSimple({ userData }) {
             );
 
             const facultiesResponse = await axios.get(
-              `http://167.172.216.231:4000/api/faculty/faculties/subject/${subject._id}`,
+              `https://backenderp.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -451,7 +451,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "http://167.172.216.231:4000/api/faculty/faculties",
+          "https://backenderp.tarstech.in/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
         facultyList =
@@ -461,7 +461,7 @@ export default function TimetableSimple({ userData }) {
       } catch (error) {
         console.log("Primary faculty API failed, trying alternative...");
         const altFacultiesRes = await axios.get(
-          "http://167.172.216.231:4000/api/faculty",
+          "https://backenderp.tarstech.in/api/faculty",
           { headers }
         );
         const allFaculties =
@@ -600,7 +600,7 @@ export default function TimetableSimple({ userData }) {
 
       // Step 1: Get AdminSubjects for department
       const subjectsResponse = await axios.get(
-        `http://167.172.216.231:4000/api/subjects/department/${encodeURIComponent(
+        `https://backenderp.tarstech.in/api/subjects/department/${encodeURIComponent(
           ccAssignment.department
         )}`,
         { headers }
@@ -621,7 +621,7 @@ export default function TimetableSimple({ userData }) {
 
           try {
             const facultiesResponse = await axios.get(
-              `http://167.172.216.231:4000/api/faculty/faculties/subject/${subject._id}`,
+              `https://backenderp.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -671,7 +671,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        "http://167.172.216.231:4000/api/timetable",
+        "https://backenderp.tarstech.in/api/timetable",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -1040,7 +1040,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        `http://167.172.216.231:4000/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
+        `https://backenderp.tarstech.in/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
           subjectName
         )}`,
         {
@@ -1144,7 +1144,7 @@ export default function TimetableSimple({ userData }) {
       console.log("Saving timetable payload:", payload);
 
       const response = await axios.post(
-        "http://167.172.216.231:4000/api/timetable",
+        "https://backenderp.tarstech.in/api/timetable",
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -1198,7 +1198,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        "http://167.172.216.231:4000/api/timetable",
+        "https://backenderp.tarstech.in/api/timetable",
         {
           params: {
             department: ccAssignment.department,
@@ -1318,7 +1318,7 @@ export default function TimetableSimple({ userData }) {
       const token = localStorage.getItem("authToken");
 
       const response = await axios.delete(
-        `http://167.172.216.231:4000/api/timetable/${currentTimetableId}`,
+        `https://backenderp.tarstech.in/api/timetable/${currentTimetableId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

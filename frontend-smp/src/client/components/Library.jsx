@@ -33,7 +33,7 @@ const Library = () => {
   };
 
   const studentId = getStudentId();
-  const API_URL = import.meta.env.VITE_API_URL || "http://167.172.216.231:4000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
 
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);

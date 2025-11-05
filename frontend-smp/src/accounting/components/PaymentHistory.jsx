@@ -26,7 +26,7 @@ const PaymentHistory = () => {
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const url = new URL("http://167.172.216.231:4000/api/payments/history");
+      const url = new URL("https://backenderp.tarstech.in/api/payments/history");
       if (searchTerm) url.searchParams.append("search", searchTerm);
       if (statusFilter !== "all")
         url.searchParams.append("status", statusFilter);
@@ -57,7 +57,7 @@ const PaymentHistory = () => {
   const fetchStats = async () => {
     try {
       const response = await fetch(
-        "http://167.172.216.231:4000/api/payments/stats"
+        "https://backenderp.tarstech.in/api/payments/stats"
       );
       if (response.ok) {
         const data = await response.json();

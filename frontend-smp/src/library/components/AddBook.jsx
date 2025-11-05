@@ -206,7 +206,7 @@ const AddBook = ({ initialData }) => {
       // Submit each book individually
       for (const bookData of books) {
         const response = await axios.post(
-          "http://167.172.216.231:4000/api/books",
+          "https://backenderp.tarstech.in/api/books",
           bookData
         );
       }
@@ -247,7 +247,7 @@ const AddBook = ({ initialData }) => {
       };
 
       const response = await axios.post(
-        "http://167.172.216.231:4000/api/books",
+        "https://backenderp.tarstech.in/api/books",
         formattedData
       );
       setModalMessage("Book added successfully!");

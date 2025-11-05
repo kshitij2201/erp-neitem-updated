@@ -66,7 +66,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
           department,
         });
         const response = await fetch(
-          `http://167.172.216.231:4000/api/faculty/cc-assignments?department=${encodeURIComponent(
+          `https://backenderp.tarstech.in/api/faculty/cc-assignments?department=${encodeURIComponent(
             department
           )}`,
           {

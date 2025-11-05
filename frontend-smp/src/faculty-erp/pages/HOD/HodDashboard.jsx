@@ -143,7 +143,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://167.172.216.231:4000/api/dashboard/hod-todos?status=${
+        `https://backenderp.tarstech.in/api/dashboard/hod-todos?status=${
           todoFilter === "all" ? "" : todoFilter
         }`,
         {
@@ -186,7 +186,7 @@ export default function HodDashboard() {
       }
 
       const response = await fetch(
-        "http://167.172.216.231:4000/api/dashboard/hod-todos",
+        "https://backenderp.tarstech.in/api/dashboard/hod-todos",
         {
           method: "POST",
           headers: {
@@ -227,7 +227,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://167.172.216.231:4000/api/dashboard/hod-todos/${todoId}`,
+        `https://backenderp.tarstech.in/api/dashboard/hod-todos/${todoId}`,
         {
           method: "PUT",
           headers: {
@@ -259,7 +259,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://167.172.216.231:4000/api/dashboard/hod-todos/${todoId}`,
+        `https://backenderp.tarstech.in/api/dashboard/hod-todos/${todoId}`,
         {
           method: "DELETE",
           headers: {
@@ -320,12 +320,16 @@ export default function HodDashboard() {
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         const token = user?.token || localStorage.getItem("authToken");
 
+        console.log("🔍 Debug: Fetching HOD stats...");
+        console.log("🔑 Token exists:", !!token);
+        console.log("👤 User data:", user);
+
         if (!token) {
           throw new Error("No authentication token found");
         }
 
         const response = await fetch(
-          "http://167.172.216.231:4000/api/dashboard/hod-stats",
+          "https://backenderp.tarstech.in/api/dashboard/hod-stats",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -334,12 +338,18 @@ export default function HodDashboard() {
           }
         );
 
+        console.log("📊 API Response status:", response.status);
+
         if (!response.ok) {
-          throw new Error("Failed to fetch dashboard stats");
+          const errorText = await response.text();
+          console.error("❌ API Error:", errorText);
+          throw new Error(`Failed to fetch dashboard stats: ${response.status}`);
         }
 
         const data = await response.json();
-        setStats({
+        console.log("📈 Raw API Data:", data);
+        
+        const statsData = {
           totalFaculty: data.totalFaculty || 0,
           totalStudents: data.totalStudents || 0,
           pendingLeaves: data.pendingLeaves || 0,
@@ -348,10 +358,13 @@ export default function HodDashboard() {
           department: data.department || "Unknown",
           attendanceAverage: data.attendanceAverage || 0,
           departmentPerformance: data.departmentPerformance || 0,
-        });
+        };
+        
+        console.log("📋 Processed Stats:", statsData);
+        setStats(statsData);
       } catch (err) {
+        console.error("🚨 Error fetching HOD stats:", err);
         setError(err.message || "Error fetching dashboard data");
-        console.error("Error fetching HOD stats:", err);
       } finally {
         setLoading(false);
       }
@@ -389,6 +402,7 @@ export default function HodDashboard() {
       textColor: "text-green-600",
       change: "+15",
       changeType: "positive",
+      debug: `Loading: ${loading}, Error: ${!!error}, Value: ${stats.totalStudents}`, // Debug info
     },
     {
       title: "Pending Leaves",
