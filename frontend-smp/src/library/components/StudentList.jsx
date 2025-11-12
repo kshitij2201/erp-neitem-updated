@@ -9,7 +9,85 @@ const StudentList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [borrowedBooks, setBorrowedBooks] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const navigate = useNavigate();
+
+  // Function to get total student count
+  const getTotalStudentCount = async () => {
+    try {
+      console.log("🔢 Getting total student count...");
+      
+      // Check for token existence
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("❌ No authentication token found for total count");
+        return 0;
+      }
+      
+      // First try to get just one page to see if total is provided
+      const testResponse = await axios.get(
+        "https://backenderp.tarstech.in/api/students",
+        {
+          params: {
+            page: 1,
+            limit: 1, // Just get one record to check structure
+          },
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (testResponse.data.success && testResponse.data.data) {
+        // Check if API provides total count directly
+        if (testResponse.data.data.total) {
+          console.log("✅ Total count from API:", testResponse.data.data.total);
+          return testResponse.data.data.total;
+        }
+        
+        // If no total provided, try to estimate by getting a larger sample
+        const sampleResponse = await axios.get(
+          "https://backenderp.tarstech.in/api/students",
+          {
+            params: {
+              page: 1,
+              limit: 100, // Get a reasonable sample
+            },
+            timeout: 10000,
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        
+        if (sampleResponse.data.success && sampleResponse.data.data) {
+          let sampleSize = 0;
+          
+          if (Array.isArray(sampleResponse.data.data)) {
+            sampleSize = sampleResponse.data.data.length;
+          } else if (sampleResponse.data.data.students && Array.isArray(sampleResponse.data.data.students)) {
+            sampleSize = sampleResponse.data.data.students.length;
+          }
+          
+          // Estimate total based on sample (assuming there might be more)
+          // For now, just return the sample size and let pagination work with what we have
+          console.log("📊 Sample size:", sampleSize, "- Using this as total for pagination");
+          return sampleSize;
+        }
+      }
+      
+      return 10; // Fallback minimum
+    } catch (error) {
+      console.error("❌ Error getting total student count:", error);
+      return 10; // Fallback to reasonable minimum
+    }
+  };
 
   // Function to fetch borrowed books count for a student/faculty member
   const fetchBorrowedBooks = async (borrowerId, borrowerType = "student") => {
@@ -352,17 +430,18 @@ const StudentList = () => {
     return "";
   };
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (page = 1, limit = 10) => {
     try {
       setLoading(true);
       setError(null);
 
+      // First, get ALL students from the API (server doesn't seem to support pagination)
       const response = await axios.get(
         "https://backenderp.tarstech.in/api/students",
         {
           params: {
             page: 1,
-            limit: 100,
+            limit: 1000, // Get all students
           },
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -371,6 +450,7 @@ const StudentList = () => {
       );
 
       console.log("API Response:", response.data);
+      console.log("🔍 Requested page:", page, "limit:", limit);
 
       let studentsData;
       if (response.data.data && Array.isArray(response.data.data)) {
@@ -489,7 +569,39 @@ const StudentList = () => {
         };
       });
 
-      setStudents(formattedStudents);
+      // Now implement CLIENT-SIDE pagination since server doesn't support it properly
+      const allStudents = formattedStudents;
+      const totalCount = allStudents.length;
+      
+      // Calculate pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedStudents = allStudents.slice(startIndex, endIndex);
+      
+      console.log("📄 Client-side pagination:", {
+        totalStudents: totalCount,
+        currentPage: page,
+        itemsPerPage: limit,
+        startIndex,
+        endIndex,
+        showingStudents: paginatedStudents.length,
+        allStudentsCount: allStudents.length
+      });
+
+      // Set the paginated students for display
+      setStudents(paginatedStudents);
+
+      // Update pagination state with real counts
+      const totalPagesCalc = Math.ceil(totalCount / limit);
+      setTotalPages(totalPagesCalc);
+      setTotalStudents(totalCount);
+      
+      console.log("✅ Pagination state updated:", {
+        totalPages: totalPagesCalc,
+        totalStudents: totalCount,
+        currentPage: page,
+        itemsPerPage: limit
+      });
     } catch (error) {
       console.error("Error fetching students:", error);
       if (error.response) {
@@ -510,10 +622,39 @@ const StudentList = () => {
     }
   };
 
-  // 🔁 Fetch students initially
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const handleItemsPerPageChange = (newLimit) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // 🔁 Fetch students initially and when page changes
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    fetchStudents(currentPage, itemsPerPage);
+  }, [currentPage, itemsPerPage]);
+
+  // Remove the separate pagination initialization since we'll handle it in fetchStudents
+  // useEffect(() => {
+  //   const initializePagination = async () => {
+  //     console.log("🔢 Initializing pagination...");
+  //     const totalCount = await getTotalStudentCount();
+  //     if (totalCount > 0) {
+  //       const pages = Math.ceil(totalCount / itemsPerPage);
+  //       setTotalPages(pages);
+  //       setTotalStudents(totalCount);
+  //       console.log("✅ Pagination initialized:", { totalCount, pages, itemsPerPage });
+  //     } else {
+  //       console.log("⚠️ No total count received, pagination may not work");
+  //     }
+  //   };
+  //   initializePagination();
+  // }, [itemsPerPage]);
 
   // 🔁 After students are fetched, get books for each student
   useEffect(() => {
@@ -674,7 +815,7 @@ const StudentList = () => {
     console.log(`📊 Total calculated active books: ${totalBorrowedBooks}`);
 
     return {
-      total: students.length,
+      total: totalStudents, // Use totalStudents from state instead of students.length
       withBooks: Object.keys(borrowedBooks).filter(
         (studentId) =>
           borrowedBooks[studentId] && borrowedBooks[studentId].length > 0
@@ -738,7 +879,7 @@ const StudentList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 flex flex-col py-12 px-2 md:px-8 z-0 md:ml-72 overflow-y-auto overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 flex flex-col py-12 px-2 md:px-8 z-0 overflow-y-auto overflow-x-hidden">
       <div className="w-full max-w-7xl mx-auto">
         <header className="mb-12 text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-3">
@@ -809,8 +950,11 @@ const StudentList = () => {
           </div>
         </div>
 
-        <div className="mb-4 text-gray-600">
-          Showing {filteredStudents.length} of {students.length} students
+        <div className="mb-4 text-gray-600 flex justify-between items-center">
+          <span>Showing {filteredStudents.length} of {students.length} students</span>
+          <span className="text-sm text-blue-600">
+            Page {currentPage} of {totalPages} | Total: {totalStudents}
+          </span>
         </div>
 
         {filteredStudents.length === 0 ? (
@@ -1047,6 +1191,85 @@ const StudentList = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-700">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalStudents)} of {totalStudents} students
+              </span>
+              <div className="flex items-center gap-2">
+                <label htmlFor="itemsPerPage" className="text-sm text-gray-600">
+                  Items per page:
+                </label>
+                <select
+                  id="itemsPerPage"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    const newLimit = parseInt(e.target.value);
+                    setItemsPerPage(newLimit);
+                    setCurrentPage(1); // Reset to first page when changing items per page
+                  }}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md ${
+                        currentPage === pageNum
+                          ? 'text-indigo-600 bg-indigo-50 border border-indigo-500'
+                          : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

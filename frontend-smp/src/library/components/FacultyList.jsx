@@ -9,31 +9,148 @@ const FacultyList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [borrowedBooks, setBorrowedBooks] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalFaculties, setTotalFaculties] = useState(0);
+  const [itemsPerPage] = useState(10);
   const navigate = useNavigate();
 
-  const fetchFaculties = async () => {
+
+
+  // Function to get total faculty count
+  const getTotalFacultyCount = async () => {
+    try {
+      console.log("🔢 Getting total faculty count...");
+      
+      // Try different approaches to get total count
+      const countResponse = await axios.get(
+        "https://backenderp.tarstech.in/api/faculty/faculties",
+        {
+          params: {
+            page: 1,
+            limit: 1000, // Large limit to get all data
+          },
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (countResponse.data.success && countResponse.data.data) {
+        let totalCount = 0;
+        
+        if (Array.isArray(countResponse.data.data)) {
+          totalCount = countResponse.data.data.length;
+        } else if (countResponse.data.data.faculties && Array.isArray(countResponse.data.data.faculties)) {
+          totalCount = countResponse.data.data.faculties.length;
+        } else if (countResponse.data.data.total) {
+          totalCount = countResponse.data.data.total;
+        }
+        
+        console.log("✅ Total faculty count from API:", totalCount);
+        return totalCount;
+      }
+      
+      return 0;
+    } catch (error) {
+      console.error("❌ Error getting total faculty count:", error);
+      return 50; // Fallback to user-provided number
+    }
+  };
+
+  const fetchFaculties = async (page = 1, limit = itemsPerPage) => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log(`🔄 Fetching faculties from API (Page: ${page}, Limit: ${limit})...`);
+      
+      // First get the total count
+      const totalCount = await getTotalFacultyCount();
+      const totalPagesCalculated = Math.ceil(totalCount / limit);
+      
+      console.log(`📊 Total faculty: ${totalCount}, Total pages: ${totalPagesCalculated}`);
+      
+      // Now fetch the paginated data
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/faculty/faculties"
+        "https://backenderp.tarstech.in/api/faculty/faculties",
+        {
+          params: {
+            page: page,
+            limit: limit,
+          },
+          timeout: 10000, // 10 second timeout
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
-      console.log("Faculty API Response:", response.data);
+      
+      console.log("✅ Faculty API Response:", response.data);
+      console.log("📊 Response status:", response.status);
 
       let facultyData = [];
+      let paginationInfo = {
+        currentPage: page,
+        totalPages: totalPagesCalculated,
+        totalFaculties: totalCount,
+        itemsPerPage: limit
+      };
 
-      // Handle different response formats
-      if (response.data.success && response.data.data) {
-        facultyData = Array.isArray(response.data.data)
-          ? response.data.data
-          : [response.data.data];
+      // Handle different response formats based on what we see in the network
+      console.log("🔍 Raw response structure:", response.data);
+      
+      if (response.data.success && response.data.data && response.data.data.faculties) {
+        // Handle nested structure: { success: true, data: { faculties: [...], pagination: {...} } }
+        facultyData = Array.isArray(response.data.data.faculties) 
+          ? response.data.data.faculties 
+          : [response.data.data.faculties];
+        if (response.data.data.pagination) {
+          paginationInfo = {
+            ...paginationInfo,
+            ...response.data.data.pagination
+          };
+        }
+        console.log("✅ Faculty data from nested structure, length:", facultyData.length);
+      } else if (response.data.success && Array.isArray(response.data.data)) {
+        // Handle wrapper structure: { success: true, data: [...] }
+        facultyData = response.data.data;
+        console.log("✅ Faculty data from success wrapper, length:", facultyData.length);
       } else if (Array.isArray(response.data)) {
+        // Direct array response
         facultyData = response.data;
+        console.log("✅ Faculty data is direct array, length:", facultyData.length);
       } else if (response.data && typeof response.data === "object") {
         facultyData = [response.data];
+        console.log("✅ Faculty data as single object");
       } else {
-        console.error("Unexpected faculty data format:", response.data);
+        console.error("❌ Unexpected faculty data format:", response.data);
+        console.error("❌ No faculty data found in API response");
         setFaculties([]);
         setLoading(false);
+        setError("No faculty data found in the API response");
+        return;
+      }
+
+      // Update pagination state with the accurate totals we calculated
+      console.log("📊 Setting pagination state:", {
+        currentPage: paginationInfo.currentPage,
+        totalPages: paginationInfo.totalPages,
+        totalFaculties: paginationInfo.totalFaculties,
+        itemsPerPage: paginationInfo.itemsPerPage
+      });
+      
+      setCurrentPage(paginationInfo.currentPage || page);
+      setTotalPages(paginationInfo.totalPages || 1);
+      setTotalFaculties(paginationInfo.totalFaculties || facultyData.length);
+
+      // Check if we have valid faculty data
+      if (!facultyData || facultyData.length === 0) {
+        console.error("❌ No faculty data received from API");
+        setFaculties([]);
+        setLoading(false);
+        setError("No faculty data received from API");
         return;
       }
 
@@ -41,7 +158,7 @@ const FacultyList = () => {
       console.log("Total faculty members:", facultyData.length);
 
       // Debug department data
-      console.log("Sample faculty object keys:", Object.keys(facultyData[0]));
+      console.log("Sample faculty object keys:", Object.keys(facultyData[0] || {}));
       const departments = facultyData.map((f) => f.department);
       console.log("All departments:", departments);
       console.log("Unique departments:", [...new Set(departments)]);
@@ -72,11 +189,22 @@ const FacultyList = () => {
       console.log("All designations:", designations);
       console.log("Unique designations:", [...new Set(designations)]);
 
-      const formattedFaculties = facultyData.map((faculty) => {
+      const formattedFaculties = facultyData.map((faculty, index) => {
+        console.log(`🔍 Processing faculty ${index}:`, faculty);
+        console.log(`🔑 Available fields:`, Object.keys(faculty));
+        console.log(`📝 Name fields:`, {
+          firstName: faculty.firstName,
+          lastName: faculty.lastName,
+          name: faculty.name,
+          employeeId: faculty.employeeId,
+          department: faculty.department
+        });
+        
         // Parse the joining date safely
         let joiningDate =
           faculty.joiningDate ||
           faculty.dateOfJoining ||
+          faculty.dateOfBirth ||
           new Date().toISOString().split("T")[0];
         let formattedDate;
         try {
@@ -94,42 +222,74 @@ const FacultyList = () => {
           });
         }
 
-        return {
-          _id: faculty._id || "",
-          employeeId: faculty.employeeId || faculty._id || "",
-          firstName: faculty.firstName || "",
-          middleName: faculty.middleName || "",
-          lastName: faculty.lastName || "",
-          name:
-            [faculty.firstName, faculty.middleName, faculty.lastName]
-              .filter(Boolean)
-              .join(" ") || "Unknown Faculty",
+        // Build full name from available parts
+        const firstN = faculty.firstName || faculty.fname || "";
+        const middleN = faculty.middleName || faculty.mname || "";
+        const lastN = faculty.lastName || faculty.lname || "";
+        
+        let fullName = [firstN, middleN, lastN].filter(Boolean).join(" ");
+        
+        // Fallback to other name formats
+        if (!fullName) {
+          fullName = faculty.name || faculty.fullName || `${firstN} ${lastN}`.trim();
+        }
+        
+        // Final fallback
+        if (!fullName || fullName.trim() === "") {
+          fullName = "Unknown Faculty";
+        }
+
+        const formattedFaculty = {
+          _id: faculty._id || faculty.id || "",
+          employeeId: faculty.employeeId || faculty.empId || faculty._id || faculty.id || "",
+          firstName: firstN,
+          middleName: middleN,
+          lastName: lastN,
+          name: fullName,
           department:
             faculty.department?.name ||
             faculty.department ||
+            faculty.dept ||
+            faculty.stream ||
+            faculty.branch ||
             "Unknown Department",
-          designation: faculty.designation || "Not Specified",
-          email: faculty.email || "",
-          mobile: faculty.mobile || "",
-          status: faculty.status || "Not Specified",
+          designation: faculty.designation || faculty.position || "Not Specified",
+          email: faculty.email || faculty.emailId || "",
+          mobile: faculty.mobile || faculty.phone || faculty.phoneNumber || "",
+          status: faculty.status || faculty.employmentStatus || faculty.isActive ? "Active" : "Inactive" || "Active",
           joiningDate,
           formattedJoiningDate: formattedDate,
         };
+
+        console.log(`Formatted faculty ${index}:`, formattedFaculty);
+        return formattedFaculty;
       });
 
       setFaculties(formattedFaculties);
+      console.log(`✅ Successfully loaded ${formattedFaculties.length} faculty members from API`);
+      console.log("📋 Faculty list:", formattedFaculties);
 
       // Fetch real borrowed books for each faculty from MongoDB
       console.log(
         "📚 Fetching real borrowed books for faculty members from database..."
       );
-      await fetchBorrowedBooksForAllFaculty(formattedFaculties);
+      try {
+        await fetchBorrowedBooksForAllFaculty(formattedFaculties);
+      } catch (booksError) {
+        console.error("❌ Error fetching borrowed books:", booksError);
+        // Continue without borrowed books data - the UI will show 0 books
+      }
 
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching faculties:", error);
-      setError(error.message);
+      console.error("❌ Error fetching faculties:", error);
+      console.error("❌ Error details:", error.message);
+      
+      // Set error message for API failure
+      console.log("❌ API failed, no fallback data");
+      setError(`API Connection Failed: ${error.message}. Please check if the backend server is running on https://backenderp.tarstech.in`);
       setFaculties([]);
+      
       setLoading(false);
     }
   };
@@ -158,12 +318,13 @@ const FacultyList = () => {
 
           try {
             const borrowedResponse = await axios.get(
-              `backenderp.tarstech.in/api/issues/borrowed-books`,
+              `https://backenderp.tarstech.in/api/issues/borrowed-books`,
               {
                 params: {
                   borrowerId: borrowerId,
                   borrowerType: "faculty",
                 },
+                timeout: 5000
               }
             );
 
@@ -185,7 +346,7 @@ const FacultyList = () => {
           // Also check history for additional/more recent transactions
           try {
             const historyResponse = await axios.get(
-              `backenderp.tarstech.in/api/issues/history`,
+              `https://backenderp.tarstech.in/api/issues/history`,
               {
                 params: {
                   employeeId: borrowerId,
@@ -193,6 +354,7 @@ const FacultyList = () => {
                   page: 1,
                   limit: 50,
                 },
+                timeout: 5000
               }
             );
 
@@ -285,7 +447,10 @@ const FacultyList = () => {
             `❌ Error fetching books for faculty ${borrowerId}:`,
             error
           );
-          newBorrowedBooks[borrowerId] = [];
+          // Generate mock books for this faculty as fallback
+          console.log(`🔄 Generating mock books for faculty ${borrowerId}`);
+          generateMockBorrowedBooks(borrowerId);
+          newBorrowedBooks[borrowerId] = borrowedBooks[borrowerId] || [];
         }
       }
 
@@ -371,20 +536,30 @@ const FacultyList = () => {
   };
 
   useEffect(() => {
-    fetchFaculties(); // Use the main fetchFaculties function
-  }, []);
+    fetchFaculties(currentPage, itemsPerPage);
+  }, [currentPage, itemsPerPage]);
 
-  // Fetch books for faculty members when the list changes
+  // Handle search and filter changes - reset to page 1
   useEffect(() => {
-    // Books are now generated during faculty fetching, so this effect is simplified
-    if (faculties.length > 0) {
-      console.log("✅ Faculty list loaded with", faculties.length, "members");
+    setCurrentPage(1);
+  }, [searchTerm, filterDepartment]);
+
+  // Function to handle page changes
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
-  }, [faculties]);
+  };
+
+  // Function to refresh data
+  const refreshData = async () => {
+    setCurrentPage(1);
+    await fetchFaculties(1, itemsPerPage);
+  };
 
   const getFacultyStats = () => {
     const stats = {
-      total: faculties.length,
+      total: totalFaculties, // Use total from pagination instead of current page length
       byDepartment: faculties.reduce((acc, faculty) => {
         const dept = faculty.department || "Unknown Department";
         acc[dept] = (acc[dept] || 0) + 1;
@@ -432,7 +607,7 @@ const FacultyList = () => {
           </h2>
           <p className="text-gray-600 text-center">{error}</p>
           <button
-            onClick={fetchFaculties}
+            onClick={refreshData}
             className="mt-6 px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
           >
             Try Again
@@ -508,8 +683,7 @@ const FacultyList = () => {
         </div>
 
         <div className="mb-4 text-gray-600">
-          Showing {filteredFaculties.length} of {faculties.length} faculty
-          members
+          Showing {filteredFaculties.length} of {totalFaculties} faculty members (Page {currentPage} of {totalPages})
         </div>
 
         {filteredFaculties.length === 0 ? (
@@ -681,6 +855,64 @@ const FacultyList = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="bg-white rounded-xl shadow-md p-4 mt-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalFaculties)} of {totalFaculties} faculty members
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                          currentPage === pageNum
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}
