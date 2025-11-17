@@ -13,9 +13,50 @@ router.get('/', protect, async (req, res) => {
     
     let query = {};
     
-    // Filter by department
+    // Filter by department - handle both string and ObjectId
     if (department) {
-      query.department = { $regex: department, $options: 'i' };
+      if (mongoose.Types.ObjectId.isValid(department)) {
+        query.department = department;
+      } else {
+        // Find department by name first
+        try {
+          // First try exact match
+          let dept = await mongoose.model('AcademicDepartment').findOne({
+            name: { $regex: `^${department}$`, $options: 'i' }
+          });
+          
+          // If not found, try common typo corrections
+          if (!dept) {
+            const departmentVariations = [
+              department,
+              department.replace('Mechancial', 'Mechanical'), // Fix common typo
+              department.replace('Mechnical', 'Mechanical'),   // Another typo
+              department.replace('Machanical', 'Mechanical'),  // Another typo
+            ];
+            
+            for (const variation of departmentVariations) {
+              dept = await mongoose.model('AcademicDepartment').findOne({
+                name: { $regex: `^${variation}$`, $options: 'i' }
+              });
+              if (dept) {
+                console.log(`[Students] Found department using variation: ${variation}`);
+                break;
+              }
+            }
+          }
+          
+          if (dept) {
+            query.department = dept._id;
+            console.log(`[Students] Department filter applied: ${dept.name} (${dept._id})`);
+          } else {
+            console.log(`[Students] No department found for: ${department} - skipping department filter`);
+            // Skip department filter if not found
+          }
+        } catch (err) {
+          console.log("Error finding department:", err.message);
+          // Skip department filter on error
+        }
+      }
     }
     
     // Filter by program

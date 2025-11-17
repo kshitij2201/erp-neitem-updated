@@ -28,7 +28,7 @@ import { protect } from "../middleware/auth.js";
 const router = express.Router();
 
 // Academic Calendar CRUD operations (for frontend)
-router.get("/", getAcademicCalendars);
+router.get("/", protect, getAcademicCalendars);
 router.post("/", protect, createAcademicCalendar);
 router.get("/:id", getAcademicCalendarById);
 router.put("/:id", protect, updateAcademicCalendar);

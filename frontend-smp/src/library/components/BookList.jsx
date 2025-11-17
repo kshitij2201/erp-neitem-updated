@@ -51,6 +51,8 @@ const BookList = () => {
   const [modalMessage, setModalMessage] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [showEbookModal, setShowEbookModal] = useState(false);
+  const [showBookDetailsModal, setShowBookDetailsModal] = useState(false);
+  const [selectedBookDetails, setSelectedBookDetails] = useState(null);
 
   // Fetch books when component mounts or filters change
   useEffect(() => {
@@ -82,14 +84,12 @@ const BookList = () => {
 
         // Check for locally edited books and merge them
         try {
-          const editedBooks = localStorage.getItem("editedBooks");
+          const editedBooks = localStorage.getItem('editedBooks');
           if (editedBooks) {
             const parsedEditedBooks = JSON.parse(editedBooks);
             // Merge edited books with API data
-            booksData = booksData.map((apiBook) => {
-              const editedBook = parsedEditedBooks.find(
-                (edited) => edited._id === apiBook._id
-              );
+            booksData = booksData.map(apiBook => {
+              const editedBook = parsedEditedBooks.find(edited => edited._id === apiBook._id);
               return editedBook ? { ...apiBook, ...editedBook } : apiBook;
             });
             console.log("Merged locally edited books with API data");
@@ -410,43 +410,75 @@ const BookList = () => {
     );
   };
 
+  // Helper function to group books by title
+  const groupBooksByTitle = (booksArray) => {
+    const grouped = {};
+    booksArray.forEach(book => {
+      const title = book.TITLENAME || 'Unknown Title';
+      if (!grouped[title]) {
+        grouped[title] = {
+          ...book,
+          accessionNumbers: [],
+          totalCopies: 0
+        };
+      }
+      // Add accession number to the group
+      if (book.ACCNO) {
+        grouped[title].accessionNumbers.push({
+          accno: book.ACCNO,
+          status: book.STATUS,
+          seriesCode: book.SERIESCODE,
+          quantity: book.QUANTITY || 1
+        });
+      }
+      // Sum up total copies
+      grouped[title].totalCopies += (book.QUANTITY || 1);
+    });
+   
+    // Convert back to array and update quantity to show total copies
+    return Object.values(grouped).map(book => ({
+      ...book,
+      QUANTITY: book.totalCopies,
+      originalQuantity: book.QUANTITY
+    }));
+  };
+
   // Add useEffect for client-side filtering
   useEffect(() => {
-    if (books.length > 0 && searchTerm.trim()) {
-      const filtered = filterBooksByTitle(books, searchTerm);
-      setFilteredBooks(filtered);
-    } else {
-      setFilteredBooks(books);
+    let processedBooks = books;
+   
+    // First filter by search term if exists
+    if (processedBooks.length > 0 && searchTerm.trim()) {
+      processedBooks = filterBooksByTitle(processedBooks, searchTerm);
     }
+   
+    // Then group by title to show unique books
+    processedBooks = groupBooksByTitle(processedBooks);
+   
+    setFilteredBooks(processedBooks);
   }, [searchTerm, books]);
 
   // Listen for book issue/return events to refresh book data
   useEffect(() => {
     const handleBookIssue = (event) => {
       const { bookId } = event.detail;
-      console.log(
-        "BookList: Book issue event received, refreshing data for book:",
-        bookId
-      );
+      console.log("BookList: Book issue event received, refreshing data for book:", bookId);
       fetchBooks(); // Refresh the entire list to get updated quantities
     };
 
     const handleBookReturn = (event) => {
       const { bookId } = event.detail;
-      console.log(
-        "BookList: Book return event received, refreshing data for book:",
-        bookId
-      );
+      console.log("BookList: Book return event received, refreshing data for book:", bookId);
       fetchBooks(); // Refresh the entire list to get updated quantities
     };
 
     // Add event listeners
-    window.addEventListener("bookIssued", handleBookIssue);
-    window.addEventListener("bookReturned", handleBookReturn);
+    window.addEventListener('bookIssued', handleBookIssue);
+    window.addEventListener('bookReturned', handleBookReturn);
 
     return () => {
-      window.removeEventListener("bookIssued", handleBookIssue);
-      window.removeEventListener("bookReturned", handleBookReturn);
+      window.removeEventListener('bookIssued', handleBookIssue);
+      window.removeEventListener('bookReturned', handleBookReturn);
     };
   }, []);
 
@@ -479,6 +511,11 @@ const BookList = () => {
       errors["PUBLISHER NAME"] = "Publisher is required";
     if (book.QUANTITY < 0) errors.QUANTITY = "Quantity cannot be negative";
     return errors;
+  };
+
+  const handleBookClick = (book) => {
+    setSelectedBookDetails(book);
+    setShowBookDetailsModal(true);
   };
 
   const handleEditBook = (book) => {
@@ -515,28 +552,25 @@ const BookList = () => {
     try {
       // Try to update via backend API first
       console.log("Attempting to update book via API:", bookId, updatedDetails);
-
+     
       const updateResponse = await fetch(`${API_URL}/${bookId}`, {
-        method: "PUT",
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify(updatedDetails),
       });
 
       console.log("API Response status:", updateResponse.status);
-
+     
       if (updateResponse.ok) {
         const responseData = await updateResponse.json();
         console.log("Book updated successfully via API:", responseData);
-
+       
         // Update local state with the response from backend
-        const updatedBook = responseData.book || {
-          ...updatedDetails,
-          _id: bookId,
-        };
-
+        const updatedBook = responseData.book || { ...updatedDetails, _id: bookId };
+       
         setBooks((prevBooks) =>
           prevBooks.map((book) =>
             book._id === bookId ? { ...book, ...updatedBook } : book
@@ -549,14 +583,12 @@ const BookList = () => {
         );
 
         // Clear localStorage since backend update was successful
-        localStorage.removeItem("editedBooks");
+        localStorage.removeItem('editedBooks');
 
         // Dispatch custom event to notify Analytics component
-        window.dispatchEvent(
-          new CustomEvent("localBooksUpdated", {
-            detail: { bookId, updatedDetails: updatedBook },
-          })
-        );
+        window.dispatchEvent(new CustomEvent('localBooksUpdated', {
+          detail: { bookId, updatedDetails: updatedBook }
+        }));
 
         setShowEditModal(false);
         setModalType("success");
@@ -569,7 +601,7 @@ const BookList = () => {
       }
     } catch (error) {
       console.warn("API update failed, using local simulation:", error.message);
-
+     
       // Fallback to local simulation
       // Update the local state to reflect changes - use _id to match the specific book
       setBooks((prevBooks) =>
@@ -587,17 +619,12 @@ const BookList = () => {
       const updatedBooksForStorage = books.map((book) =>
         book._id === bookId ? { ...book, ...updatedDetails } : book
       );
-      localStorage.setItem(
-        "editedBooks",
-        JSON.stringify(updatedBooksForStorage)
-      );
+      localStorage.setItem('editedBooks', JSON.stringify(updatedBooksForStorage));
 
       // Dispatch custom event to notify Analytics component
-      window.dispatchEvent(
-        new CustomEvent("localBooksUpdated", {
-          detail: { bookId, updatedDetails },
-        })
-      );
+      window.dispatchEvent(new CustomEvent('localBooksUpdated', {
+        detail: { bookId, updatedDetails }
+      }));
 
       setShowEditModal(false);
       setModalType("success");
@@ -717,26 +744,66 @@ const BookList = () => {
       return null;
     }
 
-    // Generate a simple pseudo-barcode pattern (alternating black and white lines)
-    const barcodeLines = Array.from({ length: 40 }, (_, i) => {
-      const width = Math.random() * 2 + 1; // Random width between 1 and 3px to simulate CODE128
-      const color = i % 2 === 0 ? "black" : "white";
-      return `<div style="display: inline-block; width: ${width}px; height: 40px; background-color: ${color};"></div>`;
-    }).join("");
+    // Generate a deterministic barcode based on ACCNO for consistent output
+    const generateBarcodePattern = (accno) => {
+      const code = String(accno).replace(/[^0-9]/g, ''); // Extract numbers only
+      const seed = code.split('').reduce((acc, char) => acc + parseInt(char), 0);
+     
+      // Create a more realistic barcode pattern
+      const patterns = [
+        [2, 1, 2, 1, 1, 3, 1, 1], // Pattern A
+        [1, 2, 2, 1, 3, 1, 1, 1], // Pattern B  
+        [3, 1, 1, 2, 1, 2, 1, 1], // Pattern C
+        [1, 1, 3, 2, 1, 1, 2, 1], // Pattern D
+        [2, 2, 1, 1, 1, 1, 3, 1], // Pattern E
+      ];
+     
+      const selectedPattern = patterns[seed % patterns.length];
+      const fullPattern = [];
+     
+      // Start and end guards
+      fullPattern.push(1, 1, 1); // Start guard
+     
+      // Repeat pattern multiple times for fuller barcode
+      for (let i = 0; i < 8; i++) {
+        fullPattern.push(...selectedPattern);
+        if (i < 7) fullPattern.push(1); // Separator
+      }
+     
+      fullPattern.push(1, 1, 1); // End guard
+     
+      return fullPattern;
+    };
 
-    const collegeName =
-      "Nagarjuna Institute of Engineering Technology and Management Nagpur";
-    const seriesAndAccNo = `${book.SERIESCODE || "GKEA"}/${
-      book.ACCNO || "240"
-    }`;
+    const barcodePattern = generateBarcodePattern(book.ACCNO);
+   
+    // Convert pattern to SVG bars
+    let x = 0;
+    const barHeight = 50;
+    const barElements = barcodePattern.map((width, index) => {
+      const isBlack = index % 2 === 0;
+      const rect = `<rect x="${x}" y="0" width="${width}" height="${barHeight}" fill="${isBlack ? '#000000' : '#ffffff'}"/>`;
+      x += width;
+      return rect;
+    }).join('');
+
+    const totalWidth = barcodePattern.reduce((sum, w) => sum + w, 0);
+   
+    const collegeName = "Nagarjuna Institute of Engineering Technology and Management Nagpur";
+    const seriesAndAccNo = `${book.SERIESCODE || "GKEA"}/${book.ACCNO || "240"}`;
     const accNoDisplay = book.ACCNO || "519.5/RAV";
 
     return `
-      <div style="text-align: center; font-family: Arial, sans-serif; padding: 10px; background-color: white; border: 1px solid #000;">
-        <p style="margin: 0; font-size: 12px; font-weight: bold;">${accNoDisplay}</p>
-        <p style="margin: 5px 0; font-size: 10px;">${collegeName}</p>
-        <div style="margin: 5px 0;">${barcodeLines}</div>
-        <p style="margin: 5px 0; font-size: 10px;">${seriesAndAccNo}</p>
+      <div style="text-align: center; font-family: 'Courier New', monospace; padding: 15px; background-color: white; border: 2px solid #000000; display: inline-block; margin: 10px;">
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #000000;">${accNoDisplay}</div>
+        <div style="font-size: 9px; margin-bottom: 10px; color: #333333; line-height: 1.2;">${collegeName}</div>
+        <div style="background-color: white; padding: 8px; margin: 8px 0; border: 1px solid #cccccc;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth * 3}" height="${barHeight}" viewBox="0 0 ${totalWidth} ${barHeight}" style="display: block; margin: 0 auto; max-width: 280px;">
+            <rect x="0" y="0" width="${totalWidth}" height="${barHeight}" fill="white"/>
+            ${barElements}
+          </svg>
+        </div>
+        <div style="font-size: 10px; margin-top: 8px; font-weight: bold; color: #000000; letter-spacing: 0.5px;">${seriesAndAccNo}</div>
       </div>
     `;
   };
@@ -894,6 +961,24 @@ const BookList = () => {
     const value = e.target.value;
     setSearchTerm(value);
     // Keep the selected search type - don't reset to Title
+  };
+
+  // Helper function to get book image path
+  const getBookImagePath = (book) => {
+    if (!book?.ACCNO) {
+      console.log('No ACCNO found for book:', book?.TITLENAME);
+      return null;
+    }
+   
+    // Clean the ACCNO for file naming (replace special characters)
+    const cleanAccno = book.ACCNO.toString()
+      .replace(/[\/\\:*?"<>|]/g, '_') // Replace invalid file characters with underscore
+      .replace(/\s+/g, '_'); // Replace spaces with underscore
+   
+    const imagePath = `/library/${cleanAccno}`;
+    console.log(`Image path for "${book.TITLENAME}":`, imagePath);
+   
+    return imagePath;
   };
 
   const ErrorDisplay = ({ message }) => {
@@ -1089,145 +1174,123 @@ const BookList = () => {
 
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               {filteredBooks.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-indigo-600 to-teal-600 text-white">
-                        <th
-                          className="px-6 py-4 text-left text-sm font-semibold cursor-pointer"
-                          onClick={() => requestSort("ACCNO")}
-                        >
-                          Accession No. {getSortIcon("ACCNO")}
-                        </th>
-                        <th
-                          className="px-6 py-4 text-left text-sm font-semibold cursor-pointer"
-                          onClick={() => requestSort("TITLENAME")}
-                        >
-                          Title {getSortIcon("TITLENAME")}
-                        </th>
-                        <th
-                          className="px-6 py-4 text-left text-sm font-semibold cursor-pointer"
-                          onClick={() => requestSort("AUTHOR")}
-                        >
-                          Author {getSortIcon("AUTHOR")}
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold">
-                          Publisher
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold">
-                          Series Code
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold">
-                          Material Type
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold">
-                          Quantity
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold">
-                          Status
-                        </th>
-                        {isAuthenticated && (
-                          <th className="px-6 py-4 text-left text-sm font-semibold">
-                            Actions
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {filteredBooks.map((book) => (
-                        <tr
-                          key={book._id}
-                          className="hover:bg-gray-100 transition-all duration-200"
-                        >
-                          <td className="px-6 py-4 text-sm font-medium">
-                            <span style={{ color: "#000" }}>{book.ACCNO}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-semibold text-gray-900">
-                              {book.TITLENAME}
+                <div className="p-6">
+                  <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                    {filteredBooks.map((book) => (
+                      <div
+                        key={book._id}
+                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-indigo-300 cursor-pointer"
+                        onClick={() => handleBookClick(book)}
+                      >
+                        <div className="flex gap-4">
+                          {/* Left side - Book Image */}
+                          <div className="flex-shrink-0">
+                            <div className="w-20 h-28 rounded-lg shadow-md overflow-hidden relative">
+                              {getBookImagePath(book) ? (
+                                <>
+                                  <img
+                                    src={`${getBookImagePath(book)}.jpg`}
+                                    alt={book.TITLENAME}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      // Try different formats
+                                      if (e.target.src.includes('.jpg')) {
+                                        e.target.src = `${getBookImagePath(book)}.png`;
+                                      } else if (e.target.src.includes('.png')) {
+                                        e.target.src = `${getBookImagePath(book)}.jpeg`;
+                                      } else if (e.target.src.includes('.jpeg')) {
+                                        e.target.src = `${getBookImagePath(book)}.webp`;
+                                      } else {
+                                        // All formats failed, show fallback
+                                        e.target.style.display = 'none';
+                                        e.target.parentElement.querySelector('.fallback-icon').style.display = 'flex';
+                                      }
+                                    }}
+                                  />
+                                  <div className="fallback-icon w-full h-full bg-gradient-to-br from-indigo-400 to-teal-500 items-center justify-center absolute inset-0" style={{display: 'none'}}>
+                                    <BookOpen size={32} className="text-white" />
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-teal-500 flex items-center justify-center">
+                                  <BookOpen size={32} className="text-white" />
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              Pages: {book.PAGES}
+                          </div>
+                         
+                          {/* Right side - Book Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="space-y-2">
+                              {/* Book Title */}
+                              <h3 className="text-lg font-semibold text-gray-900 leading-tight line-clamp-2">
+                                {book.TITLENAME}
+                              </h3>
+                             
+                              {/* Author */}
+                              <p className="text-sm text-gray-700 font-medium">
+                                <span className="text-gray-500">By:</span> {book.AUTHOR}
+                              </p>
+                             
+                              {/* Publisher */}
+                              <p className="text-sm text-gray-600">
+                                <span className="text-gray-500">Publisher:</span> {book["PUBLISHER NAME"]}
+                              </p>
+                             
+                              {/* Year */}
+                              <p className="text-sm text-gray-600">
+                                <span className="text-gray-500">Year:</span> {book["PUB.YEAR"] || "N/A"}
+                              </p>
+                             
+                              {/* Copies Info */}
+                              {book.accessionNumbers && book.accessionNumbers.length > 0 && (
+                                <p className="text-sm text-gray-600">
+                                  <span className="text-gray-500">Copies:</span> {book.accessionNumbers.length}
+                                  <span className="text-xs text-gray-400 ml-1">(Total: {book.QUANTITY})</span>
+                                </p>
+                              )}
+
+                              {/* Actions for authenticated users */}
+                              {isAuthenticated && (
+                                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePrintClick(book);
+                                    }}
+                                    className="p-1.5 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
+                                    title="Print Barcode"
+                                  >
+                                    <Printer size={18} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      downloadBarcode(book);
+                                    }}
+                                    className="p-1.5 rounded-full text-teal-600 hover:bg-teal-100 transition-colors"
+                                    title="Download Barcode"
+                                  >
+                                    <Download size={18} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditBook(book);
+                                    }}
+                                    className="p-1.5 rounded-full text-indigo-600 hover:bg-indigo-100 transition-colors"
+                                    title="Edit Book Details"
+                                  >
+                                    <Edit size={18} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
-                            <span style={{ color: "#000" }}>{book.AUTHOR}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-700">
-                              {book["PUBLISHER NAME"]}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {book.CITY}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            <span style={{ color: "#000" }}>
-                              {book.SERIESCODE}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-3 py-1 text-xs font-semibold rounded-full ${getMaterialTypeColor(
-                                book.materialType
-                              )}`}
-                            >
-                              {getMaterialTypeName(book.materialType)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-3 py-1 text-sm font-semibold rounded-full ${getAvailabilityColor(
-                                book.QUANTITY
-                              )}`}
-                            >
-                              {book.QUANTITY || 0}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                                book.STATUS === "PRESENT"
-                                  ? "bg-teal-200 text-teal-800"
-                                  : book.STATUS === "ISSUE"
-                                  ? "bg-yellow-200 text-yellow-800"
-                                  : "bg-red-200 text-red-800"
-                              }`}
-                            >
-                              {book.STATUS}
-                            </span>
-                          </td>
-                          {isAuthenticated && (
-                            <td className="px-6 py-4">
-                              <div className="flex space-x-3">
-                                <button
-                                  onClick={() => handlePrintClick(book)}
-                                  className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
-                                  title="Print Barcode"
-                                >
-                                  <Printer size={24} />
-                                </button>
-                                <button
-                                  onClick={() => downloadBarcode(book)}
-                                  className="p-2 rounded-full text-teal-600 hover:bg-teal-100 transition-colors"
-                                  title="Download Barcode"
-                                >
-                                  <Download size={24} />
-                                </button>
-                                <button
-                                  onClick={() => handleEditBook(book)}
-                                  className="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 transition-colors"
-                                  title="Edit Book Details"
-                                >
-                                  <Edit size={24} />
-                                </button>
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="p-12 text-center">
@@ -1734,9 +1797,263 @@ const BookList = () => {
             </div>
           </div>
         )}
+
+        {/* Book Details Modal */}
+        {showBookDetailsModal && selectedBookDetails && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300 ease-out">
+            <div className="bg-white rounded-2xl w-full max-w-7xl p-8 shadow-2xl backdrop-blur-md bg-opacity-90 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">Book Details</h3>
+                <button
+                  onClick={() => setShowBookDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-4 lg:gap-3 items-start">
+                {/* Left Column - Book Image */}
+                <div className="flex justify-start md:justify-start">
+                  <div className="w-48 h-64 md:w-44 md:h-60 lg:w-52 lg:h-55 rounded-lg shadow-lg overflow-hidden relative">
+                    {getBookImagePath(selectedBookDetails) ? (
+                      <>
+                        <img
+                          src={`${getBookImagePath(selectedBookDetails)}.jpg`}
+                          alt={selectedBookDetails.TITLENAME}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Try different formats
+                            if (e.target.src.includes('.jpg')) {
+                              e.target.src = `${getBookImagePath(selectedBookDetails)}.png`;
+                            } else if (e.target.src.includes('.png')) {
+                              e.target.src = `${getBookImagePath(selectedBookDetails)}.jpeg`;
+                            } else if (e.target.src.includes('.jpeg')) {
+                              e.target.src = `${getBookImagePath(selectedBookDetails)}.webp`;
+                            } else {
+                              // All formats failed, show fallback
+                              e.target.style.display = 'none';
+                              e.target.parentElement.querySelector('.fallback-modal-icon').style.display = 'flex';
+                            }
+                          }}
+                        />
+                        <div className="fallback-modal-icon w-full h-full bg-gradient-to-br from-indigo-400 to-teal-500 items-center justify-center absolute inset-0" style={{display: 'none'}}>
+                          <BookOpen size={64} className="text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-teal-500 flex items-center justify-center">
+                        <BookOpen size={64} className="text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Middle Column - First Half of Details */}
+                <div className="space-y-3 md:space-y-4 px-2 md:px-0">
+                  <div className="md:hidden mb-3">
+                    <h3 className="text-lg font-bold text-gray-900 leading-tight text-center">
+                      {selectedBookDetails.TITLENAME || 'N/A'}
+                    </h3>
+                  </div>
+                 
+                  <div className="hidden md:block">
+                    <h3 className="text-sm lg:text-base font-bold text-gray-900 leading-tight mb-2 line-clamp-2">
+                      {selectedBookDetails.TITLENAME || 'N/A'}
+                    </h3>
+                  </div>
+                 
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Author</label>
+                      <p className="text-xs md:text-sm text-gray-800 font-semibold line-clamp-2">{selectedBookDetails.AUTHOR || 'N/A'}</p>
+                    </div>
+                   
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Publisher</label>
+                      <p className="text-xs md:text-sm text-gray-800 line-clamp-2">{selectedBookDetails["PUBLISHER NAME"] || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Material Type</label>
+                      <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {getMaterialTypeName(selectedBookDetails.materialType || 'book')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Series Code</label>
+                      <p className="text-xs md:text-sm text-gray-800 font-mono">{selectedBookDetails.SERIESCODE || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column - Second Half of Details */}
+                <div className="space-y-3 md:space-y-4 px-2 md:px-0">
+                  <div className="mt-3 md:mt-0">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Class No.</label>
+                        <p className="text-xs md:text-sm text-gray-800 font-mono">{selectedBookDetails.CLASSNO || 'N/A'}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Total Copies</label>
+                        <p className={`text-base md:text-lg font-bold ${selectedBookDetails.QUANTITY === 0 ? 'text-red-600' : selectedBookDetails.QUANTITY < 3 ? 'text-yellow-600' : 'text-teal-600'}`}>
+                          {selectedBookDetails.QUANTITY || 0}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Publication Year</label>
+                        <p className="text-xs md:text-sm font-bold text-gray-800">
+                          {selectedBookDetails["PUB.YEAR"] || 'N/A'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+                        <p className="text-xs md:text-sm font-semibold text-gray-800 line-clamp-2">
+                          {selectedBookDetails["SUBJECT NAME"] || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Separator Line */}
+              <div className="border-t border-gray-300 my-6"></div>
+
+              {/* Accession Numbers Table - Full Width */}
+              <div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Book Copies Information</h4>
+                    <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{color: '#0000FF', fontWeight: 'semibold'}}>
+                                Accession No.
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{color: '#0000FF', fontWeight: 'semibold'}}>
+                                Book Type
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{color: '#0000FF', fontWeight: 'semibold'}}>
+                                Book Status
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{color: '#0000FF', fontWeight: 'semibold'}}>
+                                Issue Date
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{color: '#0000FF', fontWeight: 'semibold'}}>
+                                Due Date
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {selectedBookDetails.accessionNumbers && selectedBookDetails.accessionNumbers.length > 0 ? (
+                              selectedBookDetails.accessionNumbers.map((accItem, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm" style={{color: '#6b7280', fontWeight: 'semibold'}}>
+                                    {accItem.accno || selectedBookDetails.ACCNO || 'N/A'}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm" style={{color: '#6b7280', fontWeight: 'semibold'}}>
+                                    {getMaterialTypeName(selectedBookDetails.materialType || 'book')}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm">
+                                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                                      (accItem.status || selectedBookDetails.STATUS) === "PRESENT"
+                                        ? "bg-green-100 text-green-800"
+                                        : (accItem.status || selectedBookDetails.STATUS) === "ISSUE"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-red-100 text-red-800"
+                                    }`}>
+                                      {accItem.status || selectedBookDetails.STATUS || 'PRESENT'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-900" style={{color: '#000', fontWeight: 'bold'}}>
+                                    {accItem.issueDate || '-'}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-900" style={{color: '#000', fontWeight: 'bold'}}>
+                                    {accItem.dueDate || '-'}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td className="px-4 py-4 text-sm font-mono" style={{color: '#6b7280', fontWeight: 'semibold'}}>
+                                  {selectedBookDetails.ACCNO || 'N/A'}
+                                </td>
+                                <td className="px-4 py-4 text-sm" style={{color: '#6b7280', fontWeight: 'semibold'}}>
+                                  {getMaterialTypeName(selectedBookDetails.materialType || 'book')}
+                                </td>
+                                <td className="px-4 py-4 text-sm">
+                                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                                    selectedBookDetails.STATUS === "PRESENT"
+                                      ? "bg-green-100 text-green-800"
+                                      : selectedBookDetails.STATUS === "ISSUE"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}>
+                                    {selectedBookDetails.STATUS || 'PRESENT'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 text-sm text-gray-900 text-center">
+                                  -
+                                </td>
+                                <td className="px-4 py-4 text-sm text-gray-900 text-center">
+                                  -
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowBookDetailsModal(false)}
+                  className="px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-all duration-300"
+                >
+                  Close
+                </button>
+                {isAuthenticated && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowBookDetailsModal(false);
+                        handlePrintClick(selectedBookDetails);
+                      }}
+                      className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center"
+                    >
+                      <Printer size={18} className="mr-2" />
+                      Print Barcode
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowBookDetailsModal(false);
+                        handleEditBook(selectedBookDetails);
+                      }}
+                      className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all duration-300 flex items-center"
+                    >
+                      <Edit size={18} className="mr-2" />
+                      Edit Details
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default BookList;
+

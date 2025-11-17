@@ -34,7 +34,7 @@ const Dashboard = () => {
           department: parsedData.department?.name || "N/A",
           email: parsedData.email || "N/A",
           semester: parsedData.semester?.number || "N/A",
-          section: "A", // Default section, you can modify this based on your data structure
+          section: parsedData.section || "A", // Use actual section from data
           studentId: parsedData.studentId,
           enrollmentNumber: parsedData.enrollmentNumber,
           mobileNumber: parsedData.mobileNumber,
@@ -266,14 +266,12 @@ const Dashboard = () => {
                     </h2>
                     <input
                       type="text"
-                      placeholder="Enter subject name"
+                      placeholder="Enter subject name to filter (leave empty for all)"
                       value={selectedSubject}
                       onChange={(e) => setSelectedSubject(e.target.value)}
                       className="border-2 border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 p-3 mb-4 w-full rounded-lg text-gray-900 placeholder-gray-500"
                     />
-                    {selectedSubject && (
-                      <MaterialList subject={selectedSubject} />
-                    )}
+                    <MaterialList subject={selectedSubject} />
                   </div>
                 )}
               </div>

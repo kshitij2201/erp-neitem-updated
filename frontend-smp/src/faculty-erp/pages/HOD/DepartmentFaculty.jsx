@@ -38,6 +38,7 @@ export default function DepartmentFaculty({ userData }) {
   const [filterType, setFilterType] = useState("all");
   const [filterDepartment, setFilterDepartment] = useState("");
   const [expandedFaculty, setExpandedFaculty] = useState(null);
+
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [selectedFaculty, setSelectedFaculty] = useState(null);
@@ -51,6 +52,8 @@ export default function DepartmentFaculty({ userData }) {
   const [ccAssignments, setCCAssignments] = useState([]);
   const [subjects, setSubjects] = useState([]); // New state for subjects
   const [assignSubjectSuccess, setAssignSubjectSuccess] = useState(null); // New state for subject assignment feedback
+  const [selectedSubject, setSelectedSubject] = useState(""); // State for selected subject in dropdown
+  const [facultyUpdateCounter, setFacultyUpdateCounter] = useState(0); // Counter to force dropdown re-render
 
   const currentAcademicYear = getCurrentAcademicYear();
   const academicYears = [
@@ -371,6 +374,8 @@ export default function DepartmentFaculty({ userData }) {
   const handleExpandFaculty = (facultyId) => {
     setExpandedFaculty((prev) => (prev === facultyId ? null : facultyId));
   };
+
+
 
   const handleViewDetails = (faculty) => {
     setSelectedFaculty(faculty);
@@ -700,6 +705,7 @@ export default function DepartmentFaculty({ userData }) {
           ? facultyData
           : [];
         setFaculties(facultiesData);
+        setFacultyUpdateCounter(prev => prev + 1);
       }
 
       // Only close modal if it was opened (when faculty is null, we're using inline dropdown)
@@ -873,6 +879,30 @@ export default function DepartmentFaculty({ userData }) {
   }, [subjects]);
 
   // Helper to check if a subject is assigned to another faculty (not the selected one)
+  const getSubjectAssignedToFaculty = (subjectId, facultyId) => {
+    const assignedFaculty = faculties.find(
+      (faculty) =>
+        faculty._id !== facultyId &&
+        Array.isArray(faculty.subjectsTaught) &&
+        faculty.subjectsTaught.some(
+          (subj) => (typeof subj === "string" ? subj : subj._id) === subjectId
+        )
+    );
+    return assignedFaculty ? assignedFaculty.name : null;
+  };
+
+  // Helper to get all faculty names who have a subject assigned
+  const getAllAssignedFacultyNames = (subjectId) => {
+    const assignedFaculties = faculties.filter(
+      (faculty) =>
+        Array.isArray(faculty.subjectsTaught) &&
+        faculty.subjectsTaught.some(
+          (subj) => (typeof subj === "string" ? subj : subj._id) === subjectId
+        )
+    );
+    return assignedFaculties.map(faculty => faculty.name);
+  };
+
   const isSubjectAssignedToOther = (subjectId, facultyId) => {
     return faculties.some(
       (faculty) =>
@@ -907,6 +937,66 @@ export default function DepartmentFaculty({ userData }) {
     return ccAssignments.filter(
       (assignment) => assignment.facultyId === facultyId
     );
+  };
+
+  // Helper to check if a subject is assigned to a specific faculty
+  const isSubjectAssignedToFaculty = (subjectId, facultyId) => {
+    const faculty = faculties.find(f => f._id === facultyId);
+    return faculty?.subjectsTaught?.some(subject => subject._id === subjectId) || false;
+  };
+
+  const handleSubjectAction = async (subjectId, faculty) => {
+    const isAssigned = isSubjectAssignedToFaculty(subjectId, faculty._id);
+
+    if (isAssigned) {
+      // Unassign the subject
+      const confirmUnassign = window.confirm(
+        `Are you sure you want to unassign this subject from ${faculty.name}?`
+      );
+      if (!confirmUnassign) return;
+
+      try {
+        await fetch(
+          `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/faculty-subject/remove-faculty-subject`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+            body: JSON.stringify({
+              facultyId: faculty._id,
+              subjectId,
+            }),
+          }
+        );
+
+        // Refetch faculties to update UI
+        const department = userData?.department || faculty.department;
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/faculty/faculties?department=${encodeURIComponent(department)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            },
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setFaculties(
+            Array.isArray(data.data?.faculties)
+              ? data.data.faculties
+              : []
+          );
+          setFacultyUpdateCounter(prev => prev + 1);
+        }
+      } catch (error) {
+        console.error("Error unassigning subject:", error);
+      }
+    } else {
+      // Assign the subject
+      await handleAssignSubject(subjectId, faculty);
+    }
   };
 
   if (loading) {
@@ -1324,60 +1414,93 @@ export default function DepartmentFaculty({ userData }) {
                         </button>
                       </div>
 
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            console.log(
-                              "[Dropdown] Subject selected:",
-                              e.target.value,
-                              "for faculty:",
-                              faculty.name
-                            );
-                            handleAssignSubject(e.target.value, faculty);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="w-full border border-slate-300 p-3 rounded-xl bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 shadow-sm font-medium text-sm"
-                      >
-                        <option value="">
-                          📖 Select Subject to Assign ({subjects.length}{" "}
-                          available)
-                        </option>
-                        {(() => {
-                          try {
-                            const availableSubjects = getAvailableSubjects();
-                            console.log(
-                              "[Dropdown] About to render subjects:",
-                              availableSubjects.length
-                            );
-                            return availableSubjects.map((subject) => (
-                              <option
-                                key={subject._id}
-                                value={subject._id}
-                                disabled={isSubjectAssigned(subject._id)}
-                              >
-                                {subject.name}{" "}
-                                {isSubjectAssigned(subject._id)
-                                  ? "(Assigned)"
-                                  : ""}
-                              </option>
-                            ));
-                          } catch (error) {
-                            console.error(
-                              "[Dropdown] Error rendering subjects:",
-                              error
-                            );
-                            return (
-                              <option disabled>Error loading subjects</option>
-                            );
-                          }
-                        })()}
-                        {subjects.length === 0 && (
-                          <option disabled>
-                            No subjects available for this department
+                      <div className="flex gap-3">
+                        <select
+                          key={`subject-dropdown-${facultyUpdateCounter}`}
+                          value={selectedSubject}
+                          onChange={(e) => setSelectedSubject(e.target.value)}
+                          className="flex-1 border border-slate-300 p-3 rounded-xl bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 shadow-sm font-medium text-sm"
+                        >
+                          <option value="">
+                            📖 Select Subject ({subjects.length} available)
                           </option>
-                        )}
-                      </select>
+                          {(() => {
+                            try {
+                              const availableSubjects = getAvailableSubjects();
+                              console.log(
+                                "[Dropdown] About to render subjects:",
+                                availableSubjects.length
+                              );
+                              return availableSubjects.map((subject) => {
+                                const isAssignedToThisFaculty = isSubjectAssignedToFaculty(subject._id, faculty._id);
+                                const assignedFacultyNames = getAllAssignedFacultyNames(subject._id);
+
+                                return (
+                                  <option
+                                    key={subject._id}
+                                    value={subject._id}
+                                  >
+                                    {subject.name}
+                                    {assignedFacultyNames.length > 0 ? ` (Assigned to: ${assignedFacultyNames.join(", ")})` : ""}
+                                  </option>
+                                );
+                              });
+                            } catch (error) {
+                              console.error(
+                                "[Dropdown] Error rendering subjects:",
+                                error
+                              );
+                              return (
+                                <option disabled>Error loading subjects</option>
+                              );
+                            }
+                          })()}
+                          {subjects.length === 0 && (
+                            <option disabled>
+                              No subjects available for this department
+                            </option>
+                          )}
+                        </select>
+
+                        <button
+                          onClick={() => {
+                            if (selectedSubject) {
+                              handleSubjectAction(selectedSubject, faculty);
+                              setSelectedSubject("");
+                            }
+                          }}
+                          disabled={!selectedSubject || isSubjectAssignedToFaculty(selectedSubject, faculty._id)}
+                          className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 shadow-md ${
+                            selectedSubject && !isSubjectAssignedToFaculty(selectedSubject, faculty._id)
+                              ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 focus:ring-2 focus:ring-emerald-500"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          Assign
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (selectedSubject) {
+                              const confirmUnassign = window.confirm(
+                                `Are you sure you want to unassign this subject from ${faculty.name}?`
+                              );
+                              if (confirmUnassign) {
+                                handleSubjectAction(selectedSubject, faculty);
+                                setSelectedSubject("");
+                              }
+                            }
+                          }}
+                          disabled={!selectedSubject || !isSubjectAssignedToFaculty(selectedSubject, faculty._id)}
+                          className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 shadow-md ${
+                            selectedSubject && isSubjectAssignedToFaculty(selectedSubject, faculty._id)
+                              ? "bg-gradient-to-r from-rose-500 to-red-600 text-white hover:from-rose-600 hover:to-red-700 focus:ring-2 focus:ring-rose-500"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          Unassign
+                        </button>
+                      </div>
                     </div>
 
                     {/* Expanded Details Section */}
@@ -1611,6 +1734,7 @@ export default function DepartmentFaculty({ userData }) {
                         </div>
                         Assign Subject
                       </>
+
                     ) : (
                       <>
                         <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -1911,6 +2035,194 @@ export default function DepartmentFaculty({ userData }) {
                         ))}
                       </select>
                     </div>
+                    {assignSubjectSuccess && (
+                      <div
+                        className={`p-4 rounded-xl border ${
+                          assignSubjectSuccess.includes("Error")
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        } animate-fade-in`}
+                      >
+                        <p className="font-medium">{assignSubjectSuccess}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : modalMode === "manageSubjects" ? (
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200">
+                      <h4 className="font-bold text-slate-800 mb-2">Subject Management</h4>
+                      <p className="text-slate-600 text-sm">Assign or unassign subjects for {selectedFaculty?.name}</p>
+                    </div>
+                    
+                    <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-xl">
+                      {subjects.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500">
+                          <BookOpen size={48} className="mx-auto mb-4 text-slate-300" />
+                          <p className="font-medium">No subjects available</p>
+                          <p className="text-sm">No subjects found for this department</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-100">
+                          {subjects.map((subject) => {
+                            const isAssignedToThisFaculty = selectedFaculty?.subjectsTaught?.some(
+                              (s) => s._id === subject._id
+                            );
+                            const isAssignedToOther = isSubjectAssignedToOther(
+                              subject._id,
+                              selectedFaculty?._id
+                            );
+                            
+                            return (
+                              <div
+                                key={subject._id}
+                                className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors duration-200"
+                              >
+                                <div className="flex-1">
+                                  <span className={`font-medium ${
+                                    isAssignedToThisFaculty
+                                      ? "text-emerald-700"
+                                      : isAssignedToOther
+                                      ? "text-slate-400"
+                                      : "text-slate-700"
+                                  }`}>
+                                    {subject.name}
+                                  </span>
+                                  <div className="flex gap-2 mt-1">
+                                    {isAssignedToThisFaculty && (
+                                      <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                                        ✅ Assigned
+                                      </span>
+                                    )}
+                                    {isAssignedToOther && (
+                                      <span className="px-2 py-1 text-xs bg-slate-100 text-slate-500 rounded-full font-medium">
+                                        🔒 Assigned to Other
+                                      </span>
+                                    )}
+                                    {!isAssignedToThisFaculty && !isAssignedToOther && (
+                                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
+                                        🆓 Available
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2 ml-4">
+                                  {isAssignedToThisFaculty ? (
+                                    <button
+                                      className="px-4 py-2 text-sm bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-lg hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-sm font-medium"
+                                      onClick={async () => {
+                                        const confirmUnassign = window.confirm(
+                                          `Are you sure you want to unassign "${subject.name}" from ${selectedFaculty?.name}?`
+                                        );
+                                        if (!confirmUnassign) return;
+
+                                        try {
+                                          await fetch(
+                                            `${
+                                              import.meta.env.VITE_API_URL ||
+                                              "https://backenderp.tarstech.in"
+                                            }/api/faculty-subject/remove-faculty-subject`,
+                                            {
+                                              method: "DELETE",
+                                              headers: {
+                                                "Content-Type": "application/json",
+                                                Authorization: `Bearer ${localStorage.getItem(
+                                                  "authToken"
+                                                )}`,
+                                              },
+                                              body: JSON.stringify({
+                                                facultyId: selectedFaculty?._id,
+                                                subjectId: subject._id,
+                                              }),
+                                            }
+                                          );
+                                          
+                                          // Refetch faculties to update UI
+                                          const department = userData?.department || selectedFaculty?.department;
+                                          const response = await fetch(
+                                            `${
+                                              import.meta.env.VITE_API_URL ||
+                                              "https://backenderp.tarstech.in"
+                                            }/api/faculty/faculties?department=${encodeURIComponent(
+                                              department
+                                            )}`,
+                                            {
+                                              headers: {
+                                                Authorization: `Bearer ${localStorage.getItem(
+                                                  "authToken"
+                                                )}`,
+                                              },
+                                            }
+                                          );
+                                          if (response.ok) {
+                                            const data = await response.json();
+                                            setFaculties(
+                                              Array.isArray(data.data?.faculties)
+                                                ? data.data.faculties
+                                                : []
+                                            );
+                                            // Update selected faculty data
+                                            const updatedFaculty = data.data?.faculties?.find(f => f._id === selectedFaculty?._id);
+                                            if (updatedFaculty) {
+                                              setSelectedFaculty(updatedFaculty);
+                                            }
+                                          }
+                                        } catch (error) {
+                                          console.error("Error unassigning subject:", error);
+                                        }
+                                      }}
+                                    >
+                                      🗑️ Unassign
+                                    </button>
+                                  ) : !isAssignedToOther ? (
+                                    <button
+                                      className="px-4 py-2 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-sm font-medium"
+                                      onClick={async () => {
+                                        try {
+                                          await handleAssignSubject(subject._id, selectedFaculty);
+                                          // Update selected faculty data after assignment
+                                          const department = userData?.department || selectedFaculty?.department;
+                                          const response = await fetch(
+                                            `${
+                                              import.meta.env.VITE_API_URL ||
+                                              "https://backenderp.tarstech.in"
+                                            }/api/faculty/faculties?department=${encodeURIComponent(
+                                              department
+                                            )}`,
+                                            {
+                                              headers: {
+                                                Authorization: `Bearer ${localStorage.getItem(
+                                                  "authToken"
+                                                )}`,
+                                              },
+                                            }
+                                          );
+                                          if (response.ok) {
+                                            const data = await response.json();
+                                            const updatedFaculty = data.data?.faculties?.find(f => f._id === selectedFaculty?._id);
+                                            if (updatedFaculty) {
+                                              setSelectedFaculty(updatedFaculty);
+                                            }
+                                          }
+                                        } catch (error) {
+                                          console.error("Error assigning subject:", error);
+                                        }
+                                      }}
+                                    >
+                                      ➕ Assign
+                                    </button>
+                                  ) : (
+                                    <span className="px-4 py-2 text-sm bg-slate-200 text-slate-500 rounded-lg font-medium cursor-not-allowed">
+                                      🚫 Unavailable
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    
                     {assignSubjectSuccess && (
                       <div
                         className={`p-4 rounded-xl border ${

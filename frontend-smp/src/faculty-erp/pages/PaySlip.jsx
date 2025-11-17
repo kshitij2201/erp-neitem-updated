@@ -8,11 +8,17 @@ export default function SalarySlipPage({ userData }) {
   const [error, setError] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
 
-  // Get employee ID from userData or use default
-  const employeeId = userData?.employeeId || "NCNT003";
+  // Get employee ID from userData
+  const employeeId = userData?.employeeId;
 
   // Fetch salary records for the specific employee
   useEffect(() => {
+    if (!employeeId) {
+      setError("Employee ID not found. Please login again.");
+      setLoading(false);
+      return;
+    }
+
     const fetchRecords = async () => {
       try {
         const response = await axios.get(
@@ -173,18 +179,18 @@ export default function SalarySlipPage({ userData }) {
                 </span>{" "}
                 {selectedRecord.department}
               </p>
-              <p>
+              {/* <p>
                 <span className="text-sm font-medium text-slate-500">
                   Designation:
                 </span>{" "}
                 {selectedRecord.designation}
-              </p>
-              <p>
+              </p> */}
+              {/* <p>
                 <span className="text-sm font-medium text-slate-500">
                   Employee Type:
                 </span>{" "}
                 {selectedRecord.type}
-              </p>
+              </p> */}
             </div>
           </div>
 

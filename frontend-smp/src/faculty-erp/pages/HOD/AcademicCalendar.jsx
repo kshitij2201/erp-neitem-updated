@@ -20,6 +20,8 @@ const AcademicCalendar = ({ userData }) => {
   const [calendars, setCalendars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCalendar, setEditingCalendar] = useState(null);
   const [selectedCalendar, setSelectedCalendar] = useState(null);
   const [showPrintView, setShowPrintView] = useState(false);
   const [printCalendar, setPrintCalendar] = useState(null);
@@ -47,6 +49,21 @@ const AcademicCalendar = ({ userData }) => {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) queryParams.append(key, value);
       });
+
+      // Role-based filtering logic
+      if (userData?.role === "hod") {
+        // HOD should see all calendars from their department (CC Portal, Staff Portal, etc.)
+        if (userData.department) {
+          queryParams.append("department", userData.department);
+        }
+        // Don't add createdBy filter for HOD - they should see all calendars
+      } else if (userData?.role === "teaching_staff" || userData?.role === "cc" || userData?._id) {
+        // For staff and CC, show only their own created calendars
+        queryParams.append("createdBy", userData._id);
+      }
+
+      // Add timestamp to avoid browser caching
+      queryParams.append("t", Date.now());
 
       const response = await fetch(
         `http://localhost:4000/api/academic-calendar?${queryParams}`,
@@ -157,6 +174,33 @@ const AcademicCalendar = ({ userData }) => {
     setShowPrintView(true);
   };
 
+  const handleEdit = (calendar) => {
+    setEditingCalendar(calendar);
+    setShowEditModal(true);
+  };
+
+  // Permission functions
+  const canEditCalendar = (calendar) => {
+    // Only the creator can edit their calendar.
+    // Handle different shapes: calendar.createdBy may be an id string or an object.
+    const creatorId = calendar?.createdBy?._id || calendar?.createdBy || calendar?.createdById;
+    return !!(creatorId && userData?._id && String(creatorId) === String(userData._id));
+  };
+
+  const canDeleteCalendar = (calendar) => {
+    const creatorId = calendar?.createdBy?._id || calendar?.createdBy || calendar?.createdById;
+    return !!(creatorId && userData?._id && String(creatorId) === String(userData._id));
+  };
+
+  const canPublishCalendar = (calendar) => {
+    // HOD (case-insensitive) can publish any calendar in their department.
+    // Creator can also publish their own calendar.
+    const isHod = !!(userData?.role && String(userData.role).toLowerCase() === "hod");
+    const creatorId = calendar?.createdBy?._id || calendar?.createdBy || calendar?.createdById;
+    const isCreator = !!(creatorId && userData?._id && String(creatorId) === String(userData._id));
+    return isHod || isCreator;
+  };
+
   // Show print view if selected
   if (showPrintView && printCalendar) {
     return (
@@ -192,6 +236,33 @@ const AcademicCalendar = ({ userData }) => {
     return "bg-red-500";
   };
 
+  // Compute progress from topics (fall back to backend value if topics missing)
+  const computeProgress = (calendar) => {
+    try {
+      const topics = calendar?.topics || [];
+      if (!topics || topics.length === 0) return calendar.progressPercentage || 0;
+
+      const totalPlanned = topics.reduce(
+        (sum, t) => sum + (t.estimatedHours || t.duration || 0),
+        0
+      );
+
+      if (totalPlanned === 0) {
+        // Fall back to simple count-based calculation to avoid division by zero
+        const completedCount = topics.filter((t) => t.actualDate || t.status === "Completed").length;
+        return topics.length ? Math.round((completedCount / topics.length) * 100) : (calendar.progressPercentage || 0);
+      }
+
+      const completedHours = topics
+        .filter((t) => t.actualDate || t.status === "Completed")
+        .reduce((sum, t) => sum + (t.estimatedHours || t.duration || 0), 0);
+
+      return Math.round((completedHours / totalPlanned) * 100) || 0;
+    } catch (e) {
+      return calendar.progressPercentage || 0;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -207,7 +278,7 @@ const AcademicCalendar = ({ userData }) => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <Calendar className="text-blue-600" />
-            Academic Calendar
+            Teacher Plan
           </h1>
           <p className="text-gray-600 mt-1">
             Manage subject-wise academic schedules and track progress
@@ -218,7 +289,7 @@ const AcademicCalendar = ({ userData }) => {
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={20} />
-          Create Calendar
+          Create Teacher Plan
         </button>
       </div>
 
@@ -296,6 +367,9 @@ const AcademicCalendar = ({ userData }) => {
               {/* Header */}
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
+                  <div className="text-sm text-gray-500 mb-1">
+                    Created by: <span className="font-medium text-gray-800">{calendar.createdByName || calendar.facultyName || 'Unknown'}</span>
+                  </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
                     {calendar.title}
                   </h3>
@@ -342,33 +416,25 @@ const AcademicCalendar = ({ userData }) => {
                     Progress
                   </span>
                   <span className="text-sm font-medium text-gray-900">
-                    {calendar.progressPercentage}%
+                    {computeProgress(calendar)}%
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className={`h-2 rounded-full ${getProgressColor(
-                      calendar.progressPercentage
+                      computeProgress(calendar)
                     )}`}
-                    style={{ width: `${calendar.progressPercentage}%` }}
+                    style={{ width: `${computeProgress(calendar)}%` }}
                   ></div>
                 </div>
               </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-blue-600">
-                    {calendar.totalPlannedHours}
-                  </div>
-                  <div className="text-xs text-gray-500">Planned Hours</div>
+              {/* Completion Rate */}
+              <div className="text-center mb-4">
+                <div className="text-2xl font-bold text-purple-700">
+                  {computeProgress(calendar) || 0}%
                 </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-600">
-                    {calendar.totalCompletedHours}
-                  </div>
-                  <div className="text-xs text-gray-500">Completed Hours</div>
-                </div>
+                <div className="text-xs text-gray-500">Completion Rate</div>
               </div>
 
               {/* Actions */}
@@ -388,25 +454,27 @@ const AcademicCalendar = ({ userData }) => {
                   >
                     <FileText size={16} />
                   </button>
-                  <button
-                    onClick={() => {
-                      /* Handle edit */
-                    }}
-                    className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                    title="Edit"
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCalendar(calendar._id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {canEditCalendar(calendar) && (
+                    <button
+                      onClick={() => handleEdit(calendar)}
+                      className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Edit size={16} />
+                    </button>
+                  )}
+                  {canDeleteCalendar(calendar) && (
+                    <button
+                      onClick={() => handleDeleteCalendar(calendar._id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
 
-                {calendar.status === "Draft" && (
+                {calendar.status === "Draft" && canPublishCalendar(calendar) && (
                   <button
                     onClick={() => handlePublishCalendar(calendar._id)}
                     className="text-xs bg-green-600 text-white px-3 py-1 rounded-full hover:bg-green-700 transition-colors"
@@ -454,6 +522,26 @@ const AcademicCalendar = ({ userData }) => {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
+            fetchCalendars();
+          }}
+          subjects={subjects}
+          faculty={faculty}
+          userData={userData}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingCalendar && (
+        <EditCalendarModal
+          isOpen={showEditModal}
+          calendar={editingCalendar}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingCalendar(null);
+          }}
+          onSuccess={() => {
+            setShowEditModal(false);
+            setEditingCalendar(null);
             fetchCalendars();
           }}
           subjects={subjects}
@@ -621,7 +709,7 @@ const CreateCalendarModal = ({
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">
-            Create Academic Calendar
+            Teacher's Plan
           </h2>
           <button
             onClick={onClose}
@@ -814,7 +902,7 @@ const CreateCalendarModal = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
+                Expected Date
               </label>
               <input
                 type="date"
@@ -969,6 +1057,456 @@ const CreateCalendarModal = ({
   );
 };
 
+// Edit Calendar Modal Component
+const EditCalendarModal = ({
+  isOpen,
+  calendar,
+  onClose,
+  onSuccess,
+  subjects,
+  faculty,
+  userData,
+}) => {
+  const [formData, setFormData] = useState({
+    academicYear: calendar?.academicYear || "",
+    semester: calendar?.semester || "",
+    subjectId: calendar?.subjectId?._id || calendar?.subjectId || "",
+    facultyId: calendar?.facultyId?._id || calendar?.facultyId || "",
+    title: calendar?.title || "",
+    description: calendar?.description || "",
+    department: calendar?.department || userData?.department || "",
+    institutionName: calendar?.institutionName || "NAGARJUNA UNIVERSITY",
+    startDate: calendar?.startDate ? new Date(calendar.startDate).toISOString().split('T')[0] : "",
+    endDate: calendar?.endDate ? new Date(calendar.endDate).toISOString().split('T')[0] : "",
+    topics: calendar?.topics?.map(topic => ({
+      id: topic._id || Math.random().toString(36).substr(2, 9),
+      name: topic.topicName || topic.name,
+      description: topic.description,
+      plannedDate: topic.plannedDate ? new Date(topic.plannedDate).toISOString().split('T')[0] : "",
+      estimatedHours: topic.estimatedHours || 1,
+    })) || [],
+  });
+  const [newTopic, setNewTopic] = useState({
+    name: "",
+    description: "",
+    plannedDate: "",
+    estimatedHours: 1,
+  });
+  const [loading, setLoading] = useState(false);
+  const [subjectFaculty, setSubjectFaculty] = useState([]);
+  const [loadingFaculties, setLoadingFaculties] = useState(false);
+
+  // Fetch faculty when subject changes
+  React.useEffect(() => {
+    if (formData.subjectId) {
+      fetchFacultiesBySubject(formData.subjectId);
+    } else {
+      setSubjectFaculty(faculty); // Show all department faculty when no subject selected
+    }
+  }, [formData.subjectId, faculty]);
+
+  // Initialize subject faculty with all faculty
+  React.useEffect(() => {
+    setSubjectFaculty(faculty);
+  }, [faculty]);
+
+  const fetchFacultiesBySubject = async (subjectId) => {
+    try {
+      setLoadingFaculties(true);
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `https://backenderp.tarstech.in/api/faculty/subject/${subjectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setSubjectFaculty(data.data);
+      } else {
+        setSubjectFaculty([]);
+      }
+    } catch (error) {
+      console.error("Error fetching faculty by subject:", error);
+      setSubjectFaculty([]);
+    } finally {
+      setLoadingFaculties(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("authToken");
+
+      // Transform topics to match backend schema
+      const transformedFormData = {
+        ...formData,
+        topics: formData.topics.map((topic) => ({
+          topicName: topic.name,
+          description: topic.description,
+          plannedDate: topic.plannedDate,
+          estimatedHours: topic.estimatedHours,
+          status: "Planned",
+        })),
+      };
+
+      const response = await fetch(
+        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(transformedFormData),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        onSuccess();
+      } else {
+        alert("Error updating calendar: " + (data.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error updating calendar:", error);
+      alert("Error updating calendar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addTopic = () => {
+    if (!newTopic.name || !newTopic.plannedDate) return;
+
+    const topic = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...newTopic,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      topics: [...prev.topics, topic],
+    }));
+
+    setNewTopic({
+      name: "",
+      description: "",
+      plannedDate: "",
+      estimatedHours: 1,
+    });
+  };
+
+  const removeTopic = (topicId) => {
+    setFormData((prev) => ({
+      ...prev,
+      topics: prev.topics.filter((topic) => topic.id !== topicId),
+    }));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold text-gray-800">
+            Edit Academic Calendar
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Basic Information */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Academic Year *
+              </label>
+              <input
+                type="text"
+                value={formData.academicYear}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    academicYear: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                placeholder="2024-2025"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Semester *
+              </label>
+              <select
+                value={formData.semester}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    semester: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Select Semester</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+                <option value="3">Semester 3</option>
+                <option value="4">Semester 4</option>
+                <option value="5">Semester 5</option>
+                <option value="6">Semester 6</option>
+                <option value="7">Semester 7</option>
+                <option value="8">Semester 8</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subject *
+              </label>
+              <select
+                value={formData.subjectId}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    subjectId: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Select Subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject._id} value={subject._id}>
+                    {subject.name} ({subject.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Faculty *
+              </label>
+              <select
+                value={formData.facultyId}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    facultyId: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                disabled={loadingFaculties}
+                required
+              >
+                <option value="">
+                  {loadingFaculties ? "Loading..." : "Select Faculty"}
+                </option>
+                {subjectFaculty.map((fac) => (
+                  <option key={fac._id} value={fac._id}>
+                    {fac.name} ({fac.employeeId})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Calendar title"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    startDate: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={formData.endDate}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    endDate: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              rows="3"
+              placeholder="Optional description for the calendar"
+            />
+          </div>
+
+          {/* Topics Section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">
+              Topics/Lessons
+            </h3>
+
+            {/* Add New Topic */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-gray-700 mb-3">Add New Topic</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <input
+                  type="text"
+                  placeholder="Topic name"
+                  value={newTopic.name}
+                  onChange={(e) =>
+                    setNewTopic((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Description"
+                  value={newTopic.description}
+                  onChange={(e) =>
+                    setNewTopic((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="date"
+                  value={newTopic.plannedDate}
+                  onChange={(e) =>
+                    setNewTopic((prev) => ({
+                      ...prev,
+                      plannedDate: e.target.value,
+                    }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={addTopic}
+                  disabled={!newTopic.name || !newTopic.plannedDate}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  Add Topic
+                </button>
+              </div>
+            </div>
+
+            {/* Existing Topics */}
+            {formData.topics.length > 0 && (
+              <div>
+                <h4 className="font-medium text-gray-700 mb-3">Topics</h4>
+                <div className="space-y-2">
+                  {formData.topics.map((topic) => (
+                    <div
+                      key={topic.id}
+                      className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800">
+                          {topic.name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {topic.description} •{" "}
+                          {topic.plannedDate ? new Date(topic.plannedDate).toLocaleDateString() : 'No date'} •{" "}
+                          {topic.estimatedHours}h
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeTopic(topic.id)}
+                        className="text-red-600 hover:text-red-800 p-1"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? "Updating..." : "Update Calendar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // Calendar Detail Modal Component
 const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -1049,6 +1587,11 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
   };
 
   const handleUpdateTopic = async (topicId, updates) => {
+    if (!topicId) {
+      alert("Error: Topic ID is missing");
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem("authToken");
@@ -1083,7 +1626,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[99vh] overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">
@@ -1308,15 +1851,16 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
                 {calendar.topics && calendar.topics.length > 0 ? (
                   calendar.topics.map((topic, index) => (
                     <div
-                      key={topic._id || index}
+                      key={topic.id || index}
                       className="bg-white border border-gray-200 rounded-lg p-4"
                     >
-                      {editingTopic === topic._id ? (
+                      {editingTopic === topic.id ? (
                         <EditTopicForm
                           topic={topic}
-                          onSave={(updates) =>
-                            handleUpdateTopic(topic._id, updates)
-                          }
+                          onSave={(updates) => {
+                            console.log("Updating topic with ID:", topic.id);
+                            handleUpdateTopic(topic.id, updates);
+                          }}
                           onCancel={() => setEditingTopic(null)}
                           loading={loading}
                         />
@@ -1349,7 +1893,10 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
                           </div>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setEditingTopic(topic._id)}
+                              onClick={() => {
+                                console.log("Editing topic:", topic);
+                                setEditingTopic(topic.id);
+                              }}
                               className="text-blue-600 hover:text-blue-800 p-1"
                             >
                               <Edit size={16} />

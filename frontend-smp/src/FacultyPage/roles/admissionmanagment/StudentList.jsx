@@ -465,7 +465,7 @@ function StudentList() {
       const query = admissionTypeFilter
         ? `?admissionType=${admissionTypeFilter}`
         : "";
-      const res = await fetchWithRetry(`/api/superadmin/students${query}`, {
+      const res = await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students${query}`, {
         headers,
       });
 
@@ -497,7 +497,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("/api/superadmin/semesters", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/semesters", {
           headers,
         });
 
@@ -523,7 +523,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("/api/superadmin/streams", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/streams", {
           headers,
         });
 
@@ -549,7 +549,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("/api/superadmin/departments", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/departments", {
           headers,
         });
 
@@ -649,7 +649,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        await fetchWithRetry(`/api/superadmin/students/${id}`, {
+        await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students/${id}`, {
           method: "DELETE",
           headers,
         });
@@ -675,7 +675,7 @@ function StudentList() {
       if (!headers) return;
 
       const response = await fetchWithRetry(
-        `/api/superadmin/students/promote/${id}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/promote/${id}`,
         {
           method: "PUT",
           headers,
@@ -708,7 +708,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `/api/superadmin/students/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -866,7 +866,7 @@ function StudentList() {
       if (!headers) return;
 
       await fetchWithRetry(
-        `/api/superadmin/students/generate-certificate/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
         {
           method: "POST",
           headers: {
@@ -894,16 +894,19 @@ function StudentList() {
       });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const marginLeft = 13;
-      const marginRight = 13;
+      const marginLeft = 5;
+      const marginRight = 5;
+      const marginTop = 4; // top border gap
+      const marginBottom = 4; // bottom border gap (keep equal to top)
       const contentWidth = pageWidth - marginLeft - marginRight;
 
       doc.setFont("Helvetica");
 
-      let y = 15;
+      // Start content a bit lower so it sits comfortably inside the top border
+      let y = marginTop + 8;
       doc.setLineWidth(0.5);
-      doc.rect(marginLeft, y, contentWidth, pageHeight - 30);
-      y += 10;
+      doc.rect(marginLeft, marginTop, contentWidth, pageHeight - marginTop - marginBottom);
+      y += 8;
 
       const logoImg = await loadImage(logo);
       if (logoImg.width > 0) {
@@ -1141,21 +1144,21 @@ function StudentList() {
       doc.text(certLines, pageWidth / 2, y, { align: "center" });
       y += certLines.length * 4 + 20;
 
-      // Signature/date section only, no extra line
-      y = pageHeight - 22;
+      // Signature/date section placed relative to bottom margin
+      const signatureY = pageHeight - marginBottom - 12;
       doc.setFontSize(12).setFont("Helvetica", "normal");
       doc.text(
         `Date: ${new Date().toLocaleDateString("en-GB")}`,
         marginLeft + 5,
-        y
+        signatureY
       );
-      doc.text("Clerk", pageWidth / 2, y, { align: "center" });
-      doc.text("Principal", pageWidth - marginRight - 5, y, { align: "right" });
-      y += 3;
+      doc.text("Clerk", pageWidth / 2, signatureY, { align: "center" });
+      doc.text("Principal", pageWidth - marginRight - 5, signatureY, { align: "right" });
 
+      const afterSigY = signatureY + 3;
       if (!isCleared) {
         doc.setFontSize(12).setFont("Helvetica", "italic");
-        doc.text("He is not approved. - G", pageWidth / 2, y, {
+        doc.text("He is not approved. - G", pageWidth / 2, afterSigY, {
           align: "center",
         });
       }
@@ -1187,7 +1190,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `/api/superadmin/students/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -1208,7 +1211,7 @@ function StudentList() {
           if (!headers) return;
 
           const subjectsRes = await fetchWithRetry(
-            `/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
             { headers }
           );
 
@@ -1277,7 +1280,7 @@ function StudentList() {
         if (!headers) return;
 
         const res = await fetchWithRetry(
-          `/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           { headers }
         );
 
@@ -1336,7 +1339,7 @@ function StudentList() {
         if (!headers) return;
 
         const response = await fetchWithRetry(
-          `/api/superadmin/students/${studentId}/add-backlog`,
+          `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
           {
             method: "POST",
             headers: {
@@ -1370,7 +1373,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
             {
               method: "PUT",
               headers: {
@@ -1430,7 +1433,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `/api/superadmin/students/${studentId}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
             {
               method: "PUT",
               headers: {

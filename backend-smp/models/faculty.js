@@ -261,4 +261,14 @@ const facultySchema = new mongoose.Schema({
   },
 });
 
+// Virtual for full name
+facultySchema.virtual('name').get(function() {
+  const parts = [this.firstName, this.middleName, this.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : this.employeeId;
+});
+
+// Ensure virtual fields are serialized
+facultySchema.set('toJSON', { virtuals: true });
+facultySchema.set('toObject', { virtuals: true });
+
 export default mongoose.models.Faculty || mongoose.model("Faculty", facultySchema);

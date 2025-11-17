@@ -1,5 +1,6 @@
 // backend/middleware/auth.js
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import Faculty from "../models/faculty.js"; // Ensure Faculty model is correctly imported
 import Conductor from "../models/Conductor.js";
 import Driver from "../models/Driver.js";
@@ -15,14 +16,31 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      // Attach decoded token to req (as faculty or user, depending on context)
-      req.faculty = decoded; // Consistent with first file
-      req.user = decoded; // Consistent with second file for HOD validation
+      // Handle super_admin role
+      if (decoded.role === 'super_admin') {
+        req.user = decoded;
+        return next();
+      }
+      
+      // Fetch full faculty document
+      let faculty = await Faculty.findById(decoded.id);
+      if (!faculty) {
+        return res.status(401).json({ error: "Faculty not found" });
+      }
+      
+      // Handle department population - if it's an ObjectId, populate it
+      if (faculty.department && mongoose.Types.ObjectId.isValid(faculty.department)) {
+        faculty = await Faculty.findById(decoded.id).populate('department', 'name');
+      }
+      
+      // Attach full faculty document to req
+      req.faculty = faculty;
+      req.user = faculty; // For compatibility with existing code
 
-      // Optional: Log decoded token for debugging
-      console.log("Decoded token:", decoded);
+      // Optional: Log for debugging
+      console.log("Authenticated faculty:", faculty.firstName, "Department:", faculty.department?.name || faculty.department);
 
-      // Check for Account Section Management role (from first file)
+      // Check for Account Section Management role
       if (decoded.role === "Account Section Management") {
         return next(); // Allow access for Account Section Management
       }

@@ -19,15 +19,19 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const CCClassStudents = ({ userData }) => {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterYear, setFilterYear] = useState("");
+  const [filterSemester, setFilterSemester] = useState("");
   const [filterSection, setFilterSection] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [selectedCaste, setSelectedCaste] = useState("all");
+  const [selectedSubCaste, setSelectedSubCaste] = useState("all");
+  const [selectedScholarshipStatus, setSelectedScholarshipStatus] = useState("all");
   const [stats, setStats] = useState({
     totalStudents: 0,
     averageAttendance: 0,
@@ -35,6 +39,17 @@ const CCClassStudents = ({ userData }) => {
     maleStudents: 0,
     femaleStudents: 0,
   });
+  const [ccAssignment, setCcAssignment] = useState(null);
+
+  // Available caste categories for filtering
+  const casteCategories = [
+    "General",
+    "OBC",
+    "SC",
+    "ST",
+    "EWS",
+    "Not Specified",
+  ];
 
   useEffect(() => {
     fetchCCClassStudents();
@@ -50,50 +65,222 @@ const CCClassStudents = ({ userData }) => {
         return;
       }
 
-      const response = await fetch(
-        "http://localhost:4000/api/faculty/get-cc-class-students",
+      // First, get CC assignment details
+      console.log("Fetching CC assignment for user:", {
+        id: userData._id,
+        department: userData.department,
+        role: userData.role
+      });
+
+      const ccResponse = await fetch(
+        `https://backenderp.tarstech.in/api/cc/my-cc-assignments`,
         {
-          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch class students: ${response.status}`);
+      if (!ccResponse.ok) {
+        console.error("Failed to fetch CC assignment:", ccResponse.status);
+        return;
       }
 
-      const data = await response.json();
-      console.log("CC Class Students Data:", data);
+      const ccData = await ccResponse.json();
+      console.log("CC Assignment API Response:", ccData);
 
-      if (data.success && data.data) {
-        const studentsData = data.data.students || [];
-        setStudents(studentsData);
-        setStats({
-          totalStudents: studentsData.length,
-          averageAttendance: data.data.averageAttendance || 0,
-          activeStudents: studentsData.filter((s) => s.status === "active")
-            .length,
-          maleStudents:
-            studentsData.filter((s) => s.gender === "Male").length || 0,
-          femaleStudents:
-            studentsData.filter((s) => s.gender === "Female").length || 0,
+      if (ccData.success && ccData.data && ccData.data.ccAssignments && ccData.data.ccAssignments.length > 0) {
+        const assignment = ccData.data.ccAssignments[0]; // Get first assignment
+        setCcAssignment(assignment);
+        console.log("CC Assignment found:", assignment);
+
+        // Try the department endpoint with attendance data first (provides real attendance)
+        console.log("Fetching students for semester filtering");
+        console.log("Assignment details:", {
+          department: assignment.department,
+          semester: assignment.semester,
+          year: assignment.year,
+          section: assignment.section
         });
-
-        if (studentsData.length === 0) {
-          console.log("No students found for CC assignment");
+        
+        let studentsResponse = null;
+        
+        // Try the attendance endpoint first for real attendance data
+        try {
+          console.log("Trying Mechancial department with attendance endpoint");
+          studentsResponse = await axios.get(
+            `https://backenderp.tarstech.in/api/faculty/students-attendance/department/Mechancial`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          console.log("✓ Successfully fetched from Mechancial department with attendance");
+        } catch (error) {
+          console.log("✗ Mechancial attendance endpoint failed, trying regular endpoint");
+          
+          // Fallback to regular department endpoint
+          studentsResponse = await axios.get(
+            `https://backenderp.tarstech.in/api/faculty/students/department/Mechancial`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          console.log("✓ Successfully fetched from Mechancial department (fallback)");
         }
-      } else {
-        console.error("API returned success=false:", data);
+        
+        if (!studentsResponse) {
+          throw new Error("Could not fetch students from any endpoint");
+        }
+
+        // Handle different response formats from different endpoints
+        let allStudents = [];
+        
+        if (studentsResponse.data.success && studentsResponse.data.data) {
+          // Attendance endpoint response
+          allStudents = studentsResponse.data.data.students || studentsResponse.data.data || [];
+        } else if (studentsResponse.data.students) {
+          allStudents = studentsResponse.data.students;
+        } else if (Array.isArray(studentsResponse.data)) {
+          allStudents = studentsResponse.data;
+        } else if (studentsResponse.data.success && studentsResponse.data.data) {
+          allStudents = studentsResponse.data.data;
+        }
+        
+        console.log("Students API Response:", studentsResponse.data);
+        console.log("All students fetched:", allStudents.length);
+
+            // Filter students by CC assignment criteria (semester only)
+            console.log("Starting semester filtering...");
+            console.log("Assignment details:", {
+              semester: assignment.semester,
+              year: assignment.year,
+              section: assignment.section,
+              department: assignment.department
+            });
+            console.log("Sample students (first 5):", allStudents.slice(0, 5).map(s => ({
+              name: s.name || `${s.firstName} ${s.lastName}`,
+              semester: s.semester,
+              year: s.year,
+              section: s.section,
+              department: s.department
+            })));
+            
+            const filteredStudents = allStudents.filter((student, index) => {
+              // Extract semester number from student object
+              let studentSemesterNumber = null;
+              if (student.semester && typeof student.semester === 'object' && student.semester.number) {
+                studentSemesterNumber = student.semester.number;
+              } else if (student.semester && typeof student.semester === 'string') {
+                studentSemesterNumber = parseInt(student.semester);
+              } else if (student.semester && typeof student.semester === 'number') {
+                studentSemesterNumber = student.semester;
+              } else if (student.year) {
+                studentSemesterNumber = student.year;
+              }
+              
+              // Extract assignment semester number
+              let assignmentSemesterNumber = null;
+              if (assignment.semester && typeof assignment.semester === 'object' && assignment.semester.number) {
+                assignmentSemesterNumber = assignment.semester.number;
+              } else if (assignment.semester && typeof assignment.semester === 'string') {
+                assignmentSemesterNumber = parseInt(assignment.semester);
+              } else if (assignment.semester && typeof assignment.semester === 'number') {
+                assignmentSemesterNumber = assignment.semester;
+              } else if (assignment.year) {
+                assignmentSemesterNumber = assignment.year;
+              }
+              
+              // Match by semester number
+              const semesterMatch = studentSemesterNumber === assignmentSemesterNumber;
+
+              // Log first few students for debugging
+              if (index < 10) {
+                console.log(`Student ${index + 1} filter:`, {
+                  name: student.name || `${student.firstName} ${student.lastName}`,
+                  studentSemesterNumber: studentSemesterNumber,
+                  assignmentSemesterNumber: assignmentSemesterNumber,
+                  semesterMatch: semesterMatch,
+                  rawStudentSemester: student.semester,
+                  rawAssignmentSemester: assignment.semester,
+                  studentYear: student.year,
+                  assignmentYear: assignment.year
+                });
+              }
+
+              return semesterMatch;
+            });
+
+            console.log(`Filtered ${filteredStudents.length} students from ${allStudents.length} total students`);
+
+            // If no students match, show some for debugging purposes
+            let finalStudents = filteredStudents;
+            if (filteredStudents.length === 0 && allStudents.length > 0) {
+              console.log("No students matched semester filter, showing first 5 for debugging:");
+              finalStudents = allStudents;
+              console.log("Debug students:", finalStudents.map(s => ({
+                name: s.name || `${s.firstName} ${s.lastName}`,
+                semester: s.semester,
+                year: s.year,
+                section: s.section,
+                department: s.department
+              })));
+            }
+
+            // Transform students to match the expected format
+            const transformedStudents = finalStudents.map((student) => ({
+              _id: student._id,
+              name: student.name || `${student.firstName} ${student.lastName}`,
+              email: student.email,
+              enrollmentNumber: student.rollNumber || student.studentId || `${student.department}${student.year}${student.section}${student._id?.slice(-3)}`,
+              semester: student.semester && typeof student.semester === 'object' 
+                ? student.semester.number 
+                : student.semester || student.year,
+              year: student.semester && typeof student.semester === 'object' 
+                ? Math.ceil(student.semester.number / 2) 
+                : student.year || Math.ceil((student.semester || 1) / 2),
+              section: student.section,
+              department: student.department?.name || student.department,
+              phone: student.contactNumber || student.mobileNumber,
+              gender: student.gender,
+              status: "active",
+              attendancePercentage: student.attendance?.attendancePercentage || 0, // Real attendance data
+              address: "N/A",
+              caste: student.casteCategory || "Not Specified",
+              subCaste: student.subCaste || "",
+              scholarshipStatus: student.scholarship?.scholarshipStatus || "No"
+            }));
+
+            setStudents(transformedStudents);
+            console.log("Transformed students for display:", transformedStudents);
+            
+            // Calculate real average attendance from student data
+            const validAttendanceStudents = transformedStudents.filter(s => s.attendancePercentage > 0);
+            const averageAttendance = validAttendanceStudents.length > 0 
+              ? Math.round(validAttendanceStudents.reduce((sum, s) => sum + s.attendancePercentage, 0) / validAttendanceStudents.length)
+              : 0;
+            
+            setStats({
+              totalStudents: transformedStudents.length,
+              averageAttendance: averageAttendance, // Real calculated average
+              activeStudents: transformedStudents.filter((s) => s.status === "active").length,
+              maleStudents: transformedStudents.filter((s) => s.gender === "Male").length || 0,
+              femaleStudents: transformedStudents.filter((s) => s.gender === "Female").length || 0,
+            });
+
+            if (transformedStudents.length === 0) {
+              console.log("No students found after filtering by semester");
+            }
+        } else {
+          console.log("No CC assignment found for faculty");
+          setStudents([]);
+        }
+      } catch (error) {
+        console.error("Error fetching CC class students:", error);
+        setStudents([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching CC class students:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
@@ -101,15 +288,30 @@ const CCClassStudents = ({ userData }) => {
       student.enrollmentNumber
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      student.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(student.semester || student.year || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesYear = !filterYear || student.year?.toString() === filterYear;
+    // Determine student semester as string (prefer student.semester, fallback to student.year)
+    const studentSemesterStr = String(student.semester ?? student.year ?? "").toString();
+    const matchesSemester = !filterSemester || studentSemesterStr === filterSemester;
     const matchesSection =
       !filterSection ||
       student.section?.toUpperCase() === filterSection.toUpperCase();
     const matchesStatus = !filterStatus || student.status === filterStatus;
+    
+    // Caste filtering
+    const matchesCaste = selectedCaste === "all" || student.caste === selectedCaste;
+    
+    // Sub-caste filtering
+    const matchesSubCaste = selectedSubCaste === "all" || 
+      student.subCaste?.toLowerCase().includes(selectedSubCaste.toLowerCase());
+    
+    // Scholarship filtering
+    const matchesScholarship = selectedScholarshipStatus === "all" || 
+      student.scholarshipStatus === selectedScholarshipStatus;
 
-    return matchesSearch && matchesYear && matchesSection && matchesStatus;
+    return matchesSearch && matchesSemester && matchesSection && matchesStatus && 
+           matchesCaste && matchesSubCaste && matchesScholarship;
   });
 
   const exportToCSV = () => {
@@ -118,7 +320,7 @@ const CCClassStudents = ({ userData }) => {
       "Name",
       "Email",
       "Phone",
-      "Year",
+      "Semester",
       "Section",
       "Department",
       "Gender",
@@ -132,7 +334,7 @@ const CCClassStudents = ({ userData }) => {
       student.name || "",
       student.email || "",
       student.phone || "",
-      student.year || "",
+      student.semester || student.year || "",
       student.section || "",
       student.department || "",
       student.gender || "",
@@ -212,8 +414,17 @@ const CCClassStudents = ({ userData }) => {
                   🎓 My Class Students
                 </h1>
                 <p className="text-gray-600 text-lg">
-                  Students from your assigned class - {userData?.department}{" "}
-                  Department
+                  {ccAssignment ? (
+                    <span>
+                      CC Assignment: <span className="font-semibold text-indigo-600">
+                        Semester {ccAssignment.semester && typeof ccAssignment.semester === 'object' 
+                          ? ccAssignment.semester.number 
+                          : ccAssignment.semester || ccAssignment.year} {ccAssignment.section} - {ccAssignment.department}
+                      </span>
+                    </span>
+                  ) : (
+                    `Students from your assigned class - ${userData?.department} Department`
+                  )}
                 </p>
               </div>
             </div>
@@ -237,13 +448,16 @@ const CCClassStudents = ({ userData }) => {
         </div>
 
         {/* Statistics Cards */}
+        {console.log("Rendering statistics cards with stats:", stats)}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <StatCard
             title="Total Students"
             value={stats.totalStudents}
             icon={Users}
             color="bg-gradient-to-r from-blue-500 to-blue-600"
-            description="In your class"
+            description={ccAssignment ? `Sem ${ccAssignment.semester && typeof ccAssignment.semester === 'object' 
+              ? ccAssignment.semester.number 
+              : ccAssignment.semester || ccAssignment.year} ${ccAssignment.section}` : "In your class"}
           />
           <StatCard
             title="Active Students"
@@ -277,7 +491,7 @@ const CCClassStudents = ({ userData }) => {
 
         {/* Filters */}
         <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
             <div className="relative">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -292,15 +506,19 @@ const CCClassStudents = ({ userData }) => {
               />
             </div>
             <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
+              value={filterSemester}
+              onChange={(e) => setFilterSemester(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="">All Years</option>
-              <option value="1">Year 1</option>
-              <option value="2">Year 2</option>
-              <option value="3">Year 3</option>
-              <option value="4">Year 4</option>
+              <option value="">All Semesters</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
             </select>
             <select
               value={filterSection}
@@ -323,12 +541,153 @@ const CCClassStudents = ({ userData }) => {
               <option value="inactive">Inactive</option>
               <option value="graduated">Graduated</option>
             </select>
+            <select
+              value={selectedCaste}
+              onChange={(e) => setSelectedCaste(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All Castes</option>
+              {casteCategories.map((caste) => (
+                <option key={caste} value={caste}>
+                  {caste}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedSubCaste}
+              onChange={(e) => setSelectedSubCaste(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All Sub-Castes</option>
+              {/* <option value="yadav">Yadav</option>
+              <option value="kumar">Kumar</option>
+              <option value="sharma">Sharma</option>
+              <option value="singh">Singh</option>
+              <option value="gupta">Gupta</option>
+              <option value="jha">Jha</option>
+              <option value="thakur">Thakur</option>
+              <option value="pandey">Pandey</option>
+              <option value="mishra">Mishra</option>
+              <option value="tiwari">Tiwari</option>
+              <option value="verma">Verma</option>
+              <option value="chauhan">Chauhan</option>
+              <option value="patel">Patel</option>
+              <option value="mehta">Mehta</option>
+              <option value="agarwal">Agarwal</option>
+              <option value="bansal">Bansal</option>
+              <option value="jain">Jain</option>
+              <option value="goyal">Goyal</option>
+              <option value="mittal">Mittal</option>
+              <option value="chopra">Chopra</option>
+              <option value="khanna">Khanna</option>
+              <option value="kapoor">Kapoor</option>
+              <option value="malhotra">Malhotra</option>
+              <option value="saxena">Saxena</option>
+              <option value="trivedi">Trivedi</option>
+              <option value="dubey">Dubey</option>
+              <option value="bhattacharya">Bhattacharya</option>
+              <option value="mukherjee">Mukherjee</option>
+              <option value="banerjee">Banerjee</option>
+              <option value="chatterjee">Chatterjee</option>
+              <option value="das">Das</option>
+              <option value="saha">Saha</option>
+              <option value="roy">Roy</option>
+              <option value="sen">Sen</option>
+              <option value="dutta">Dutta</option>
+              <option value="ghosh">Ghosh</option>
+              <option value="mitra">Mitra</option>
+              <option value="basu">Basu</option>
+              <option value="chakraborty">Chakraborty</option>
+              <option value="nair">Nair</option>
+              <option value="pillai">Pillai</option>
+              <option value="menon">Menon</option>
+              <option value="iyer">Iyer</option>
+              <option value="iyengar">Iyengar</option>
+              <option value="shastri">Shastri</option>
+              <option value="pandit">Pandit</option>
+              <option value="joshi">Joshi</option>
+              <option value="deshmukh">Deshmukh</option>
+              <option value="kulkarni">Kulkarni</option>
+              <option value="deshpande">Deshpande</option>
+              <option value="bhat">Bhat</option>
+              <option value="rao">Rao</option>
+              <option value="naik">Naik</option>
+              <option value="shetty">Shetty</option>
+              <option value="gawde">Gawde</option>
+              <option value="kamble">Kamble</option>
+              <option value="jadhav">Jadhav</option>
+              <option value="pawar">Pawar</option>
+              <option value="more">More</option>
+              <option value="salunkhe">Salunkhe</option>
+              <option value="shinde">Shinde</option>
+              <option value="patil">Patil</option>
+              <option value="kale">Kale</option>
+              <option value="mane">Mane</option>
+              <option value="ghule">Ghule</option>
+              <option value="dhage">Dhage</option>
+              <option value="bhosale">Bhosale</option>
+              <option value="kadam">Kadam</option>
+              <option value="landge">Landge</option>
+              <option value="shelke">Shelke</option>
+              <option value="wagh">Wagh</option>
+              <option value="ingale">Ingle</option>
+              <option value="gaikwad">Gaikwad</option>
+              <option value="mahale">Mahale</option>
+              <option value="bagal">Bagal</option>
+              <option value="chavan">Chavan</option>
+              <option value="thorat">Thorat</option>
+              <option value="kendre">Kendre</option>
+              <option value="khandekar">Khandekar</option>
+              <option value="kulkarni">Kulkarni</option>
+              <option value="deshpande">Deshpande</option>
+              <option value="bhat">Bhat</option>
+              <option value="rao">Rao</option>
+              <option value="naik">Naik</option>
+              <option value="shetty">Shetty</option>
+              <option value="gawde">Gawde</option>
+              <option value="kamble">Kamble</option>
+              <option value="jadhav">Jadhav</option>
+              <option value="pawar">Pawar</option>
+              <option value="more">More</option>
+              <option value="salunkhe">Salunkhe</option>
+              <option value="shinde">Shinde</option>
+              <option value="patil">Patil</option>
+              <option value="kale">Kale</option>
+              <option value="mane">Mane</option>
+              <option value="ghule">Ghule</option>
+              <option value="dhage">Dhage</option>
+              <option value="bhosale">Bhosale</option>
+              <option value="kadam">Kadam</option>
+              <option value="landge">Landge</option>
+              <option value="shelke">Shelke</option>
+              <option value="wagh">Wagh</option>
+              <option value="ingale">Ingle</option>
+              <option value="gaikwad">Gaikwad</option>
+              <option value="mahale">Mahale</option>
+              <option value="bagal">Bagal</option>
+              <option value="chavan">Chavan</option>
+              <option value="thorat">Thorat</option>
+              <option value="kendre">Kendre</option>
+              <option value="khandekar">Khandekar</option> */}
+            </select>
+            <select
+              value={selectedScholarshipStatus}
+              onChange={(e) => setSelectedScholarshipStatus(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All Scholarships</option>
+              <option value="Yes">Scholarship Approved</option>
+              <option value="No">No Scholarship</option>
+            </select>
             <button
               onClick={() => {
                 setSearchTerm("");
-                setFilterYear("");
+                setFilterSemester("");
                 setFilterSection("");
                 setFilterStatus("");
+                setSelectedCaste("all");
+                setSelectedSubCaste("all");
+                setSelectedScholarshipStatus("all");
               }}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
@@ -373,6 +732,9 @@ const CCClassStudents = ({ userData }) => {
                       Contact
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Caste & Scholarship
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Attendance
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -405,7 +767,7 @@ const CCClassStudents = ({ userData }) => {
                         <div className="text-sm text-gray-900">
                           <div className="flex items-center gap-2 mb-1">
                             <BookOpen size={14} className="text-indigo-600" />
-                            Year {student.year || "N/A"} - Section{" "}
+                            Sem {student.semester || student.year || "N/A"} - Section{" "}
                             {student.section || "N/A"}
                           </div>
                           <div className="text-xs text-gray-500">
@@ -424,6 +786,31 @@ const CCClassStudents = ({ userData }) => {
                           <div className="flex items-center gap-2">
                             <Phone size={14} className="text-gray-400" />
                             <span>{student.phone || "N/A"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {student.caste || "Not Specified"}
+                            </span>
+                          </div>
+                          {student.subCaste && (
+                            <div className="text-xs text-gray-500 mb-1">
+                              Sub: {student.subCaste}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              student.scholarshipStatus === "Yes" 
+                                ? "bg-green-100 text-green-800" 
+                                : student.scholarshipStatus === "Pending" || student.scholarshipStatus === "Applied"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}>
+                              {student.scholarshipStatus || "No"}
+                            </span>
                           </div>
                         </div>
                       </td>

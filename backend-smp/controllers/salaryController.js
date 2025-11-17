@@ -1,5 +1,6 @@
 import SalaryRecord from "../models/SalaryRecord.js";
 import User from "../models/User.js";
+import Faculty from "../models/faculty.js";
 
 const addSalaryRecord = async (req, res) => {
   try {
@@ -81,12 +82,18 @@ const addSalaryRecord = async (req, res) => {
     // Calculate net salary if not provided
     const calculatedNetSalary = netSalary || (calculatedGrossSalary - calculatedTotalDeductions);
 
+    // Try to find existing faculty by employeeId to get their information
+    let facultyInfo = null;
+    if (finalEmployeeId) {
+      facultyInfo = await Faculty.findOne({ employeeId: finalEmployeeId });
+    }
+
     const salaryRecord = new SalaryRecord({
       employeeId: finalEmployeeId, // Use the preserved or found employeeId
       name: recordName,
-      department: 'General', // You might want to fetch this from faculty data
-      designation: 'Faculty', // You might want to fetch this from faculty data
-      type: 'teaching', // Default to teaching
+      department: facultyInfo?.department || 'General', // Use real department from faculty
+      designation: facultyInfo?.designation || 'Faculty', // Use real designation from faculty
+      type: facultyInfo?.type || 'teaching', // Use real type from faculty
       basicSalary: basicSalary || 0,
       hra: hra,
       da: da,
@@ -124,6 +131,11 @@ const getAllSalaryRecords = async (req, res) => {
   try {
     let query = {};
     
+    // If employeeId parameter is provided, filter by employeeId
+    if (req.query.employeeId) {
+      query.employeeId = req.query.employeeId;
+    }
+    
     // If name parameter is provided, search by name
     if (req.query.name) {
       query.name = { $regex: req.query.name, $options: 'i' }; // Case-insensitive search
@@ -144,7 +156,12 @@ const getAllSalaryRecords = async (req, res) => {
       };
     }
     
-    const records = await SalaryRecord.find(query);
+    const records = await SalaryRecord.find(query).sort({ paymentDate: -1 });
+    
+    // If employeeId is provided, return all records for that employee
+    if (req.query.employeeId) {
+      return res.status(200).json(records);
+    }
     
     // If specific search criteria provided, return success response format expected by frontend
     if (req.query.name || (req.query.month && req.query.year)) {

@@ -331,110 +331,65 @@ const login = async (req, res) => {
 const getUserProfile = async (req, res) => {
   try {
     console.log("=== getUserProfile Debug Start ===");
-    console.log("User ID from token:", req.user.userId);
-    console.log("Employee ID from token:", req.user.employeeId);
+    console.log("User object from middleware:", req.user);
+    
+    // Since auth middleware now provides full Faculty document, use it directly
+    if (req.user && req.user._id) {
+      // User is already populated by auth middleware
+      const user = req.user;
+      console.log("Using user from auth middleware:", {
+        id: user._id,
+        employeeId: user.employeeId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        department: user.department?.name || user.department
+      });
 
-    // First try to find user in User model
-    let user = await User.findById(req.user.userId).select("-password");
-    let isFaculty = false;
-
-    console.log("User found in User model:", !!user);
-
-    // If not found in User model, try Faculty model
-    if (!user) {
-      user = await Faculty.findById(req.user.userId).select("-password");
-      isFaculty = true;
-      console.log("User found in Faculty model:", !!user);
-    }
-
-    if (!user) {
-      console.log("No user found in either model");
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log("User details:", {
-      id: user._id,
-      employeeId: user.employeeId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isFaculty: isFaculty,
-      subjectsTaughtCount: user.subjectsTaught?.length || 0,
-    });
-
-    // Always try to fetch subjects from Faculty collection using employeeId
-    let subjects = [];
-
-    try {
-      let facultyData = null;
-
-      if (isFaculty) {
-        // If user is from Faculty model, populate subjects directly
-        console.log("Fetching subjects for faculty user...");
-        facultyData = await Faculty.findById(user._id).populate({
+      // Populate subjects for the faculty
+      let subjects = [];
+      try {
+        const facultyWithSubjects = await Faculty.findById(user._id).populate({
           path: "subjectsTaught",
           model: "AdminSubject",
           select: "name department",
         });
-      } else if (user.employeeId) {
-        // If user is from User model, find faculty by employeeId
-        console.log("Finding faculty by employeeId:", user.employeeId);
-        facultyData = await Faculty.findOne({
-          employeeId: user.employeeId,
-        }).populate({
-          path: "subjectsTaught",
-          model: "AdminSubject",
-          select: "name department",
-        });
+        
+        subjects = facultyWithSubjects?.subjectsTaught || [];
+        console.log("Subjects populated:", subjects.length);
+      } catch (subjectError) {
+        console.error("Error fetching subjects:", subjectError);
+        subjects = [];
       }
 
-      console.log("Faculty data found:", !!facultyData);
+      // Return user data with subjects
+      const userWithSubjects = {
+        ...user.toObject(),
+        subjectsTaught: subjects,
+      };
 
-      if (facultyData) {
-        console.log("Faculty subjectsTaught array:", {
-          exists: !!facultyData.subjectsTaught,
-          length: facultyData.subjectsTaught?.length || 0,
-          isArray: Array.isArray(facultyData.subjectsTaught),
-        });
-
-        if (
-          facultyData.subjectsTaught &&
-          facultyData.subjectsTaught.length > 0
-        ) {
-          subjects = facultyData.subjectsTaught;
-          console.log(
-            "Subjects populated:",
-            subjects.map((s) => ({
-              id: s._id,
-              name: s.name,
-              department: s.department,
-            }))
-          );
-        } else {
-          console.log("No subjects found in faculty data");
-        }
-      } else {
-        console.log("No faculty data found");
+      console.log("=== getUserProfile Debug End ===");
+      res.json(userWithSubjects);
+    } else {
+      // Fallback to old logic if middleware didn't provide user
+      console.log("No user from middleware, falling back to token lookup");
+      const userId = req.user?.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found in token" });
       }
-    } catch (subjectError) {
-      console.error("Error fetching subjects:", subjectError);
-      subjects = [];
+      
+      // Try to find user in Faculty model
+      const user = await Faculty.findById(userId).populate({
+        path: "subjectsTaught",
+        model: "AdminSubject",
+        select: "name department",
+      }).populate('department', 'name');
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(user);
     }
-
-    // Return user data with subjects
-    const userWithSubjects = {
-      ...user.toObject(),
-      subjectsTaught: subjects,
-    };
-
-    console.log("=== Final Response ===");
-    console.log("Subjects being returned:", subjects.length);
-    console.log(
-      "Subject names:",
-      subjects.map((s) => s.name)
-    );
-    console.log("=== getUserProfile Debug End ===");
-
-    res.json(userWithSubjects);
   } catch (error) {
     console.error("getUserProfile Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
