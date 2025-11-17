@@ -15,11 +15,14 @@ const announcementSchema = new mongoose.Schema({
         "hod",
         "principal",
         "cc",
+        "teacher",
       ],
     },
   ],
   department: { type: String }, // Department for HOD announcements
-  createdBy: { type: String }, // Role of the creator (hod, principal, etc.)
+  semester: { type: String }, // Semester for Teacher/CC announcements (Sem-1, Sem-2, etc.)
+  createdBy: { type: String }, // Role of the creator (hod, principal, teacher, cc, etc.)
+  createdById: { type: String }, // Optional: ID of the user who created the announcement
   date: { type: Date, default: Date.now },
 });
 

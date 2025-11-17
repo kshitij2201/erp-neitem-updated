@@ -167,7 +167,10 @@ academicCalendarSchema.pre("save", function (next) {
   if (this.topics && this.topics.length > 0) {
     this.totalPlannedHours = this.topics.reduce((total, topic) => total + (topic.duration || 0), 0);
     
-    const completedTopics = this.topics.filter(topic => topic.status === "Completed");
+    // Consider topics completed if they have actualDate OR status is "Completed"
+    const completedTopics = this.topics.filter(topic => 
+      topic.status === "Completed" || topic.actualDate
+    );
     this.totalCompletedHours = completedTopics.reduce((total, topic) => total + (topic.duration || 0), 0);
     
     this.progressPercentage = this.totalPlannedHours > 0 

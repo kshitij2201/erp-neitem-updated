@@ -5,7 +5,37 @@ import Faculty from "../models/faculty.js";
 // Get all academic calendars with filters
 export const getAcademicCalendars = async (req, res) => {
   try {
-    const { academicYear, semester, status, subjectId, department } = req.query;
+    console.log('getAcademicCalendars called with query:', req.query);
+    console.log('req.user:', req.user);
+    
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const { academicYear, semester, status, subjectId, department, createdBy } = req.query;
+
+    // Get user details to determine permissions
+    let user = null;
+    try {
+      user = await Faculty.findById(req.user.id);
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+    
+    console.log('Found user:', user);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     // Build query object
     let query = {};
@@ -15,21 +45,103 @@ export const getAcademicCalendars = async (req, res) => {
     if (status) query.status = status;
     if (subjectId) query.subject = subjectId;
     if (department) query.department = department;
+    if (createdBy) query.createdBy = createdBy;
+
+    // Apply role-based filtering only if no explicit createdBy filter is provided
+    if (!createdBy) {
+      if (req.user.role === "HOD") {
+        // HOD can see all calendars in their department
+        if (!user.department) {
+          return res.status(400).json({
+            success: false,
+            message: "User department not found",
+          });
+        }
+        // Handle both ObjectId and String types for department
+        const deptValue = typeof user.department === 'object' ? user.department.toString() : user.department;
+        query.department = deptValue;
+      } else if (req.user.role === "cc" || req.user.role === "teaching") {
+        // CC and teaching staff can only see their own calendars
+        query.createdBy = req.user.id;
+      } else {
+        // Other roles (like principal) might have different permissions
+        // For now, restrict to their department
+        if (!user.department) {
+          return res.status(400).json({
+            success: false,
+            message: "User department not found",
+          });
+        }
+        // Handle both ObjectId and String types for department
+        const deptValue = typeof user.department === 'object' ? user.department.toString() : user.department;
+        query.department = deptValue;
+      }
+    }
+
+    console.log('Final query:', query);
 
     const calendars = await AcademicCalendar.find(query)
-      .populate("subject", "name code")
-      .populate("faculty", "name employeeId")
-      .populate("createdBy", "name employeeId")
       .sort({ createdAt: -1 });
+
+    // For now, skip populate to avoid potential issues
+    // TODO: Add populate back with proper error handling
+
+    // Transform the data to match frontend expectations
+    const transformedCalendars = calendars.map(calendar => {
+      // Transform topics to match frontend expectations
+      const transformedTopics = Array.isArray(calendar.topics) ? calendar.topics.map((topic, index) => ({
+        id: topic._id ? topic._id.toString() : `temp_${index}`, // Generate ID if missing
+        name: topic.topicName || topic.name || '',
+        description: topic.description || '',
+        plannedDate: topic.plannedDate,
+        actualDate: topic.actualDate,
+        estimatedHours: topic.duration || topic.estimatedHours || 1,
+        lectureType: topic.lectureType || 'Theory',
+        status: topic.status || 'Planned',
+        notes: topic.notes || '',
+        completionPercentage: topic.completionPercentage || 0,
+        order: topic.order || 0,
+      })) : [];
+
+      return {
+        _id: calendar._id,
+        title: calendar.title,
+        description: calendar.description,
+        academicYear: calendar.academicYear,
+        semester: calendar.semester,
+        department: calendar.department,
+        institutionName: calendar.institutionName,
+        subjectId: calendar.subject,
+        subjectName: calendar.subjectName || 'Unknown Subject',
+        facultyId: calendar.faculty,
+        facultyName: calendar.facultyName || 'Unknown Faculty',
+        createdBy: calendar.createdBy,
+        createdByName: calendar.createdByName || 'Unknown',
+        topics: transformedTopics,
+        totalPlannedHours: calendar.totalPlannedHours || 0,
+        totalCompletedHours: calendar.totalCompletedHours || 0,
+        progressPercentage: calendar.progressPercentage || 0,
+        status: calendar.status || 'Draft',
+        startDate: calendar.startDate,
+        endDate: calendar.endDate,
+        isPublished: calendar.isPublished || false,
+        publishedAt: calendar.publishedAt,
+        lastUpdated: calendar.lastUpdated,
+        createdAt: calendar.createdAt,
+        updatedAt: calendar.updatedAt,
+      };
+    });
 
     res.json({
       success: true,
       data: {
-        calendars: calendars,
+        calendars: transformedCalendars,
       },
     });
+    console.log(`Successfully returned ${transformedCalendars.length} calendars`);
   } catch (error) {
     console.error("Error fetching academic calendars:", error);
+    console.error("Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -40,6 +152,9 @@ export const getAcademicCalendars = async (req, res) => {
 // Create new academic calendar
 export const createAcademicCalendar = async (req, res) => {
   try {
+    console.log('createAcademicCalendar called with body:', req.body);
+    console.log('req.user:', req.user);
+    console.log('topics received:', req.body.topics);
     const {
       title,
       description,
@@ -98,6 +213,48 @@ export const createAcademicCalendar = async (req, res) => {
       });
     }
 
+    // Construct faculty name
+    const facultyName = [faculty.firstName, faculty.middleName, faculty.lastName]
+      .filter(Boolean)
+      .join(' ') || faculty.employeeId;
+
+    // Construct creator name
+    const creatorName = [creator.firstName, creator.middleName, creator.lastName]
+      .filter(Boolean)
+      .join(' ') || creator.employeeId;
+
+    console.log('facultyName:', facultyName);
+    console.log('creatorName:', creatorName);
+
+    // Transform topics to match model schema
+    const transformedTopics = (topics || [])
+      .filter(topic => topic.topicName && topic.topicName.trim() && topic.plannedDate) // Filter out invalid topics
+      .map(topic => {
+        const plannedDate = new Date(topic.plannedDate);
+        if (isNaN(plannedDate.getTime())) {
+          throw new Error(`Invalid planned date for topic: ${topic.topicName}`);
+        }
+        return {
+          topicName: topic.topicName.trim(),
+          description: topic.description || '',
+          plannedDate: plannedDate,
+          duration: topic.estimatedHours || 1,
+          lectureType: topic.lectureType || "Theory",
+          status: "Planned",
+          order: topic.order || 0,
+        };
+      });
+
+    console.log('transformedTopics:', transformedTopics);
+
+    // Check if topics were provided but all were filtered out
+    if (topics && topics.length > 0 && transformedTopics.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide valid topics with names and planned dates",
+      });
+    }
+
     // Create academic calendar
     const academicCalendar = new AcademicCalendar({
       title,
@@ -109,12 +266,12 @@ export const createAcademicCalendar = async (req, res) => {
       subject: subjectId,
       subjectName: subject.name,
       faculty: facultyId,
-      facultyName: faculty.name,
+      facultyName: facultyName,
       createdBy: req.user.id,
-      createdByName: creator.name,
+      createdByName: creatorName,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
-      topics: topics || [],
+      topics: transformedTopics,
     });
 
     await academicCalendar.save();
@@ -211,7 +368,9 @@ export const updateAcademicCalendar = async (req, res) => {
         });
       }
       updateData.faculty = updateData.facultyId;
-      updateData.facultyName = faculty.name;
+      updateData.facultyName = [faculty.firstName, faculty.middleName, faculty.lastName]
+        .filter(Boolean)
+        .join(' ') || faculty.employeeId;
       delete updateData.facultyId;
     }
 
@@ -425,11 +584,18 @@ export const getFacultyBySubject = async (req, res) => {
     // You might want to implement a more sophisticated assignment system
     const faculty = await Faculty.find({
       department: req.user.department,
-    }).select("name employeeId");
+    }).select("firstName middleName lastName employeeId");
+
+    // Transform to include name
+    const transformedFaculty = faculty.map(f => ({
+      _id: f._id,
+      name: f.name,
+      employeeId: f.employeeId,
+    }));
 
     res.json({
       success: true,
-      data: faculty,
+      data: transformedFaculty,
     });
   } catch (error) {
     console.error("Error fetching faculty by subject:", error);
@@ -469,11 +635,18 @@ export const getFacultyByDepartment = async (req, res) => {
 
     const faculty = await Faculty.find({
       department: department,
-    }).select("name employeeId");
+    }).select("firstName middleName lastName employeeId");
+
+    // Transform to include name
+    const transformedFaculty = faculty.map(f => ({
+      _id: f._id,
+      name: f.name,
+      employeeId: f.employeeId,
+    }));
 
     res.json({
       success: true,
-      data: faculty,
+      data: transformedFaculty,
     });
   } catch (error) {
     console.error("Error fetching faculty by department:", error);

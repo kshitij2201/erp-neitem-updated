@@ -9,10 +9,27 @@ import PDFDocument from "pdfkit";
 // Upload file
 const uploadFile = async (req, res) => {
   try {
-    const { title, year, section, department, subject } = req.body;
+    const { title, semester, section, subject } = req.body; // Removed department from destructuring
+    console.log("Upload file request body:", { title, semester, section, subject });
     const uploaderName = req.user ? req.user.firstName : "Unknown";
-    // Use department from request body if provided, otherwise fall back to user's department
-    const uploaderDepartment = department || (req.user ? req.user.department : "Unknown");
+    
+    // Get uploader department name (already populated by auth middleware)
+    let uploaderDepartment = req.user?.department?.name;
+    
+    // If department is not available, try to get it from the user object directly
+    if (!uploaderDepartment && req.user?.department) {
+      uploaderDepartment = typeof req.user.department === 'string' ? req.user.department : req.user.department.toString();
+    }
+    
+    // If still no department, reject the upload
+    if (!uploaderDepartment || uploaderDepartment === 'Unknown') {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Faculty department information is required for file upload. Please contact admin." 
+      });
+    }
+    
+    console.log("Uploader department:", uploaderDepartment);
     const uploaderId = req.user ? req.user.id : null;
     
     if (!req.file) {
@@ -21,20 +38,27 @@ const uploadFile = async (req, res) => {
         .json({ success: false, message: "No file uploaded" });
     }
     
+    const parsedSemester = semester;
+    console.log("Parsed semester:", parsedSemester);
+    if (!parsedSemester) {
+      return res.status(400).json({ success: false, message: "Invalid semester value" });
+    }
+    
     const file = new File({
       title,
       subject,
-      year,
+      semester: parsedSemester,
       section,
       uploaderName,
       uploaderDepartment,
       uploaderId,
       filePath: req.file.path,
     });
-    
+    console.log("File object to save:", file);
     await file.save();
     res.json({ success: true, file });
   } catch (err) {
+    console.error("Upload file error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

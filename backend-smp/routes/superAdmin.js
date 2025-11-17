@@ -95,7 +95,7 @@ router.post(
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, username: user.username, role: user.role },
+      { id: user._id, username: user.username, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -109,7 +109,7 @@ router.get(
   "/",
   verifyToken,
   asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.userId).select("-password");
+    const user = await User.findById(req.user.id).select("-password");
     if (!user || user.role !== "super_admin") {
       return res.status(403).json({ message: "Access denied" });
     }

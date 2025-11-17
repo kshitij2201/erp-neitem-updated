@@ -22,6 +22,7 @@ const DepartmentStudents = ({ userData }) => {
   const [selectedSubCaste, setSelectedSubCaste] = useState("all");
   const [selectedScholarshipStatus, setSelectedScholarshipStatus] =
     useState("all");
+  const [departmentName, setDepartmentName] = useState(userData?.department || "");
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeStudents: 0,
@@ -33,13 +34,16 @@ const DepartmentStudents = ({ userData }) => {
     averageAttendance: 0,
   });
 
-  // Available years for current students (1st to 4th year typically)
+  // Available semesters for current students (1st to 4th sem typically)
   const academicYears = [
     "1",
     "2",
     "3",
     "4",
-    "5", // Year levels instead of academic years
+    "5",
+    "6",
+    "7",
+    "8", // Semester levels instead of academic years
   ];
 
   // Available caste categories for filtering
@@ -54,7 +58,7 @@ const DepartmentStudents = ({ userData }) => {
 
   useEffect(() => {
     fetchDepartmentStudents();
-  }, [userData?.department]);
+  }, [userData?.department, departmentName]);
 
   // Keyboard shortcut for search (Ctrl+F)
   useEffect(() => {
@@ -83,31 +87,64 @@ const DepartmentStudents = ({ userData }) => {
         return;
       }
 
-      // Get department with fallback
-      const userDepartment =
-        userData?.department ||
-        JSON.parse(localStorage.getItem("user") || "{}")?.department;
+      let response;
 
-      if (!userDepartment) {
-        setError(
-          "Department information not found. Please contact administrator."
+      // Check user role and use appropriate API
+      if (userData?.role === "cc") {
+        // For CC, fetch their assigned class students
+        console.log("Fetching CC class students");
+        response = await axios.get(
+          "https://backenderp.tarstech.in/api/faculty/get-cc-class-students",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
-        setLoading(false);
-        return;
+      } else {
+        // For HOD and others, fetch all department students
+        // Get department with fallback
+        const userDepartment =
+          userData?.department ||
+          JSON.parse(localStorage.getItem("user") || "{}")?.department;
+
+        if (!userDepartment) {
+          setError(
+            "Department information not found. Please contact administrator."
+          );
+          setLoading(false);
+          return;
+        }
+
+        console.log(`Fetching department students for department: ${userDepartment}`);
+        response = await axios.get(
+          `https://backenderp.tarstech.in/api/faculty/students-attendance/department/${encodeURIComponent(
+            userDepartment
+          )}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
       }
 
-      const response = await axios.get(
-        `https://backenderp.tarstech.in/api/faculty/students-attendance/department/${encodeURIComponent(
-          userDepartment
-        )}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      if (userData?.role === "cc" ? response.data.success : response.data.success) {
+        let students = [];
+        let apiStats = {};
 
-      if (response.data.success) {
-        const students = response.data.data.students || [];
-        const apiStats = response.data.data.stats || {};
+        if (userData?.role === "cc") {
+          // CC API response structure
+          students = response.data.data?.students || [];
+          apiStats = {
+            averageAttendance: response.data.data?.averageAttendance || 0,
+          };
+          
+          // Set department name from CC assignment if not already set
+          if (response.data.data?.ccAssignment?.department && !departmentName) {
+            setDepartmentName(response.data.data.ccAssignment.department);
+          }
+        } else {
+          // Department API response structure
+          students = response.data.data?.students || [];
+          apiStats = response.data.data?.stats || {};
+        }
 
         // Handle case where no students are found
         if (students.length === 0) {
@@ -122,50 +159,95 @@ const DepartmentStudents = ({ userData }) => {
             scholarshipWiseData: {},
             averageAttendance: 0,
           });
-          setError(
-            "No students found for this department. This could be normal if no students are currently enrolled."
-          );
+          const errorMessage = userData?.role === "cc"
+            ? "No students found for your assigned class. This could be normal if no students are currently assigned."
+            : "No students found for this department. This could be normal if no students are currently enrolled.";
+          setError(errorMessage);
           setLoading(false);
           return;
         }
 
         // Transform the data to match our frontend format
-        const transformedStudents = students.map((student) => ({
-          id: student._id,
-          name:
-            student.name ||
-            `${student.firstName || ""} ${student.middleName || ""} ${
-              student.lastName || ""
-            }`.trim(),
-          email: student.email,
-          rollNumber:
-            student.studentId ||
-            `${student.department}${student.year}${
-              student.section
-            }${student._id?.slice(-3)}`,
-          year: student.year,
-          department: student.department?.name || student.department,
-          section: student.section,
-          batch: student.batch,
-          academicYear: calculateAcademicYear(student.year),
-          status: "active", // All current students are active
-          admissionDate: student.dob || student.dateOfBirth || "N/A",
-          contactNumber: student.mobileNumber,
-          gender: student.gender,
-          fatherName: student.fatherName,
-          motherName: student.motherName,
-          caste: student.caste || "Not Specified",
-          subCaste: student.subCaste || "",
-          scholarshipStatus: student.scholarship?.scholarshipStatus || "No",
-          scholarshipRemarks: student.scholarship?.scholarshipRemarks || [],
-          latestScholarshipRemark:
-            student.scholarship?.latestRemark || "No remark",
-          attendance: student.attendance || {
-            totalClasses: 0,
-            attendedClasses: 0,
-            attendancePercentage: 0,
-          },
-        }));
+        let transformedStudents = [];
+
+        if (userData?.role === "cc") {
+          // CC students might have different structure
+          transformedStudents = students.map((student) => ({
+            id: student._id,
+            name:
+              student.name ||
+              `${student.firstName || ""} ${student.middleName || ""} ${
+                student.lastName || ""
+              }`.trim(),
+            email: student.email,
+            rollNumber:
+              student.studentId ||
+              student.rollNumber ||
+              `${student.department}${student.year}${
+                student.section
+              }${student._id?.slice(-3)}`,
+            year: student.year || student.semester,
+            department: student.department?.name || student.department || userData?.department,
+            section: student.section,
+            batch: student.batch,
+            academicYear: calculateAcademicYear(student.year || student.semester),
+            status: student.status || "active",
+            admissionDate: student.dob || student.dateOfBirth || "N/A",
+            contactNumber: student.mobileNumber || student.contactNumber,
+            gender: student.gender,
+            fatherName: student.fatherName,
+            motherName: student.motherName,
+            caste: student.caste || "Not Specified",
+            subCaste: student.subCaste || "",
+            scholarshipStatus: student.scholarship?.scholarshipStatus || "No",
+            scholarshipRemarks: student.scholarship?.scholarshipRemarks || [],
+            latestScholarshipRemark:
+              student.scholarship?.latestRemark || "No remark",
+            attendance: student.attendance || {
+              totalClasses: 0,
+              attendedClasses: 0,
+              attendancePercentage: 0,
+            },
+          }));
+        } else {
+          // Department students transformation (existing logic)
+          transformedStudents = students.map((student) => ({
+            id: student._id,
+            name:
+              student.name ||
+              `${student.firstName || ""} ${student.middleName || ""} ${
+                student.lastName || ""
+              }`.trim(),
+            email: student.email,
+            rollNumber:
+              student.studentId ||
+              `${student.department}${student.year}${
+                student.section
+              }${student._id?.slice(-3)}`,
+            year: student.year,
+            department: student.department?.name || student.department,
+            section: student.section,
+            batch: student.batch,
+            academicYear: calculateAcademicYear(student.year),
+            status: "active", // All current students are active
+            admissionDate: student.dob || student.dateOfBirth || "N/A",
+            contactNumber: student.mobileNumber,
+            gender: student.gender,
+            fatherName: student.fatherName,
+            motherName: student.motherName,
+            caste: student.caste || "Not Specified",
+            subCaste: student.subCaste || "",
+            scholarshipStatus: student.scholarship?.scholarshipStatus || "No",
+            scholarshipRemarks: student.scholarship?.scholarshipRemarks || [],
+            latestScholarshipRemark:
+              student.scholarship?.latestRemark || "No remark",
+            attendance: student.attendance || {
+              totalClasses: 0,
+              attendedClasses: 0,
+              attendancePercentage: 0,
+            },
+          }));
+        }
 
         setStudentsData(transformedStudents);
         // Use stats from backend directly since it includes caste data
@@ -228,7 +310,7 @@ const DepartmentStudents = ({ userData }) => {
     }
   };
 
-  // Helper function to calculate academic year based on student year
+  // Helper function to calculate academic year based on student semester
   const calculateAcademicYear = (year) => {
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
@@ -321,7 +403,7 @@ const DepartmentStudents = ({ userData }) => {
         "Name",
         "Roll Number",
         "Email",
-        "Year",
+        "Sem",
         "Section",
         "Department",
         "Contact",
@@ -337,7 +419,7 @@ const DepartmentStudents = ({ userData }) => {
         student.name || "",
         student.rollNumber || "",
         student.email || "",
-        student.year || "",
+        `Sem ${student.year}` || "",
         student.section || "",
         student.department || "",
         student.contactNumber || "",
@@ -357,8 +439,8 @@ const DepartmentStudents = ({ userData }) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${userData?.department}_students_${
-      selectedYear ? `year_${selectedYear}_` : ""
+    a.download = `${departmentName || userData?.department || 'department'}_students_${
+      selectedYear ? `sem_${selectedYear}_` : ""
     }${selectedCaste !== "all" ? `caste_${selectedCaste}_` : ""}${
       selectedScholarshipStatus !== "all"
         ? `scholarship_${selectedScholarshipStatus}_`
@@ -385,7 +467,7 @@ const DepartmentStudents = ({ userData }) => {
           <div className="flex items-center space-x-4">
             <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
             <span className="text-gray-700 font-medium">
-              Loading department students...
+              {userData?.role === "cc" ? "Loading class students..." : "Loading department students..."}
             </span>
           </div>
         </div>
@@ -406,11 +488,13 @@ const DepartmentStudents = ({ userData }) => {
           {/* Header */}
           <div className="text-center mb-10">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-4">
-              🎓 Department Students
+              {userData?.role === "cc" ? "👥 My Class Students" : "🎓 Department Students"}
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              View and manage current students data for {userData?.department}{" "}
-              department
+              {userData?.role === "cc"
+                ? "View and manage students in your assigned class"
+                : `View and manage current students data for ${departmentName || userData?.department || 'your'} department`
+              }
             </p>
           </div>
 
@@ -540,7 +624,7 @@ const DepartmentStudents = ({ userData }) => {
               {/* Year Filter */}
               <div className="group">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  📅 Filter by Year
+                  📅 Filter by Sem
                 </label>
                 <div className="relative">
                   <select
@@ -548,10 +632,10 @@ const DepartmentStudents = ({ userData }) => {
                     onChange={(e) => setSelectedYear(e.target.value)}
                     className="w-full px-4 py-4 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm text-gray-700 font-medium appearance-none"
                   >
-                    <option value="">All Years</option>
+                    <option value="">All Semester</option>
                     {academicYears.map((year) => (
                       <option key={year} value={year}>
-                        Year {year}
+                        Sem {year}
                       </option>
                     ))}
                   </select>
@@ -671,7 +755,7 @@ const DepartmentStudents = ({ userData }) => {
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-800">
-                  👥 Current Students List
+                  {userData?.role === "cc" ? "👥 My Class Students" : "👥 Current Students List"}
                 </h3>
                 <div className="flex items-center space-x-4">
                   {(searchTerm ||
@@ -722,11 +806,11 @@ const DepartmentStudents = ({ userData }) => {
                           📧 Email
                         </th>
                         <th className="text-left py-4 px-6 font-semibold text-gray-700">
-                          📅 Year
+                          📅 Sem
                         </th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-700">
+                        {/* <th className="text-left py-4 px-6 font-semibold text-gray-700">
                           📝 Section
-                        </th>
+                        </th> */}
                         <th className="text-left py-4 px-6 font-semibold text-gray-700">
                           📞 Contact
                         </th>
@@ -784,14 +868,14 @@ const DepartmentStudents = ({ userData }) => {
                           </td>
                           <td className="py-4 px-6">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              Year {student.year}
+                              Sem {student.year}
                             </span>
                           </td>
-                          <td className="py-4 px-6">
+                          {/* <td className="py-4 px-6">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
                               {student.section}
                             </span>
-                          </td>
+                          </td> */}
                           <td className="py-4 px-6 text-gray-600">
                             {student.contactNumber || "N/A"}
                           </td>

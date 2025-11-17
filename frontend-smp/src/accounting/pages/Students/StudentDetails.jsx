@@ -53,7 +53,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on http://localhost:4000"
           );
         } else {
           setError(

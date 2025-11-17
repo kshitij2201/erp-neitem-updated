@@ -10,6 +10,7 @@ import AllBuses from "../components/student/AllBuses";
 import MyBus from "../components/student/MyBus";
 import BusMonitor from "../components/student/BusMonitor";
 import BusSchedule from "../components/student/BusSchedule";
+import Announcements from "../components/Announcements";
 
 const StudentDashboard = () => {
   const [user, setUser] = useState(null);
@@ -317,6 +318,17 @@ const StudentDashboard = () => {
                     >
                       Schedule
                     </button>
+
+                    <button
+                      onClick={() => setActiveSection("announcements")}
+                      className={`px-2 lg:px-4 py-2 rounded-lg text-sm lg:text-base font-medium transition-colors duration-200 whitespace-nowrap ${
+                        activeSection === "announcements"
+                          ? "bg-indigo-600 text-white shadow-lg"
+                          : "text-gray-200 hover:bg-white/20 hover:text-white"
+                      }`}
+                    >
+                      Announcements
+                    </button>
                   </nav>
                 </div>
               ) : (
@@ -405,6 +417,20 @@ const StudentDashboard = () => {
                 }`}
               >
                 Schedule
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveSection("announcements");
+                  setIsSidebarOpen(false);
+                }}
+                className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  activeSection === "announcements"
+                    ? "bg-indigo-600 text-white shadow-lg transform scale-105"
+                    : "text-gray-200 hover:bg-white/20 hover:text-white hover:transform hover:scale-105"
+                }`}
+              >
+                Announcements
               </button>
             </div>
           </nav>
@@ -540,6 +566,7 @@ const StudentDashboard = () => {
             {activeSection === "all-buses" && <AllBuses />}
             {activeSection === "my-bus" && <MyBus />}
             {activeSection === "schedule" && <BusSchedule />}
+            {activeSection === "announcements" && <Announcements />}
           </div>
         </div>
       </div>

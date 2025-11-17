@@ -111,6 +111,10 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
       return "/faculty-erp/compose-hod-announcement";
     if (role === "principal")
       return "/faculty-erp/compose-principal-announcement";
+    if (role === "cc")
+      return "/faculty-erp/compose-cc-announcement";
+    if (role === "teaching")
+      return "/faculty-erp/compose-teacher-announcement";
     if (role === "nonteaching" || role === "non-teaching")
       return "/faculty-erp/announcementnonteaching";
     return "/faculty-erp/announcement";
@@ -122,7 +126,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
   };
 
   const getAnnouncementTitle = (role) => {
-    if (role === "HOD" || role === "hod" || role === "principal")
+    if (role === "HOD" || role === "hod" || role === "principal" || role === "cc" || role === "teaching")
       return "Compose Announcement";
     return "Announcements";
   };
@@ -133,6 +137,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
     if (role === "principal") return "/faculty-erp/principal-dashboard";
     if (role === "cc") return "/faculty-erp/cc-dashboard";
     if (role === "non-teaching") return "/faculty-erp/dashboard";
+    if (role === "teaching") return "/faculty-erp/dashboard";
     return "/faculty-erp";
   };
 
@@ -186,10 +191,21 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
             routeName: "department_students",
           },
           {
-            title: "Academic Calendar",
+            title: "Teacher Plan",
             icon: <Calendar size={20} />,
             href: "/faculty-erp/academic-calendar",
             routeName: "academic_calendar",
+          },
+        ]
+      : userData?.role === "cc"
+      ? [
+          {
+            title: "All Staff",
+            icon: <BookOpen size={20} />,
+            href: getAllStaffRoute(userData?.role),
+            routeName: "all_staff",
+            isSection: true,
+            sectionTitle: "Staff Management",
           },
         ]
       : [
@@ -218,6 +234,10 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
           ? "compose_hod_announcement"
           : userData?.role === "principal"
           ? "compose_principal_announcement"
+          : userData?.role === "cc"
+          ? "compose_cc_announcement"
+          : userData?.role === "teaching"
+          ? "compose_teacher_announcement"
           : userData?.role === "nonteaching" ||
             userData?.role === "non-teaching"
           ? "announcement_nonteaching"
@@ -225,6 +245,17 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
       isSection: true,
       sectionTitle: "Communication",
     },
+    // View Announcements Section (for viewing existing announcements) - Only for teaching staff and other roles, not non-teaching
+    ...(userData?.role !== "nonteaching" && userData?.role !== "non-teaching" ? [{
+      title: "View Announcements",
+      icon: <MessageCircle size={20} />,
+      href: userData?.role === "teaching"
+        ? "/faculty-erp/teacher-announcement"
+        : "/faculty-erp/announcement",
+      routeName: userData?.role === "teaching"
+        ? "teacher_announcement"
+        : "announcement",
+    }] : []),
     // Student Feedback for HOD
     ...(userData?.role === "HOD" || userData?.role === "hod"
       ? [
@@ -257,6 +288,17 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
       href: "/faculty-erp/markattendance",
       routeName: "mark_attendance",
     },
+    // Add Academic Calendar for teaching faculty
+    ...(userData?.role === "teaching"
+      ? [
+          {
+            title: "Teacher Plan",
+            icon: <Calendar size={20} />,
+            href: "/faculty-erp/academic-calendar",
+            routeName: "academic_calendar",
+          },
+        ]
+      : []),
     // Leave Management Section
     {
       title: "Apply Leave",
@@ -377,6 +419,12 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
             isSection: true,
             sectionTitle: "Class Management",
           },
+          {
+            title: "Teacher Plan",
+            icon: <Calendar size={20} />,
+            href: "/faculty-erp/academic-calendar",
+            routeName: "academic_calendar",
+          },
         ]
       : []),
   ];
@@ -406,9 +454,6 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
       "profile",
       "apply_leave",
       "apply_od_leave",
-      // include both announcement route name variants just in case
-      "announcement_nonteaching",
-      "announcement",
     ]);
 
     filteredMenuItems = filteredMenuItems.filter((item) =>

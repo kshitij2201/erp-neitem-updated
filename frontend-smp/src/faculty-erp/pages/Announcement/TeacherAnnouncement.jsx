@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const TeachingAnnouncements = () => {
+const TeacherAnnouncementView = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userDepartment, setUserDepartment] = useState(undefined);
@@ -52,14 +52,14 @@ const TeachingAnnouncements = () => {
     }
   };
 
-  // Fetch all announcements
+  // Fetch all announcements visible to teachers
   const fetchAnnouncements = async () => {
     try {
       const queryParams = userDepartment
         ? `?department=${encodeURIComponent(userDepartment)}`
         : "";
       console.log(
-        `Fetching announcements for teaching staff, department: ${
+        `Fetching announcements for teachers, department: ${
           userDepartment || "none"
         }`
       );
@@ -168,11 +168,10 @@ const TeachingAnnouncements = () => {
             </div>
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-4">
-            📢 Teaching Staff Announcements
+            📢 Teacher Announcements
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Stay updated with official notices and important communications from
-            administrative authorities
+            Stay updated with official notices from administrators and important communications
           </p>
         </header>
 
@@ -195,7 +194,7 @@ const TeachingAnnouncements = () => {
               No Announcements
             </h3>
             <p className="text-gray-500 text-lg max-w-md mx-auto">
-              No announcements are currently available for teaching staff. Check
+              No announcements are currently available for teachers. Check
               back later for updates!
             </p>
           </div>
@@ -222,12 +221,25 @@ const TeachingAnnouncements = () => {
                   {announcement.description}
                 </p>
 
+                {/* Show who created this announcement */}
+                <div className="mb-4">
+                  <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
+                    announcement.createdBy === 'hod' ? 'bg-purple-100 text-purple-800' :
+                    announcement.createdBy === 'principal' ? 'bg-red-100 text-red-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {announcement.createdBy === 'hod' ? '🏢 HOD' :
+                     announcement.createdBy === 'principal' ? '👑 PRINCIPAL' :
+                     '👨‍🏫 TEACHER'}
+                  </span>
+                </div>
+
                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-blue-50/80 rounded-xl border border-gray-200/50">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-sm font-medium text-gray-600">
                       📅 Posted:{" "}
-                      {new Date(announcement.createdAt).toLocaleDateString(
+                      {new Date(announcement.createdAt || announcement.date).toLocaleDateString(
                         "en-US",
                         {
                           year: "numeric",
@@ -261,4 +273,4 @@ const TeachingAnnouncements = () => {
   );
 };
 
-export default TeachingAnnouncements;
+export default TeacherAnnouncementView;

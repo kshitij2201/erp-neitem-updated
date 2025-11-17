@@ -12,6 +12,10 @@ import ApplyChargeHandoverForm from "../../pages/ApplyChargeHandover";
 import MarkAttendance from "../../pages/MarkAttendance";
 import ComposeAnnouncementByPrincipal from "../../pages/Announcement/ComposeAnnouncementByPrinciple";
 import ComposeByHOD from "../../pages/Announcement/ComposeAnnouncemtByHOD";
+import ComposeAnnouncementByTeacher from "../../pages/Announcement/ComposeAnnouncementByTeacher";
+import ComposeAnnouncementByCourseCoordinator from "../../pages/Announcement/ComposeAnnouncementByCourseCoordinator";
+import CCAnnouncement from "../../pages/Announcement/CCAnnouncement";
+import TeacherAnnouncement from "../../pages/Announcement/TeacherAnnouncement";
 import NonTeachingAnnouncements from "../../pages/Announcement/AnnoucementNT";
 import Payment from "../../pages/FacultyManagement/Payment";
 import FacultyListPage from "../../pages/FacultyManagement/FacultyListPage";
@@ -699,6 +703,8 @@ export const rolePermissionsAndRoutes = [
       "mark_attendance",
       "payslip",
       "announcement",
+      "teacher_announcement",
+      "compose_teacher_announcement",
       "apply_charge_handover",
       "approve_charge_handover",
       "apply_leave",
@@ -771,6 +777,30 @@ export const rolePermissionsAndRoutes = [
             routeName="announcement"
           >
             <Announcement userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "teacher-announcement",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="teacher_announcement"
+          >
+            <TeacherAnnouncement userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "compose-teacher-announcement",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="compose_teacher_announcement"
+          >
+            <ComposeAnnouncementByTeacher userData={userData} />
           </ProtectedRoute>
         ),
       },
@@ -871,6 +901,18 @@ export const rolePermissionsAndRoutes = [
         ),
       },
       {
+        path: "academic-calendar",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="academic_calendar"
+          >
+            <AcademicCalendar userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "dashboard/academic-calendar",
         element: (isAuthenticated, userRole, userData) => (
           <ProtectedRoute
@@ -905,13 +947,16 @@ export const rolePermissionsAndRoutes = [
       "mark_attendance",
       "payslip",
       "announcement",
+      "compose_cc_announcement",
       "apply_charge_handover",
       "approve_charge_handover",
       "apply_leave",
       "apply_od_leave",
       "timetable",
       "fetched_timetable",
+      "academic_calendar",
       "files",
+      "department_students",
       // "sent_charge_handover",
     ],
     routes: [
@@ -983,7 +1028,19 @@ export const rolePermissionsAndRoutes = [
             userRole={userRole}
             routeName="announcement"
           >
-            <Announcement userData={userData} />
+            <CCAnnouncement userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "compose-cc-announcement",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="compose_cc_announcement"
+          >
+            <ComposeAnnouncementByCourseCoordinator userData={userData} />
           </ProtectedRoute>
         ),
       },
@@ -1084,7 +1141,19 @@ export const rolePermissionsAndRoutes = [
         ),
       },
       {
-        path: "dashboard/department-students",
+        path: "academic-calendar",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="academic_calendar"
+          >
+            <AcademicCalendar userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "department-students",
         element: (isAuthenticated, userRole, userData) => (
           <ProtectedRoute
             isAuthenticated={isAuthenticated}

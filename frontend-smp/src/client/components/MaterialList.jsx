@@ -8,7 +8,7 @@ const MaterialList = ({ subject }) => {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
         if (!token) {
           console.error('No authentication token found');
           setMaterials([]);
@@ -61,7 +61,7 @@ const MaterialList = ({ subject }) => {
               <h3 className="font-bold text-lg text-gray-800 mb-2">{mat.title}</h3>
               <div className="text-sm text-gray-600 mb-2">
                 <span className="inline-block mr-4">📚 Subject: {mat.subject || 'General'}</span>
-                <span className="inline-block mr-4">🎓 Year: {mat.year}</span>
+                <span className="inline-block mr-4">🎓 Semester: {mat.semester}</span>
                 <span className="inline-block mr-4">📝 Section: {mat.section}</span>
               </div>
               <div className="text-sm text-gray-500 mb-3">

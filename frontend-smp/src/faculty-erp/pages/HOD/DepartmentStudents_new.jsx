@@ -26,13 +26,16 @@ const DepartmentStudents = ({ userData }) => {
     sectionWiseData: {},
   });
 
-  // Available years for current students (1st to 4th year typically)
+  // Available semesters for current students (1st to 8th semester typically)
   const academicYears = [
     "1",
     "2",
     "3",
     "4",
-    "5", // Year levels instead of academic years
+    "5",
+    "6",
+    "7",
+    "8", // Semester levels instead of academic years
   ];
 
   useEffect(() => {
@@ -194,7 +197,7 @@ const DepartmentStudents = ({ userData }) => {
         "Name",
         "Roll Number",
         "Email",
-        "Year",
+        "Semester",
         "Section",
         "Department",
         "Contact",
@@ -205,7 +208,7 @@ const DepartmentStudents = ({ userData }) => {
         student.name || "",
         student.rollNumber || "",
         student.email || "",
-        student.year || "",
+        `Semester ${student.year}` || "",
         student.section || "",
         student.department || "",
         student.contactNumber || "",
@@ -220,7 +223,7 @@ const DepartmentStudents = ({ userData }) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${userData?.department}_students_year_${
+    a.download = `${userData?.department}_students_semester_${
       selectedYear || "all"
     }.csv`;
     a.click();
@@ -349,7 +352,7 @@ const DepartmentStudents = ({ userData }) => {
               {/* Year Filter */}
               <div className="group">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  📅 Filter by Year
+                  📅 Filter by Semester
                 </label>
                 <div className="relative">
                   <select
@@ -360,7 +363,7 @@ const DepartmentStudents = ({ userData }) => {
                     <option value="">All Years</option>
                     {academicYears.map((year) => (
                       <option key={year} value={year}>
-                        Year {year}
+                        Semester {year}
                       </option>
                     ))}
                   </select>
@@ -442,11 +445,11 @@ const DepartmentStudents = ({ userData }) => {
                           📧 Email
                         </th>
                         <th className="text-left py-4 px-6 font-semibold text-gray-700">
-                          📅 Year
+                          📅 Semester
                         </th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-700">
+                        {/* <th className="text-left py-4 px-6 font-semibold text-gray-700">
                           📝 Section
-                        </th>
+                        </th> */}
                         <th className="text-left py-4 px-6 font-semibold text-gray-700">
                           📞 Contact
                         </th>
@@ -489,14 +492,14 @@ const DepartmentStudents = ({ userData }) => {
                           </td>
                           <td className="py-4 px-6">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              Year {student.year}
+                              Semester {student.year}
                             </span>
                           </td>
-                          <td className="py-4 px-6">
+                          {/* <td className="py-4 px-6">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
                               {student.section}
                             </span>
-                          </td>
+                          </td> */}
                           <td className="py-4 px-6 text-gray-600">
                             {student.contactNumber || "N/A"}
                           </td>

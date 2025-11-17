@@ -6,25 +6,123 @@ const Announcements = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [userDepartment, setUserDepartment] = useState("");
+  const [userSemester, setUserSemester] = useState("");
 
   // Get the API URL from environment variables or use localhost as fallback
   const API_URL =
-    import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+    import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+
+  // Function to fetch user department and semester
+  const fetchUserInfo = async () => {
+    try {
+      // Get user data from localStorage - check multiple possible keys
+      let userData = null;
+      try {
+        userData = JSON.parse(localStorage.getItem("studentData") || "{}");
+      } catch (e) {
+        try {
+          userData = JSON.parse(localStorage.getItem("user") || "{}");
+        } catch (e2) {
+          try {
+            userData = JSON.parse(localStorage.getItem("userData") || "{}");
+          } catch (e3) {
+            console.warn("Could not parse user data from localStorage");
+          }
+        }
+      }
+
+      if (userData) {
+        // Handle different data structures
+        const department = userData.department?.name || userData.department;
+        const semester = userData.semester?.number || userData.semester;
+        
+        if (department) {
+          setUserDepartment(department);
+        }
+        if (semester) {
+          setUserSemester(semester);
+        }
+        
+        console.log("Student data loaded:", { department, semester });
+      }
+
+      // Fallback: fetch from API if not in localStorage
+      const token =
+        localStorage.getItem("authToken") || localStorage.getItem("token");
+      if (token && (!userDepartment || !userSemester)) {
+        try {
+          const response = await axios.get(
+            `${API_URL}/api/auth/profile`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          if (response.data) {
+            const department = response.data.department?.name || response.data.department;
+            const semester = response.data.semester?.number || response.data.semester;
+            
+            if (department && !userDepartment) {
+              setUserDepartment(department);
+            }
+            if (semester && !userSemester) {
+              setUserSemester(semester);
+            }
+          }
+        } catch (apiError) {
+          console.error("Failed to fetch user info from API:", apiError);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user info:", error);
+    }
+  };
 
   useEffect(() => {
-    setLoading(true);
-    axios
-      .get(`${API_URL}/api/announcements`)
-      .then((res) => {
-        setAnnouncements(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Failed to load announcements");
-        setLoading(false);
-      });
-  }, [API_URL]);
+    fetchUserInfo();
+  }, []);
+
+  useEffect(() => {
+    if (userDepartment || userSemester) {
+      setLoading(true);
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (userDepartment) params.append('department', userDepartment);
+      if (userSemester) params.append('semester', userSemester);
+      
+      const queryString = params.toString();
+      const url = queryString ? `${API_URL}/api/announcements?${queryString}` : `${API_URL}/api/announcements`;
+      
+      console.log('Fetching student announcements with params:', { department: userDepartment, semester: userSemester });
+      
+      axios
+        .get(url)
+        .then((res) => {
+          setAnnouncements(res.data);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error(err);
+          setError("Failed to load announcements");
+          setLoading(false);
+        });
+    } else {
+      // If no user info available, still fetch announcements without filters
+      setLoading(true);
+      axios
+        .get(`${API_URL}/api/announcements`)
+        .then((res) => {
+          setAnnouncements(res.data);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error(err);
+          setError("Failed to load announcements");
+          setLoading(false);
+        });
+    }
+  }, [API_URL, userDepartment, userSemester]);
 
   const toggleExpand = (id) => {
     setExpandedId(expandedId === id ? null : id);

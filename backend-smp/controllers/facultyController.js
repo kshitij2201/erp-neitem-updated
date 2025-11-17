@@ -6,6 +6,7 @@ import Attendance from "../models/attendance.js";
 import SalaryRecord from "../models/SalaryRecord.js";
 import Counter from "../models/Counter.js";
 import Scholarship from "../models/Scholarship.js";
+import Semester from "../models/Semester.js";
 import bcrypt from "bcryptjs";
 import emailvalidator from "email-validator";
 import mongoose from "mongoose";
@@ -2139,6 +2140,7 @@ const getStudentsByDepartment = async (req, res) => {
       // status: { $ne: 'graduated' }
     })
       .populate("department", "name") // Populate department info (AcademicDepartment only has name and stream)
+      .populate("semester", "semesterNumber number") // Populate semester info
       .select(
         "firstName middleName lastName fatherName motherName email section semester department subjects studentId dateOfBirth mobileNumber gender photo"
       )
@@ -2151,20 +2153,25 @@ const getStudentsByDepartment = async (req, res) => {
         .filter(Boolean)
         .join(" "),
       year: student.semester
-        ? student.semester.toString().includes("1") ||
-          student.semester.toString().includes("2")
-          ? 1
-          : student.semester.toString().includes("3") ||
-            student.semester.toString().includes("4")
-          ? 2
-          : student.semester.toString().includes("5") ||
-            student.semester.toString().includes("6")
-          ? 3
-          : student.semester.toString().includes("7") ||
-            student.semester.toString().includes("8")
-          ? 4
-          : 1
+        ? // Handle populated semester object with semesterNumber
+          student.semester.semesterNumber 
+            ? Math.ceil(student.semester.semesterNumber / 2) // Semester 1,2 = Year 1; 3,4 = Year 2; etc.
+            : student.semester.toString().includes("1") ||
+              student.semester.toString().includes("2")
+              ? 1
+              : student.semester.toString().includes("3") ||
+                student.semester.toString().includes("4")
+              ? 2
+              : student.semester.toString().includes("5") ||
+                student.semester.toString().includes("6")
+              ? 3
+              : student.semester.toString().includes("7") ||
+                student.semester.toString().includes("8")
+              ? 4
+              : 1
         : 1,
+      semester: student.semester?.semesterNumber || student.semester || 1,
+      semesterName: student.semester?.name || `Semester ${student.semester?.semesterNumber || 1}`,
       department: student.department?.name || department,
       dob: student.dateOfBirth,
     }));
@@ -2240,6 +2247,7 @@ const getStudentsWithAttendance = async (req, res) => {
       department: departmentDoc._id,
     })
       .populate("department", "name")
+      .populate("semester", "number")
       .select(
         "firstName middleName lastName fatherName motherName email section semester department subjects studentId dateOfBirth mobileNumber gender photo casteCategory subCaste"
       )
@@ -2321,21 +2329,7 @@ const getStudentsWithAttendance = async (req, res) => {
       name: [student.firstName, student.middleName, student.lastName]
         .filter(Boolean)
         .join(" "),
-      year: student.semester
-        ? student.semester.toString().includes("1") ||
-          student.semester.toString().includes("2")
-          ? 1
-          : student.semester.toString().includes("3") ||
-            student.semester.toString().includes("4")
-          ? 2
-          : student.semester.toString().includes("5") ||
-            student.semester.toString().includes("6")
-          ? 3
-          : student.semester.toString().includes("7") ||
-            student.semester.toString().includes("8")
-          ? 4
-          : 1
-        : 1,
+      year: student.semester?.number || 1,
       department: student.department?.name || department,
       dob: student.dateOfBirth,
       caste: student.casteCategory || "Not Specified",
@@ -2463,26 +2457,31 @@ const getCCClassStudents = async (req, res) => {
     const ccAssignment = faculty.ccAssignments[0];
     console.log("[GetCCClassStudents] CC Assignment:", ccAssignment);
 
-    // Get faculty department
+    // Get faculty department - prefer CC assignment department over faculty department
     let departmentName = "";
-    if (typeof faculty.department === "string") {
-      departmentName = faculty.department;
+    if (ccAssignment.department) {
+      if (typeof ccAssignment.department === "string") {
+        departmentName = ccAssignment.department;
+      } else {
+        // If it's an ObjectId, we might need to populate it, but for now use faculty department as fallback
+        departmentName = faculty.department || "";
+      }
     } else {
-      // If department is ObjectId, we need to get it from the assignment or faculty data
+      // Fallback to faculty department
       departmentName = faculty.department || "";
     }
 
     // Build query to find students matching CC's assignment
     const studentQuery = {};
 
-    // Match department - if it's ObjectId, use direct comparison, if string find department first
-    if (faculty.department) {
-      if (mongoose.Types.ObjectId.isValid(faculty.department)) {
-        studentQuery.department = faculty.department;
+    // Match department - use CC assignment department
+    if (ccAssignment.department) {
+      if (mongoose.Types.ObjectId.isValid(ccAssignment.department)) {
+        studentQuery.department = ccAssignment.department;
       } else {
         // Find department by name first
         const dept = await Department.findOne({
-          name: new RegExp(faculty.department, "i"),
+          name: new RegExp(ccAssignment.department, "i"),
         });
         if (dept) {
           studentQuery.department = dept._id;
@@ -2490,8 +2489,25 @@ const getCCClassStudents = async (req, res) => {
       }
     }
 
-    // For now, let's not filter by semester since there's a type mismatch
-    // We'll get all students in the department and section
+    // Match semester - handle both ObjectId and string/number
+    if (ccAssignment.semester) {
+      if (mongoose.Types.ObjectId.isValid(ccAssignment.semester)) {
+        // If it's an ObjectId, use it directly
+        studentQuery.semester = ccAssignment.semester;
+      } else {
+        // If it's a string/number, find the semester by number or name
+        const semesterNumber = parseInt(ccAssignment.semester) || ccAssignment.semester;
+        const semester = await Semester.findOne({
+          $or: [
+            { semesterNumber: semesterNumber },
+            { name: new RegExp(semesterNumber, "i") }
+          ]
+        });
+        if (semester) {
+          studentQuery.semester = semester._id;
+        }
+      }
+    }
 
     // Match section - case insensitive string match
     if (ccAssignment.section) {
@@ -2499,13 +2515,20 @@ const getCCClassStudents = async (req, res) => {
     }
 
     console.log("[GetCCClassStudents] Student query:", studentQuery);
+    console.log("[GetCCClassStudents] CC Assignment details:", {
+      semester: ccAssignment.semester,
+      department: ccAssignment.department,
+      section: ccAssignment.section,
+      academicYear: ccAssignment.academicYear
+    });
 
     // Fetch students matching the criteria with populated references
     const students = await Student.find(studentQuery)
       .populate("department", "name")
       .populate("stream", "name")
+      .populate("semester", "semesterNumber name")
       .select(
-        "firstName lastName middleName studentId email phoneNumber section gender dateOfBirth address nationality photo"
+        "firstName lastName middleName studentId email phoneNumber section gender dateOfBirth address nationality photo semester"
       )
       .lean();
 
@@ -2542,7 +2565,8 @@ const getCCClassStudents = async (req, res) => {
             section: student.section,
             department: student.department?.name || "N/A",
             semester:
-              student.semester?.name || student.semester?.number || "N/A",
+              student.semester?.semesterNumber || student.semester?.name || "N/A",
+            year: student.semester?.semesterNumber || "N/A", // Add year field for frontend compatibility
             gender: student.gender,
             status: "active", // Default status since StudentManagement doesn't have status field
             dateOfBirth: student.dateOfBirth,

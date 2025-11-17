@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const TeachingAnnouncements = () => {
+const CCAnnouncementView = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userDepartment, setUserDepartment] = useState(undefined);
@@ -52,28 +52,47 @@ const TeachingAnnouncements = () => {
     }
   };
 
-  // Fetch all announcements
+  // Fetch all announcements - show only HOD announcements for the CC's department
   const fetchAnnouncements = async () => {
     try {
       const queryParams = userDepartment
         ? `?department=${encodeURIComponent(userDepartment)}`
         : "";
       console.log(
-        `Fetching announcements for teaching staff, department: ${
+        `Fetching announcements for CC, department: ${
           userDepartment || "none"
         }`
       );
-      console.log(`Full URL: https://backenderp.tarstech.in/api/announcements/teaching_staff${queryParams}`);
+      console.log(`Full URL: https://backenderp.tarstech.in/api/announcements/cc${queryParams}`);
       
       const res = await axios.get(
-        `https://backenderp.tarstech.in/api/announcements/teaching_staff${queryParams}`
+        `https://backenderp.tarstech.in/api/announcements/cc${queryParams}`
       );
       console.log(`API Response:`, res.data);
       console.log(`Found ${res.data.length} announcements`);
       
-      // Log each announcement to debug
-      res.data.forEach((ann, index) => {
-        console.log(`Announcement ${index + 1}:`, {
+      // Only show announcements created by HOD and for the same department as the CC
+      const hodOnly = res.data.filter((ann) => {
+        // Show only if createdBy is hod
+        if (ann.createdBy !== "hod") return false;
+        // If department filter is present, ensure it matches CC's department
+        if (userDepartment && ann.department && ann.department !== userDepartment)
+          return false;
+        return true;
+      });
+
+      // Sort HOD announcements by newest first (date/value fallback)
+      const sortedHod = hodOnly.sort((a, b) => {
+        const dateA = new Date(a.date || a.createdAt);
+        const dateB = new Date(b.date || b.createdAt);
+        return dateB - dateA;
+      });
+
+      console.log(`Filtered to ${sortedHod.length} HOD-only announcements`);
+      
+      // Log each HOD announcement to debug
+      sortedHod.forEach((ann, index) => {
+        console.log(`CC Announcement ${index + 1}:`, {
           title: ann.title,
           createdBy: ann.createdBy,
           department: ann.department,
@@ -82,7 +101,7 @@ const TeachingAnnouncements = () => {
         });
       });
       
-      setAnnouncements(res.data.reverse()); // latest first
+      setAnnouncements(sortedHod); // HOD-only, sorted newest-first
     } catch (err) {
       console.error("Failed to fetch announcements", err);
       console.error("Error details:", err.response?.data || err.message);
@@ -103,12 +122,12 @@ const TeachingAnnouncements = () => {
   }, [userDepartment]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/20 to-pink-600/20 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-orange-400/20 to-red-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-yellow-400/20 to-orange-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-red-400/10 to-orange-600/10 rounded-full blur-3xl"></div>
       </div>
 
       <style>
@@ -122,8 +141,8 @@ const TeachingAnnouncements = () => {
             to { opacity: 1; transform: translateX(0); }
           }
           @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.5); }
+            0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(249, 115, 22, 0.5); }
           }
           .animate-fade-in {
             animation: fadeIn 0.6s ease-out forwards;
@@ -150,7 +169,7 @@ const TeachingAnnouncements = () => {
       <div className="max-w-6xl mx-auto relative z-0">
         <header className="text-center mb-12 animate-slide-in-left">
           <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl">
+            <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl flex items-center justify-center shadow-2xl">
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -167,20 +186,19 @@ const TeachingAnnouncements = () => {
               </svg>
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-4">
-            📢 Teaching Staff Announcements
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-800 to-red-800 bg-clip-text text-transparent mb-4">
+            📢 HOD Announcements
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Stay updated with official notices and important communications from
-            administrative authorities
+            Announcements sent by your department HOD (only HOD announcements are shown here)
           </p>
         </header>
 
         {loading ? (
           <div className="flex flex-col justify-center items-center h-64 space-y-6">
             <div className="relative">
-              <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200"></div>
-              <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-blue-600 absolute top-0 left-0"></div>
+              <div className="animate-spin rounded-full h-20 w-20 border-4 border-orange-200"></div>
+              <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-orange-600 absolute top-0 left-0"></div>
             </div>
             <p className="text-gray-600 font-medium text-lg">
               Loading announcements...
@@ -195,7 +213,7 @@ const TeachingAnnouncements = () => {
               No Announcements
             </h3>
             <p className="text-gray-500 text-lg max-w-md mx-auto">
-              No announcements are currently available for teaching staff. Check
+              No announcements are currently available for course coordinators. Check
               back later for updates!
             </p>
           </div>
@@ -208,11 +226,11 @@ const TeachingAnnouncements = () => {
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors line-clamp-2 flex-1 mr-4">
+                  <h2 className="text-2xl font-bold text-gray-800 group-hover:text-orange-600 transition-colors line-clamp-2 flex-1 mr-4">
                     {announcement.title}
                   </h2>
                   <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 text-sm font-bold rounded-full shadow-sm">
+                    <span className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-100 to-red-100 text-orange-800 text-sm font-bold rounded-full shadow-sm">
                       🏷️ {announcement.tag}
                     </span>
                   </div>
@@ -222,12 +240,27 @@ const TeachingAnnouncements = () => {
                   {announcement.description}
                 </p>
 
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-blue-50/80 rounded-xl border border-gray-200/50">
+                {/* Show creator info */}
+                <div className="mb-4">
+                  <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-sm font-medium rounded-full">
+                    👤 From: {announcement.createdBy === 'hod' ? 'HOD' : 
+                             announcement.createdBy === 'principal' ? 'Principal' : 
+                             announcement.createdBy === 'cc' ? 'Course Coordinator' : 
+                             announcement.createdBy || 'Administration'}
+                  </span>
+                  {announcement.department && (
+                    <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 text-sm font-medium rounded-full ml-2">
+                      🏢 Dept: {announcement.department}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50/80 to-orange-50/80 rounded-xl border border-gray-200/50">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-gray-600">
+                      <span className="text-sm font-medium text-gray-600">
                       📅 Posted:{" "}
-                      {new Date(announcement.createdAt).toLocaleDateString(
+                      {new Date(announcement.date || announcement.createdAt).toLocaleDateString(
                         "en-US",
                         {
                           year: "numeric",
@@ -261,4 +294,4 @@ const TeachingAnnouncements = () => {
   );
 };
 
-export default TeachingAnnouncements;
+export default CCAnnouncementView;

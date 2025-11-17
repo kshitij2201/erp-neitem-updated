@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Download, Printer, ArrowLeft, FileText } from 'lucide-react';
+import './print-styles.css';
 
 const AcademicCalendarPrint = ({ calendar, onBack }) => {
   const printRef = useRef();
@@ -7,21 +8,25 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
 
   useEffect(() => {
     if (calendar) {
+      console.log('Calendar data received:', calendar);
       // Process calendar data for print format
       const processedData = processCalendarForPrint(calendar);
+      console.log('Processed data:', processedData);
       setPrintData(processedData);
     }
-  }, [calendar]);n
+  }, [calendar]);
 
   const processCalendarForPrint = (cal) => {
     // Sort topics by planned date
-    const sortedTopics = [...(cal.topics || [])].sort((a, b) => 
-      new Date(a.plannedDate) - new Date(b.plannedDate)
-    );
+    const sortedTopics = [...(cal.topics || [])].sort((a, b) => {
+      const dateA = new Date(a.plannedDate || a.date || Date.now());
+      const dateB = new Date(b.plannedDate || b.date || Date.now());
+      return dateA - dateB;
+    });
 
     // Generate date range for the calendar
-    const startDate = new Date(cal.startDate);
-    const endDate = new Date(cal.endDate);
+    const startDate = new Date(cal.startDate || Date.now());
+    const endDate = new Date(cal.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)); // 3 months from now if no end date
     
     // Create schedule entries
     const scheduleEntries = [];
@@ -64,8 +69,15 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
   };
 
   const handleDownload = () => {
-    // Convert to PDF (you might want to use a library like jsPDF or html2pdf)
-    window.print();
+    // Set print-specific styles before printing
+    const originalTitle = document.title;
+    document.title = `Academic_Calendar_${printData.academicYear}_Sem${printData.semester}`;
+    
+    // Trigger print dialog
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+    }, 100);
   };
 
   const formatDate = (date) => {
@@ -81,8 +93,17 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
   };
 
   if (!printData) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading calendar data...</p>
+        </div>
+      </div>
+    );
   }
+
+  console.log('Print Data:', printData);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -119,6 +140,7 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
       <div 
         ref={printRef}
         className="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:max-w-none"
+        id="printable-content"
         style={{ 
           minHeight: '297mm', // A4 height
           padding: '20mm', // A4 margins
@@ -131,14 +153,14 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
               {printData.institutionName || "NAGARJUNA UNIVERSITY"}
             </h1>
             <h2 className="text-lg font-bold text-black mb-1">
-              DEPARTMENT OF {printData.department?.toUpperCase() || "COMPUTER SCIENCE ENGINEERING"}
+              DEPARTMENT OF {(printData.department || "COMPUTER SCIENCE ENGINEERING").toUpperCase()}
             </h2>
             <div className="text-base font-semibold text-black mb-2">
-              Academic Year: {printData.academicYear} &nbsp;&nbsp;&nbsp; Semester: {printData.semester}
+              Academic Year: {printData.academicYear || 'N/A'} &nbsp;&nbsp;&nbsp; Semester: {printData.semester || 'N/A'}
             </div>
             <div className="text-sm text-black">
-              <p><strong>Subject:</strong> {printData.subjectId?.name} ({printData.subjectId?.code})</p>
-              <p><strong>Faculty:</strong> {printData.facultyId?.name}</p>
+              <p><strong>Subject:</strong> {printData.subjectName || printData.subjectId?.name || printData.title || 'N/A'} ({printData.subjectCode || printData.subjectId?.code || 'N/A'})</p>
+              <p><strong>Faculty:</strong> {printData.facultyName || printData.facultyId?.name || 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -181,16 +203,16 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
                     {entry.week}
                   </td>
                   <td className="px-2 py-2 text-xs text-center" style={{ border: '1px solid black' }}>
-                    {entry.topic ? formatDate(new Date(entry.topic.plannedDate)) : formatDate(entry.date)}
+                    {entry.topic ? formatDate(new Date(entry.topic.plannedDate || entry.topic.date || Date.now())) : formatDate(entry.date)}
                   </td>
                   <td className="px-2 py-2 text-xs text-center" style={{ border: '1px solid black' }}>
-                    {entry.topic ? getDay(new Date(entry.topic.plannedDate)) : getDay(entry.date)}
+                    {entry.topic ? getDay(new Date(entry.topic.plannedDate || entry.topic.date || Date.now())) : getDay(entry.date)}
                   </td>
                   <td className="px-2 py-2 text-xs" style={{ border: '1px solid black' }}>
                     {entry.topic ? (
                       <div>
-                        <div className="font-medium">{entry.topic.name}</div>
-                        {entry.topic.description && (
+                        <div className="font-medium">{entry.topic.topicName || entry.topic.name || 'N/A'}</div>
+                        {(entry.topic.description) && (
                           <div className="text-xs text-gray-700 mt-1">
                             {entry.topic.description}
                           </div>
@@ -250,10 +272,10 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
           <div>
             <h4 className="font-bold text-sm mb-2 text-black">FACULTY DETAILS:</h4>
             <div className="text-xs space-y-1">
-              <p><strong>Name:</strong> {printData.facultyId?.name}</p>
-              <p><strong>Designation:</strong> {printData.facultyId?.designation}</p>
-              <p><strong>Employee ID:</strong> {printData.facultyId?.employeeId}</p>
-              <p><strong>Department:</strong> {printData.department}</p>
+              <p><strong>Name:</strong> {printData.facultyName || printData.facultyId?.name || 'N/A'}</p>
+              <p><strong>Designation:</strong> {printData.facultyId?.designation || 'Faculty'}</p>
+              <p><strong>Employee ID:</strong> {printData.facultyId?.employeeId || 'N/A'}</p>
+              <p><strong>Department:</strong> {printData.department || 'N/A'}</p>
             </div>
           </div>
           
@@ -288,49 +310,7 @@ const AcademicCalendarPrint = ({ calendar, onBack }) => {
         </div>
       </div>
 
-      {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print\\:block {
-            display: block !important;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-          .print\\:shadow-none {
-            box-shadow: none !important;
-          }
-          .print\\:max-w-none {
-            max-width: none !important;
-          }
-          
-          /* Print specific styles */
-          @page {
-            margin: 20mm;
-            size: A4;
-          }
-          
-          table {
-            page-break-inside: auto;
-          }
-          
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-          
-          thead {
-            display: table-header-group;
-          }
-          
-          tfoot {
-            display: table-footer-group;
-          }
-        }
-      `}</style>
+
     </div>
   );
 };

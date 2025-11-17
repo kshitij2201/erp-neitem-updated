@@ -287,7 +287,7 @@ const FacultyList = () => {
       
       // Set error message for API failure
       console.log("❌ API failed, no fallback data");
-      setError(`API Connection Failed: ${error.message}. Please check if the backend server is running on https://backenderp.tarstech.in`);
+      setError(`API Connection Failed: ${error.message}. Please check if the backend server is running on http://localhost:4000`);
       setFaculties([]);
       
       setLoading(false);

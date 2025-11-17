@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const fileSchema = new mongoose.Schema({
   title: { type: String, required: true },
   subject: { type: String }, // Added subject field
-  year: { type: String, required: true },
+  semester: { type: String, required: true },
   section: { type: String, required: true },
   uploaderName: { type: String },
   uploaderDepartment: { type: String }, // Added sender's department

@@ -5,7 +5,7 @@ const API_BASE = "/api/files"; // Adjust if your backend route is different
 const FilesPage = () => {
   const [files, setFiles] = useState([]);
   const [title, setTitle] = useState("");
-  const [year, setYear] = useState("");
+  const [semester, setSemester] = useState("");
   const [section, setSection] = useState("");
   const [department, setDepartment] = useState(""); // Added department state
   const [file, setFile] = useState(null);
@@ -90,18 +90,18 @@ const FilesPage = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (!title || !file || !year || !section || !subject || !department) {
+    if (!title || !file || !semester || !section || !subject || !department) {
       setError(
-        "Please provide a material title, select subject, ensure department is loaded, target year, section, and choose a file to share."
+        "Please provide a material title, select subject, ensure department is loaded, target semester, section, and choose a file to share."
       );
       return;
     }
     setUploading(true);
     const formData = new FormData();
     formData.append("title", title);
-    formData.append("year", year);
+    formData.append("semester", semester);
     formData.append("section", section);
-    formData.append("department", department); // Added department to form data
+    // Removed department from formData as it's now fetched from backend user
     formData.append("file", file);
     formData.append("subject", subject);
     try {
@@ -115,9 +115,9 @@ const FilesPage = () => {
       });
       const data = await res.json();
       if (data.success) {
-        setSuccess(`Study material "${title}" shared successfully with ${section === 'ALL' ? 'all sections of' : 'section ' + section} Year ${year} students in ${department} department for ${subject}!`);
+        setSuccess(`Study material "${title}" shared successfully with ${section === 'ALL' ? 'all sections of' : 'section ' + section} Semester ${semester} students in ${department} department for ${subject}!`);
         setTitle("");
-        setYear("");
+        setSemester("");
         setSection("");
         setSubject("");
         setFile(null);
@@ -211,16 +211,20 @@ const FilesPage = () => {
           </div>
           <select
             className="rounded-lg px-4 py-3 bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
+            value={semester}
+            onChange={(e) => setSemester(e.target.value)}
             disabled={uploading}
             required
           >
-            <option value="" className="bg-white text-gray-800">🎓 Select Target Year</option>
-            <option value="1" className="bg-white text-gray-800">1️⃣ 1st Year Students</option>
-            <option value="2" className="bg-white text-gray-800">2️⃣ 2nd Year Students</option>
-            <option value="3" className="bg-white text-gray-800">3️⃣ 3rd Year Students</option>
-            <option value="4" className="bg-white text-gray-800">4️⃣ 4th Year Students</option>
+            <option value="" className="bg-white text-gray-800">🎓 Select Target Semester</option>
+            <option value="1" className="bg-white text-gray-800">1️⃣ Semester 1</option>
+            <option value="2" className="bg-white text-gray-800">2️⃣ Semester 2</option>
+            <option value="3" className="bg-white text-gray-800">3️⃣ Semester 3</option>
+            <option value="4" className="bg-white text-gray-800">4️⃣ Semester 4</option>
+            <option value="5" className="bg-white text-gray-800">5️⃣ Semester 5</option>
+            <option value="6" className="bg-white text-gray-800">6️⃣ Semester 6</option>
+            <option value="7" className="bg-white text-gray-800">7️⃣ Semester 7</option>
+            <option value="8" className="bg-white text-gray-800">8️⃣ Semester 8</option>
           </select>
           <select
             className="rounded-lg px-4 py-3 bg-gray-50 border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -247,7 +251,7 @@ const FilesPage = () => {
             required
           />
           <div className="text-sm text-gray-500 mt-1">
-            💡 <strong>Tip:</strong> Students will only see materials for subjects they study and their respective year/section
+            💡 <strong>Tip:</strong> Students will only see materials for subjects they study and their respective semester/section
           </div>
           <button
             type="submit"
@@ -306,7 +310,7 @@ const FilesPage = () => {
                     📄 {f.title}
                   </div>
                   <div className="text-gray-600 text-sm mb-1">
-                    📚 Subject: {f.subject || "General"} • 🎓 Year {f.year || "N/A"} • 📝 Section {f.section || "All"}
+                    📚 Subject: {f.subject || "General"} • 🎓 Semester {f.semester || "N/A"} • 📝 Section {f.section || "All"}
                     {f.uploaderDepartment && (
                       <> • 🏛️ Department: {f.uploaderDepartment}</>
                     )}

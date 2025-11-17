@@ -155,6 +155,7 @@ router.post("/login", async (req, res) => {
         stream: student.stream,
         department: student.department,
         semester: student.semester,
+        section: student.section,
         photo: student.photo,
         dateOfBirth: student.dateOfBirth
       }

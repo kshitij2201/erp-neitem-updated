@@ -33,8 +33,8 @@ const FacultyAcademicCalendar = ({ userData }) => {
       const token = localStorage.getItem("authToken");
       const queryParams = new URLSearchParams();
 
-      // Add faculty filter to get only calendars assigned to this faculty
-      queryParams.append("faculty", userData._id);
+      // Add createdBy filter to show only calendars created by this faculty
+      queryParams.append("createdBy", userData._id);
 
       Object.entries(filters).forEach(([key, value]) => {
         if (value) queryParams.append(key, value);

@@ -74,7 +74,7 @@ function debugAuth() {
       .catch((error) => {
         console.log("❌ Network error:", error.message);
         console.log(
-          "💡 Check if backend is running on https://backenderp.tarstech.in"
+          "💡 Check if backend is running on http://localhost:4000"
         );
       });
   } else {

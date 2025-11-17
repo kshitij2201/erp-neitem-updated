@@ -18,13 +18,23 @@ const AnnouncementForm = () => {
   const [userDepartment, setUserDepartment] = useState("");
   const [expandedAnnouncements, setExpandedAnnouncements] = useState({});
 
-  // HOD can create department-wide announcements
-  const roles = [
-    { value: "student", display: "Students", icon: "🎓" },
-    { value: "teaching_staff", display: "Teachers", icon: "👨‍🏫" },
-    { value: "cc", display: "Course Coordinators", icon: "🎯" }
-  ]; // All department members across the institution
-  const currentDashboard = "hod";
+  // Course Coordinator can create announcements for students only
+  const roles = ["student"]; // Students only
+  const currentDashboard = "cc";
+
+  const getSemesterDisplayName = (semesterValue) => {
+    const semesterMap = {
+      "Sem-1": "Semester 1",
+      "Sem-2": "Semester 2", 
+      "Sem-3": "Semester 3",
+      "Sem-4": "Semester 4",
+      "Sem-5": "Semester 5",
+      "Sem-6": "Semester 6",
+      "Sem-7": "Semester 7",
+      "Sem-8": "Semester 8"
+    };
+    return semesterMap[semesterValue] || semesterValue || "All Semesters";
+  };
 
   const toggleExpanded = (id) => {
     setExpandedAnnouncements(prev => ({
@@ -102,10 +112,7 @@ const AnnouncementForm = () => {
   }, []);
 
   useEffect(() => {
-    // Set HOD department for filtering announcements by department
-    if (userDepartment) {
-      setFormData(prev => ({ ...prev, department: userDepartment }));
-    }
+    // Don't auto-populate department field since we're using it for semester selection
   }, [userDepartment]);
 
   const fetchUserDepartment = async () => {
@@ -186,6 +193,24 @@ const AnnouncementForm = () => {
     setSubmitLoading(true);
     setMessage({ type: "", text: "" });
 
+    if (!formData.department) {
+      setMessage({
+        type: "error",
+        text: "❌ Please select a semester for the announcement.",
+      });
+      setSubmitLoading(false);
+      return;
+    }
+
+    if (!userDepartment) {
+      setMessage({
+        type: "error",
+        text: "❌ Unable to determine your department. Please refresh the page and try again.",
+      });
+      setSubmitLoading(false);
+      return;
+    }
+    
     if (!formData.visibleTo || formData.visibleTo.length === 0) {
       setMessage({
         type: "error",
@@ -202,12 +227,12 @@ const AnnouncementForm = () => {
         tag: formData.tag,
         endDate: formData.endDate,
         visibleTo: formData.visibleTo,
-        createdBy: "hod",
-        department: userDepartment, // Include HOD department for filtering
+        department: userDepartment, // CC's department
+        semester: formData.department, // Selected semester (stored in department field)
+        createdBy: "cc",
       };
-
-      console.log('Sending HOD announcement data:', announcementData);
-      console.log('Selected visibleTo roles:', formData.visibleTo);
+      
+      console.log('Sending CC announcement data:', announcementData);
 
       await axios.post(
         "https://backenderp.tarstech.in/api/announcements",
@@ -215,7 +240,7 @@ const AnnouncementForm = () => {
       );
       setMessage({
         type: "success",
-        text: "✅ Department announcement created successfully!",
+        text: "✅ Course announcement created successfully!",
       });
       setFormData({
         title: "",
@@ -223,7 +248,7 @@ const AnnouncementForm = () => {
         tag: "",
         endDate: "",
         visibleTo: [],
-        department: userDepartment, // Keep department after reset
+        department: "", // Reset to empty for semester selection
       });
       fetchAnnouncements();
 
@@ -245,17 +270,46 @@ const AnnouncementForm = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      // HOD can see announcements from their department + principal announcements
-      const queryParams = userDepartment ? `?department=${userDepartment}` : "";
+      // CC compose page: Only show CC's own announcements (no HOD/Principal announcements)
+      // Don't pass department parameter to avoid fetching HOD announcements
+      const queryParams = "";
 
       console.log(
-        `Fetching announcements for dashboard: ${currentDashboard} (department: ${userDepartment || 'none'})`
+        `Fetching CC's own announcements for compose page (no department filter)`
       );
 
       const res = await axios.get(
         `https://backenderp.tarstech.in/api/announcements/${currentDashboard}${queryParams}`
       );
-      setAnnouncements(res.data);
+      
+      // Additional filter: Only show announcements created by CC
+      const ccOnlyAnnouncements = res.data.filter(ann => 
+        ann.createdBy === 'cc' || ann.createdBy === 'course_coordinator'
+      );
+      
+      // Sort by date (newest first)
+      const sortedAnnouncements = ccOnlyAnnouncements.sort((a, b) => {
+        const dateA = new Date(a.date || a.createdAt);
+        const dateB = new Date(b.date || b.createdAt);
+        return dateB - dateA; // Newest first
+      });
+      
+      console.log(`Found ${res.data.length} total announcements, ${ccOnlyAnnouncements.length} CC-only announcements`);
+      
+      // Debug: Log each CC announcement
+      sortedAnnouncements.forEach((ann, index) => {
+        console.log(`CC Own Announcement ${index + 1}:`, {
+          title: ann.title,
+          createdBy: ann.createdBy,
+          department: ann.department,
+          semester: ann.semester,
+          visibleTo: ann.visibleTo,
+          endDate: ann.endDate,
+          date: ann.date || ann.createdAt
+        });
+      });
+      
+      setAnnouncements(sortedAnnouncements);
       setLoading(false);
     } catch (err) {
       console.error("Failed to fetch announcements", err);
@@ -264,27 +318,31 @@ const AnnouncementForm = () => {
   };
 
   useEffect(() => {
-    // Always try to fetch announcements when component mounts
+    // Fetch user department first
+    fetchUserDepartment();
+    // Load CC's own announcements directly (no dependency on department)
     fetchAnnouncements();
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/20 to-pink-600/20 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-orange-400/20 to-red-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-yellow-400/20 to-orange-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-red-400/10 to-orange-600/10 rounded-full blur-3xl"></div>
       </div>
 
       <div className="max-w-7xl mx-auto relative z-0">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-4">
-            🏢 Department Announcement Dashboard
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-orange-800 to-red-800 bg-clip-text text-transparent mb-4">
+            🎯 Course Coordinator Dashboard
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Create and manage department-wide announcements for{" "}
-            all department members - students, faculty and staff
+            Create and manage course announcements for students in{" "}
+            {userDepartment
+              ? `${userDepartment} department`
+              : "your department"}
           </p>
         </div>
 
@@ -293,15 +351,18 @@ const AnnouncementForm = () => {
           <div className="xl:w-2/2">
             <div className="backdrop-blur-xl bg-white/80 border border-white/20 rounded-2xl shadow-2xl p-8 ">
               <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white text-xl">🏢</span>
+                <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-white text-xl">🎯</span>
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Create Department Announcement
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                    Create Course Announcement
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    Department-specific announcement for selected roles in {userDepartment || 'your department'}
+                    For students in{" "}
+                    {formData.department
+                      ? `${formData.department} semester`
+                      : "selected semester"}
                   </p>
                 </div>
               </div>
@@ -322,85 +383,86 @@ const AnnouncementForm = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-6">
                   <div className="group">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-blue-600">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-orange-600">
                       📝 Title
                     </label>
                     <input
                       type="text"
                       name="title"
-                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
                       value={formData.title}
                       onChange={handleChange}
-                      placeholder="Enter department announcement title..."
+                      placeholder="Enter course announcement title..."
                       required
                     />
                   </div>
 
                   <div className="group">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-blue-600">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-orange-600">
                       📄 Description
                     </label>
                     <textarea
                       name="description"
-                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm resize-none"
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm resize-none"
                       rows="5"
                       value={formData.description}
                       onChange={handleChange}
-                      placeholder="Write your department-specific announcement..."
+                      placeholder="Write your course-related announcement..."
                       required
                     />
                   </div>
 
                   <div className="group">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-blue-600">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-orange-600">
                       🏷️ Tag
                     </label>
                     <input
                       type="text"
                       name="tag"
-                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
                       value={formData.tag}
                       onChange={handleChange}
-                      placeholder="e.g., meeting, exam, academic, departmental..."
+                      placeholder="e.g., course, syllabus, schedule, coordination..."
                       required
                     />
                   </div>
 
                   <div className="group">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-blue-600">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-orange-600">
                       📅 End Date
                     </label>
                     <input
                       type="date"
                       name="endDate"
-                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
                       value={formData.endDate}
                       onChange={handleChange}
                       required
                     />
                   </div>
 
-                  {/* <div className="group">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-blue-600">
-                      🏢 Department
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors group-focus-within:text-orange-600">
+                      🏢 Semester
                     </label>
                     <select
                       name="department"
                       value={formData.department}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
+                      className="w-full px-4 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 hover:bg-white/90 focus:bg-white shadow-sm"
                       required
                     >
-                      <option value="">Select Department</option>
-                      <option value="Mechanical">Mechanical</option>
-                      <option value="Civil">Civil</option>
-                      <option value="Electrical">Electrical</option>
-                      <option value="Computer">Computer</option>
-                      <option value="Information Technology">Information Technology</option>
-                      <option value="Electronics">Electronics</option>
-                      <option value="Chemical">Chemical</option>
+                      <option value="">All Semesters</option>
+                      <option value="Sem-1">Semester 1</option>
+                      <option value="Sem-2">Semester 2</option>
+                      <option value="Sem-3">Semester 3</option>
+                      <option value="Sem-4">Semester 4</option>
+                      <option value="Sem-5">Semester 5</option>
+                      <option value="Sem-6">Semester 6</option>
+                      <option value="Sem-7">Semester 7</option>
+                      <option value="Sem-8">Semester 8</option>
                     </select>
-                  </div> */}
+                  </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -409,18 +471,18 @@ const AnnouncementForm = () => {
                     <div className="grid grid-cols-1 gap-3">
                       {roles.map((role) => (
                         <label
-                          key={role.value}
+                          key={role}
                           className="flex items-center gap-3 p-3 bg-white/50 backdrop-blur-sm border border-gray-200 rounded-xl hover:bg-white/80 transition-all duration-300 cursor-pointer group"
                         >
                           <input
                             type="checkbox"
-                            value={role.value}
-                            checked={formData.visibleTo.includes(role.value)}
+                            value={role}
+                            checked={formData.visibleTo.includes(role)}
                             onChange={handleCheckboxChange}
-                            className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-all duration-200"
+                            className="h-5 w-5 text-orange-600 focus:ring-orange-500 border-gray-300 rounded transition-all duration-200"
                           />
-                          <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-                            {role.icon} {role.display.toUpperCase()}
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors">
+                            🎓 STUDENTS
                           </span>
                         </label>
                       ))}
@@ -431,7 +493,7 @@ const AnnouncementForm = () => {
                 <button
                   type="submit"
                   disabled={submitLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-4 px-6 rounded-xl hover:from-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-300 font-semibold text-lg shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {submitLoading ? (
                     <div className="flex items-center justify-center gap-3">
@@ -439,7 +501,7 @@ const AnnouncementForm = () => {
                       <span>Creating...</span>
                     </div>
                   ) : (
-                    "🏢 Create Department Announcement"
+                    "🎯 Create Course Announcement"
                   )}
                 </button>
               </form>
@@ -450,19 +512,19 @@ const AnnouncementForm = () => {
           <div className="xl:w-2/2">
             <div className="backdrop-blur-xl bg-white/80 border border-white/20 rounded-2xl shadow-2xl p-8 h-full transition-all duration-500 hover:shadow-3xl hover:bg-white/90">
               <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
                   <span className="text-white text-xl">📋</span>
                 </div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Department Announcements
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                  My Course Announcements
                 </h2>
               </div>
 
               {loading ? (
                 <div className="flex flex-col justify-center items-center h-64 space-y-4">
                   <div className="relative">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200"></div>
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-600 absolute top-0 left-0"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-orange-200"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-orange-600 absolute top-0 left-0"></div>
                   </div>
                   <p className="text-gray-600 font-medium">
                     Loading announcements...
@@ -474,11 +536,10 @@ const AnnouncementForm = () => {
                     <span className="text-4xl">📭</span>
                   </div>
                   <p className="text-gray-500 text-center text-lg font-medium">
-                    No department announcements found.
+                    No course announcements found.
                   </p>
                   <p className="text-gray-400 text-sm text-center max-w-md">
-                    Create your first department announcement for all department
-                    members!
+                    Create your first course announcement!
                   </p>
                 </div>
               ) : (
@@ -493,52 +554,62 @@ const AnnouncementForm = () => {
                       }}
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-purple-600 transition-colors line-clamp-2">
+                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-orange-600 transition-colors line-clamp-2">
                           {announcement.title}
                         </h3>
                         <div className="flex-shrink-0 ml-4">
-                          <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
+                          <div className="w-3 h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full animate-pulse"></div>
                         </div>
                       </div>
 
-                      <p className={`text-gray-600 text-sm mb-4 leading-relaxed break-all whitespace-normal ${expandedAnnouncements[announcement._id] ? '' : 'line-clamp-3'}`}>
+                      <p className={`text-gray-600 text-sm mb-4 leading-relaxed ${expandedAnnouncements[announcement._id] ? '' : 'line-clamp-3'}`}>
                         {announcement.description}
                       </p>
 
                       {announcement.description.length > 200 && (
                         <button
                           onClick={() => toggleExpanded(announcement._id)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-4"
+                          className="text-orange-600 hover:text-orange-800 text-sm font-medium mb-4"
                         >
                           {expandedAnnouncements[announcement._id] ? 'Read Less' : 'Read More'}
                         </button>
                       )}
 
                       <div className="flex flex-wrap gap-2 mb-3">
-                        <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 text-xs font-semibold rounded-full">
+                        <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-orange-100 to-red-200 text-orange-800 text-xs font-semibold rounded-full">
                           🏷️ {announcement.tag}
                         </span>
-                        <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-100 to-green-200 text-green-800 text-xs font-semibold rounded-full">
-                          👥 {announcement.visibleTo.length} roles
+                        <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-100 to-orange-200 text-blue-800 text-xs font-semibold rounded-full">
+                          🎓 {getSemesterDisplayName(announcement.semester)}
+                        </span>
+                        <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-100 to-yellow-200 text-green-800 text-xs font-semibold rounded-full">
+                          👥 {announcement.visibleTo && announcement.visibleTo.length > 0 ? announcement.visibleTo.length : 1} role{announcement.visibleTo && announcement.visibleTo.length !== 1 ? 's' : ''}
                         </span>
                       </div>
 
                       <div className="flex flex-wrap gap-2 text-xs">
-                        {announcement.visibleTo.map((role) => {
-                          const roleInfo = roles.find(r => r.value === role) || 
-                                         { value: role, display: role.replace("_", " "), icon: "👤" };
-                          return (
-                            <span
-                              key={role}
-                              className="px-2 py-1 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-lg font-medium"
-                            >
-                              {roleInfo.icon} {roleInfo.display.toUpperCase()}
-                            </span>
-                          );
-                        })}
+                        {announcement.visibleTo.map((role) => (
+                          <span
+                            key={role}
+                            className="px-2 py-1 bg-gradient-to-r from-orange-100 to-red-100 text-orange-700 rounded-lg font-medium"
+                          >
+                            🎓 STUDENTS
+                          </span>
+                        ))}
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-gray-200/50">
+                      <div className="mt-4 pt-3 border-t border-gray-200/50 flex flex-wrap gap-2">
+                        <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-100 to-blue-100 text-green-700 text-xs font-semibold rounded-full">
+                          📅 Created:{" "}
+                          {new Date(announcement.date || announcement.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                        </span>
                         <span className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-red-100 to-orange-100 text-red-700 text-xs font-semibold rounded-full">
                           ⏰ Expires:{" "}
                           {new Date(announcement.endDate).toLocaleDateString(
