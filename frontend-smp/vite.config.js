@@ -33,13 +33,23 @@ export default defineConfig(({ mode }) => {
         ".tarstech.in", // This allows any subdomain of tarstech.in
         "167.172.216.231", // Add your server IP here for direct access if needed
       ],
-      proxy: {
-        "/api": {
-          target: "http://localhost:4000", // Backend API URL
-          changeOrigin: true, // Important for API calls, especially if your backend is on a different port or domain
-          secure: false, // Disable SSL validation (useful for local dev with non-https backend)
-        },
-      },
+    proxy: {
+      "/api": {
+        target: "http://backenderp.tarstech.in:4000", // <-- use http:// NOT https://
+        changeOrigin: true,
+        secure: false, // fine for dev; keeps things tolerant of certs (no-op for http)
+        rewrite: (path) => path.replace(/^\/api/, ""),
+        configure: (proxy) => {
+          proxy.on('error', (err, req, res) => {
+            console.error('[vite-proxy] proxy error:', err && (err.message || err));
+            if (!res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+            }
+            res.end(JSON.stringify({ error: 'proxy_error', details: err && err.message }));
+          });
+        }
+      }
+    }
     },
   };
 });

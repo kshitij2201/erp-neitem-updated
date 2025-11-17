@@ -56,7 +56,7 @@ const testAuth = async () => {
   } catch (error) {
     console.log("❌ Network error:", error.message);
     console.log(
-      "💡 Suggestion: Check if the backend server is running on http://localhost:4000"
+      "💡 Suggestion: Check if the backend server is running on https://backenderp.tarstech.in"
     );
   }
 };

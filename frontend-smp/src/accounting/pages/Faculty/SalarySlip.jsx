@@ -737,7 +737,7 @@ export default function SalarySlip() {
                 background: #ffffff !important;
                 color: #000000 !important;
                 -webkit-print-color-adjust: exact;
-                color-adjust: exact;
+                print-color-adjust: exact;
               }
               .institute-details {
                 gap: 16px;
@@ -1357,7 +1357,6 @@ export default function SalarySlip() {
                 background: #ffffff !important;
                 color: #000000 !important;
                 -webkit-print-color-adjust: exact;
-                color-adjust: exact;
                 print-color-adjust: exact;
               }
               .society-name, .institute-name, .institute-subname, .institute-affiliation, .institute-address, .institute-contact {
