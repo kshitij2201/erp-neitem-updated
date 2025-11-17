@@ -90,19 +90,19 @@ const Dashboard = () => {
           streamsResponse,
         ] = await Promise.all([
           fetch(
-            "/api/superadmin/students",
+            "https://backenderp.tarstech.in/api/superadmin/students",
             { headers }
           ),
           fetch(
-            `/api/superadmin/faculties?role=${facultyRoleFilter}`,
+            `https://backenderp.tarstech.in/api/superadmin/faculties?role=${facultyRoleFilter}`,
             { headers }
           ),
           fetch(
-            "/api/superadmin/departments",
+            "https://backenderp.tarstech.in/api/superadmin/departments",
             { headers }
           ),
           fetch(
-            "/api/superadmin/streams",
+            "https://backenderp.tarstech.in/api/superadmin/streams",
             { headers }
           ),
         ]);
