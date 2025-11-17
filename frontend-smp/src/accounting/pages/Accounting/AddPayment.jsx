@@ -54,6 +54,7 @@ export default function AddPayment() {
   const [error, setError] = useState("");
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
   useEffect(() => {
     fetchStudents();
@@ -105,30 +106,48 @@ export default function AddPayment() {
   const academicYears = generateAcademicYears();
 
   const fetchStudents = async () => {
+    setLoadingStudents(true);
     try {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
+      // Fetch all students without pagination limit
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/students",
+        "http://localhost:4000/api/students?limit=5000", // Increased limit to ensure all students are fetched
         {
           headers,
         }
       );
 
+      // Handle different response formats
+      let studentData = [];
+      if (Array.isArray(response.data)) {
+        studentData = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        studentData = response.data.data;
+      } else if (response.data && Array.isArray(response.data.students)) {
+        studentData = response.data.students;
+      }
+
+      console.log(`Fetched ${studentData.length} students from database`);
+
       // Sort students by name in ascending order
-      const sortedStudents = response.data.sort((a, b) => {
-        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+      const sortedStudents = studentData.sort((a, b) => {
+        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase().trim();
+        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase().trim();
         return nameA.localeCompare(nameB);
       });
+
       setStudents(sortedStudents);
+      setLoadingStudents(false);
+      console.log('Students loaded successfully:', sortedStudents.length);
     } catch (err) {
       console.error("Error fetching students:", err);
       // Set empty array instead of using mock data
       setStudents([]);
+      setLoadingStudents(false);
       setError(
-        "Failed to load students. Please ensure the backend server is running and students are properly configured."
+        `Failed to load students. Please ensure the backend server is running and students are properly configured. Error: ${err.message}`
       );
     }
   };
@@ -139,13 +158,14 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/fee-heads",
+        "http://localhost:4000/api/fee-heads",
         {
           headers,
         }
       );
       // Remove duplicates based on title and sort in ascending order
-      const uniqueFeeHeads = response.data.filter(
+      const feeHeadsData = Array.isArray(response.data) ? response.data : [];
+      const uniqueFeeHeads = feeHeadsData.filter(
         (head, index, self) =>
           index ===
           self.findIndex(
@@ -172,10 +192,10 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/payments?limit=50",
+        "http://localhost:4000/api/payments?limit=50",
         { headers }
       );
-      setRecentPayments(response.data);
+      setRecentPayments(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching recent payments:", err);
       // Set empty array instead of using mock data
@@ -194,7 +214,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+        `http://localhost:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
         { headers }
       );
       setPendingFees(response.data || []);
@@ -212,7 +232,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const paymentsResponse = await axios.get(
-        `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
+        `http://localhost:4000/api/payments?studentId=${studentId}`,
         { headers }
       );
       const payments = paymentsResponse.data || [];
@@ -368,7 +388,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/payments",
+        "http://localhost:4000/api/payments",
         paymentData,
         { headers }
       );
@@ -2448,7 +2468,9 @@ export default function AddPayment() {
                   </div>
                   <div className="bg-white bg-opacity-20 rounded-lg px-3 py-1 mr-4 flex items-center">
                     <span className="mr-2">👥</span>
-                    <span>{students.length} Students</span>
+                    <span>
+                      {loadingStudents ? "Loading..." : `${students.length} Students`}
+                    </span>
                   </div>
                   <div className="bg-white bg-opacity-20 rounded-lg px-3 py-1 flex items-center">
                     <span className="mr-2">💰</span>
@@ -2844,6 +2866,15 @@ export default function AddPayment() {
                       <label className="text-sm font-bold text-gray-800 mb-3 flex items-center">
                         <span className="mr-2">👤</span>
                         Select Student *
+                        <button
+                          type="button"
+                          onClick={fetchStudents}
+                          disabled={loadingStudents}
+                          className="ml-2 text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+                          title="Refresh student list"
+                        >
+                          {loadingStudents ? "⟳" : "🔄"}
+                        </button>
                       </label>
                       <div className="relative">
                         <select
@@ -2851,13 +2882,23 @@ export default function AddPayment() {
                           value={formData.studentId}
                           onChange={handleInputChange}
                           required
-                          className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-lg font-medium transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          disabled={loadingStudents}
+                          className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-lg font-medium transition-all duration-200 bg-white shadow-sm hover:shadow-md disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
-                          <option value="">-- Select Student --</option>
-                          {students.map((student) => (
+                          <option value="">
+                            {loadingStudents
+                              ? "Loading students..."
+                              : `-- Select Student (${students.length} available) --`
+                            }
+                          </option>
+                          {!loadingStudents && students.map((student) => (
                             <option key={student._id} value={student._id}>
-                              {student.firstName} {student.lastName} (
-                              {student.studentId})
+                              {student.firstName} {student.lastName} - {student.studentId}
+                              {student.currentSemester && ` (Sem ${student.currentSemester})`}
+                              {typeof student.department === "object"
+                                ? ` - ${student.department?.name}`
+                                : student.department ? ` - ${student.department}` : ''
+                              }
                             </option>
                           ))}
                         </select>

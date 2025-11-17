@@ -25,7 +25,7 @@ const Signup = () => {
 
     try {
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/auth/register",
+        "http://localhost:4000/api/auth/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

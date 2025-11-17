@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [data, setData] = useState({
     totalFeePaid: "Loading...",
     pendingFees: "Loading...",
+    totalAppliedFeeHeads: "Loading...",
     totalExpenses: "Loading...",
     facultySalary: "Loading...",
     storeItems: "Loading...",
@@ -17,13 +18,19 @@ export default function Dashboard() {
     facultyPF: "Loading...",
     facultyGratuity: "Loading...",
     facultyCompliance: "Loading...",
+    totalFeePaidRaw: 0,
+    totalAppliedFeeHeadsRaw: 0,
   });
 
+  const [analyticsData, setAnalyticsData] = useState({});
+  const [revenueData, setRevenueData] = useState({});
+
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [collectionRate, setCollectionRate] = useState(0);
 
   useEffect(() => {
-    // Update time every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -32,86 +39,122 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
+    fetchDashboardData();
+  }, []);
 
-      // Safe API fetch function with error handling
-      const safeFetch = async (url, defaultValue = null) => {
-        try {
-          const token = localStorage.getItem("token");
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    setError(null);
 
-          const response = await fetch(url, { headers });
+    // Safe API fetch function with error handling
+    const safeFetch = async (url, defaultValue = null) => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-          if (!response.ok) {
-            console.warn(`API ${url} returned ${response.status}`);
-            return defaultValue;
-          }
+        const response = await fetch(url, { headers });
 
-          const result = await response.json();
-          return result;
-        } catch (error) {
-          console.warn(`API ${url} failed:`, error.message);
+        if (!response.ok) {
+          console.warn(`API ${url} returned ${response.status}`);
           return defaultValue;
         }
-      };
 
-      try {
-        // Only fetch from APIs that likely exist based on the backend routes
-        const results = await Promise.allSettled([
-          safeFetch("https://backenderp.tarstech.in/api/students", []),
-          safeFetch("https://backenderp.tarstech.in/api/faculty/faculties", []),
-        ]);
-
-        const [students, faculty] = results.map((r) =>
-          r.status === "fulfilled" ? r.value : null
-        );
-
-        // Calculate basic stats from available data
-        const studentCount = students?.length || 0;
-        const facultyCount = faculty?.length || 0;
-
-        setData((prevData) => ({
-          ...prevData,
-          totalFeePaid: studentCount > 0 ? "₹2,50,000" : "₹0", // Mock data
-          pendingFees: studentCount > 0 ? "₹75,000" : "₹0", // Mock data
-          totalExpenses: "₹1,80,000", // Mock data
-          facultySalary:
-            facultyCount > 0 ? `${facultyCount} faculty members` : "No faculty",
-          storeItems: "25 items", // Mock data
-          maintenanceRequests: "3 pending", // Mock data
-          departmentPurchases: "₹45,000", // Mock data
-          taxStatus: "Current",
-          facultyIncomeTax: "Compliant",
-          facultyPF: "Updated",
-          facultyGratuity: "Processed",
-          facultyCompliance: "All Clear",
-        }));
+        const result = await response.json();
+        return result;
       } catch (error) {
-        console.error("Dashboard data fetch error:", error);
-        // Set error state
-        setData((prevData) => ({
-          ...prevData,
-          totalFeePaid: "N/A",
-          pendingFees: "N/A",
-          totalExpenses: "N/A",
-          facultySalary: "N/A",
-          storeItems: "N/A",
-          maintenanceRequests: "N/A",
-          departmentPurchases: "N/A",
-          taxStatus: "N/A",
-          facultyIncomeTax: "N/A",
-          facultyPF: "N/A",
-          facultyGratuity: "N/A",
-          facultyCompliance: "N/A",
-        }));
-      } finally {
-        setIsLoading(false);
+        console.warn(`API ${url} failed:`, error.message);
+        return defaultValue;
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    try {
+      // Fetch real financial data from database
+      const [accountsResult, financialSummaryResult, revenueResult] = await Promise.allSettled([
+        safeFetch("http://localhost:4000/api/accounts/stats/overview", {}),
+        safeFetch("http://localhost:4000/api/accounts/financial-summary", {}),
+        safeFetch("http://localhost:4000/api/accounts/revenue/breakdown", {}),
+      ]);
+
+      const accountsData = accountsResult.status === "fulfilled" && accountsResult.value?.success 
+        ? accountsResult.value.data 
+        : { totalPaid: 0, totalBalance: 0, totalAccounts: 0, totalAmount: 0, totalExpenses: 0 };
+      const financialSummaryData = financialSummaryResult.status === "fulfilled" 
+        ? financialSummaryResult.value 
+        : { totalFeesCollected: 0, pendingFees: 0, totalAppliedFeeHeads: 0, totalExpenses: 0 };
+      const revenueFetchedData = revenueResult.status === "fulfilled" 
+        ? revenueResult.value 
+        : {};
+
+      // Set analytics and revenue data
+      setAnalyticsData({});
+      setRevenueData(revenueFetchedData);
+
+      // Calculate basic stats from available data
+      const studentCount = accountsData.totalAccounts || 0;
+      const facultyCount = 0; // Not fetching faculty anymore
+
+      // Use financial summary data as primary source, fallback to accounts data
+      const totalFeePaid = financialSummaryData.totalFeesCollected || accountsData.totalPaid || 0;
+      const pendingFees = financialSummaryData.pendingFees || accountsData.totalBalance || 0;
+      const totalAppliedFeeHeads = financialSummaryData.totalAppliedFeeHeads || 0;
+      const totalExpenses = financialSummaryData.totalExpenses || accountsData.totalExpenses || 0;
+      const facultySalary = financialSummaryData.facultySalaries || 0;
+
+      console.log('Dashboard data received:', {
+        accountsData,
+        financialSummaryData,
+        calculated: { totalFeePaid, pendingFees, totalAppliedFeeHeads, totalExpenses, facultySalary }
+      });
+
+      // Calculate collection rate
+      const calculatedCollectionRate = totalAppliedFeeHeads > 0 ? 
+        ((totalFeePaid / totalAppliedFeeHeads) * 100).toFixed(1) : 0;
+      setCollectionRate(calculatedCollectionRate);
+
+      setData((prevData) => ({
+        ...prevData,
+        totalFeePaid: totalFeePaid ? `₹${totalFeePaid.toLocaleString('en-IN')}` : "₹0",
+        pendingFees: pendingFees ? `₹${pendingFees.toLocaleString('en-IN')}` : "₹0",
+        totalAppliedFeeHeads: totalAppliedFeeHeads ? `₹${totalAppliedFeeHeads.toLocaleString('en-IN')}` : "₹0",
+        totalExpenses: totalExpenses ? `₹${totalExpenses.toLocaleString('en-IN')}` : "₹0",
+        facultySalary: facultySalary ? `₹${facultySalary.toLocaleString('en-IN')}` : "₹0",
+        storeItems: "0 items",
+        maintenanceRequests: "0 pending",
+        departmentPurchases: "₹0",
+        taxStatus: "Unknown",
+        facultyIncomeTax: "Unknown",
+        facultyPF: "Unknown",
+        facultyGratuity: "Unknown",
+        facultyCompliance: "Unknown",
+        totalFeePaidRaw: totalFeePaid,
+        totalAppliedFeeHeadsRaw: totalAppliedFeeHeads,
+      }));
+    } catch (error) {
+      console.error("Dashboard data fetch error:", error);
+      setError("Failed to load dashboard data. Please check your connection.");
+      // Set error state
+      setData((prevData) => ({
+        ...prevData,
+        totalFeePaid: "₹0",
+        pendingFees: "₹0",
+        totalAppliedFeeHeads: "₹0",
+        totalExpenses: "₹0",
+        facultySalary: "₹0",
+        storeItems: "0 items",
+        maintenanceRequests: "0 pending",
+        departmentPurchases: "₹0",
+        taxStatus: "Unknown",
+        facultyIncomeTax: "Unknown",
+        facultyPF: "Unknown",
+        facultyGratuity: "Unknown",
+        facultyCompliance: "Unknown",
+        totalFeePaidRaw: 0,
+        totalAppliedFeeHeadsRaw: 0,
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatTime = (date) => {
     return date.toLocaleString("en-IN", {
@@ -173,11 +216,14 @@ export default function Dashboard() {
                   label="New Payment"
                   color="bg-purple-500 hover:bg-purple-600"
                 />
-                <QuickActionButton
-                  icon="🔄"
-                  label="Sync Data"
-                  color="bg-orange-500 hover:bg-orange-600"
-                />
+                <button
+                  onClick={fetchDashboardData}
+                  disabled={isLoading}
+                  className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-3 group"
+                >
+                  <span className="text-lg group-hover:animate-spin">{isLoading ? "🔄" : "🔄"}</span>
+                  <span>{isLoading ? "Refreshing..." : "Sync Data"}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -186,17 +232,84 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-red-600 text-xl">⚠️</span>
+              <div>
+                <h3 className="text-red-800 font-semibold">Connection Error</h3>
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+              <button
+                onClick={fetchDashboardData}
+                className="ml-auto bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* System Status with Modern Design */}
         {/* <div className="mb-8">
           <SystemStatus />
         </div> */}
 
         {/* Key Metrics Dashboard */}
-        <div className="mb-8">
+        <div className="mb-8 relative">
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600 font-medium">Loading dashboard data...</p>
+              </div>
+            </div>
+          )}
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
             <span className="text-3xl">📈</span>
             Key Performance Metrics
           </h2>
+
+          {/* Fee Collection Summary */}
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="text-xl">💰</span>
+              Fee Collection Overview
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-white rounded-lg border border-blue-200 shadow-sm">
+                <div className="text-sm text-gray-600 font-medium">Total Fees Applied</div>
+                <div className="text-xl font-bold text-blue-600 mt-1">
+                  {data.totalAppliedFeeHeads}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">From Fee Heads</div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
+                <div className="text-sm text-gray-600 font-medium">Total Collected</div>
+                <div className="text-xl font-bold text-green-600 mt-1">
+                  {data.totalFeePaid}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Paid by Students</div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border border-red-200 shadow-sm">
+                <div className="text-sm text-gray-600 font-medium">Total Pending</div>
+                <div className={`text-xl font-bold mt-1 ${
+                  parseFloat(data.pendingFees.replace(/[₹,]/g, '')) > 0 ? "text-red-600" : "text-green-700"
+                }`}>
+                  {data.pendingFees}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">To Collect</div>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-white/50 rounded-lg border border-blue-100">
+              <div className="text-sm text-gray-700">
+                <strong>Collection Rate:</strong> {collectionRate}% collected
+                ({data.totalFeePaidRaw.toLocaleString('en-IN')} out of {data.totalAppliedFeeHeadsRaw.toLocaleString('en-IN')})
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <ModernStatCard
               title="Total Fee Collected"
@@ -217,13 +330,22 @@ export default function Dashboard() {
               delay="100"
             />
             <ModernStatCard
+              title="Total Applied Fee Heads"
+              value={data.totalAppliedFeeHeads}
+              icon="💰"
+              trend="+5.0%"
+              trendDirection="up"
+              color="from-cyan-500 to-teal-600"
+              delay="200"
+            />
+            <ModernStatCard
               title="Total Expenses"
               value={data.totalExpenses}
               icon="💸"
               trend="+3.1%"
               trendDirection="up"
               color="from-red-500 to-pink-600"
-              delay="200"
+              delay="300"
             />
             {/* <ModernStatCard
               title="Faculty Salary"
@@ -232,14 +354,14 @@ export default function Dashboard() {
               trend="+5.7%"
               trendDirection="up"
               color="from-indigo-500 to-purple-600"
-              delay="300"
+              delay="400"
             /> */}
           </div>
         </div>
 
         {/* Analytics Section */}
         <div className="mb-8">
-          <UnifiedAnalytics />
+          <UnifiedAnalytics analyticsData={analyticsData} revenueData={revenueData} />
         </div>
 
         {/* Secondary Metrics */}

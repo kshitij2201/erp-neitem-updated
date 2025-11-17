@@ -298,9 +298,37 @@ const updateSalaryRecord = async (req, res) => {
   }
 };
 
+// Get total salary amount
+const getTotalSalary = async (req, res) => {
+  try {
+    const result = await SalaryRecord.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$netSalary" }
+        }
+      }
+    ]);
+
+    const total = result.length > 0 ? result[0].total : 0;
+
+    res.status(200).json({
+      success: true,
+      total: total
+    });
+  } catch (error) {
+    console.error("Error calculating total salary:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to calculate total salary"
+    });
+  }
+};
+
 export {
   addSalaryRecord,
   getAllSalaryRecords,
   getSalaryRecordById,
   updateSalaryRecord,
+  getTotalSalary,
 };

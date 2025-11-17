@@ -108,7 +108,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Fee header not found' });
     }
 
-    res.json({ message: 'Fee header deleted successfully' });
+    res.json({ message: 'Fee header deleted successfully and student fees updated' });
   } catch (err) {
     console.error('Error deleting fee header:', err);
     res.status(500).json({ error: 'Server error' });

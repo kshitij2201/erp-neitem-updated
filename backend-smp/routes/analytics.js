@@ -26,6 +26,35 @@ const analyticsData = {
   ],
 };
 
+// Analytics overview endpoint
+router.get("/overview", async (req, res) => {
+  try {
+    // Get real data from database
+    const totalBooks = await Book.countDocuments();
+    const issuedBooks = await Book.countDocuments({ status: "issued" });
+    const totalStudents = await Student.countDocuments();
+    
+    const overview = {
+      totalBooks,
+      issuedBooks,
+      availableBooks: totalBooks - issuedBooks,
+      totalStudents,
+      utilizationRate: totalBooks > 0 ? ((issuedBooks / totalBooks) * 100).toFixed(2) : 0,
+      // Include some mock data for now
+      totalUsers: analyticsData.totalUsers,
+      activeUsers: analyticsData.activeUsers,
+      pageViews: analyticsData.pageViews,
+      registrationsToday: analyticsData.registrationsToday,
+      revenue: analyticsData.revenue
+    };
+    
+    res.json(overview);
+  } catch (error) {
+    console.error("Analytics overview error:", error);
+    res.status(500).json({ error: "Failed to fetch analytics overview" });
+  }
+});
+
 // Combined route that uses actual DB data and mock data
 router.get("/summary", async (req, res) => {
   try {

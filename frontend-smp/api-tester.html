@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP API Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .api-button {
+            transition: all 0.3s ease;
+        }
+        .api-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .response-json {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+                    🔗 ERP API Tester - Dashboard Endpoints
+                </h1>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8" id="apiGrid">
+                    <!-- API buttons will be inserted here -->
+                </div>
+
+                <!-- Response Display -->
+                <div id="responseContainer" class="hidden bg-gray-50 rounded-lg p-6 border border-gray-200 mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4" id="responseTitle">API Response</h2>
+                    <div id="responseContent"></div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="bg-blue-50 rounded-lg p-6 border border-blue-200 mb-6">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-3">📋 How to Use:</h3>
+                    <ul class="text-blue-700 space-y-2">
+                        <li>• Click any API button to test the endpoint</li>
+                        <li>• Response will be displayed below in JSON format</li>
+                        <li>• Green responses indicate success, red indicates errors</li>
+                        <li>• All endpoints are currently unprotected for testing</li>
+                    </ul>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="flex gap-4">
+                    <button onclick="testAllAPIs()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors" id="testAllBtn">
+                        Test All APIs
+                    </button>
+                    <button onclick="clearResults()" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors">
+                        Clear Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiEndpoints = [
+            { name: 'Account Stats Overview', url: 'http://localhost:4000/api/account/stats/overview' },
+            { name: 'Account Expenses Total', url: 'http://localhost:4000/api/account/expenses/total' },
+            { name: 'Faculty Salary Total', url: 'http://localhost:4000/api/faculty/salary/total' },
+            { name: 'Analytics Overview', url: 'http://localhost:4000/api/analytics/overview' },
+            { name: 'Revenue Breakdown', url: 'http://localhost:4000/api/revenue/breakdown' },
+            { name: 'Store Items Count', url: 'http://localhost:4000/api/store/items/count' },
+            { name: 'Maintenance Requests Count', url: 'http://localhost:4000/api/maintenance/requests/count' },
+            { name: 'Purchases Total', url: 'http://localhost:4000/api/purchases/total' },
+            { name: 'Tax Status', url: 'http://localhost:4000/api/tax/status' },
+            { name: 'Faculty Tax Income', url: 'http://localhost:4000/api/faculty/tax/income' },
+            { name: 'Faculty PF Status', url: 'http://localhost:4000/api/faculty/pf/status' },
+            { name: 'Faculty Gratuity Status', url: 'http://localhost:4000/api/faculty/gratuity/status' },
+            { name: 'Faculty Compliance Status', url: 'http://localhost:4000/api/faculty/compliance/status' },
+        ];
+
+        let currentTestUrl = '';
+
+        // Initialize API grid
+        function initApiGrid() {
+            const grid = document.getElementById('apiGrid');
+            grid.innerHTML = '';
+
+            apiEndpoints.forEach((api, index) => {
+                const apiCard = document.createElement('div');
+                apiCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-blue-300 transition-colors';
+                apiCard.innerHTML = `
+                    <h3 class="font-semibold text-gray-800 mb-2">${api.name}</h3>
+                    <div class="flex gap-2 mb-3">
+                        <button onclick="testAPI('${api.url}')" class="api-button flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors" id="btn-${index}">
+                            Test API
+                        </button>
+                        <button onclick="copyToClipboard('${api.url}')" class="api-button bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700 transition-colors">
+                            Copy
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-600 break-all">${api.url}</p>
+                `;
+                grid.appendChild(apiCard);
+            });
+        }
+
+        // Test single API
+        async function testAPI(url) {
+            currentTestUrl = url;
+            const responseContainer = document.getElementById('responseContainer');
+            const responseTitle = document.getElementById('responseTitle');
+            const responseContent = document.getElementById('responseContent');
+
+            // Show loading state
+            responseContainer.classList.remove('hidden');
+            responseTitle.innerHTML = '⏳ Testing API...';
+            responseContent.innerHTML = '<div class="text-center py-8"><div class="loading inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div><p class="mt-2 text-gray-600">Loading...</p></div>';
+
+            // Disable all buttons
+            document.querySelectorAll('.api-button').forEach(btn => btn.disabled = true);
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    responseTitle.innerHTML = '✅ API Response - ' + url.split('/').pop();
+                    responseContent.innerHTML = `<div class="response-json text-green-800">${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    responseTitle.innerHTML = '❌ Error Response - ' + url.split('/').pop();
+                    responseContent.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">HTTP ${response.status}: ${response.statusText}</div><div class="response-json mt-4 text-red-800">${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (error) {
+                responseTitle.innerHTML = '❌ Network Error';
+                responseContent.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">Failed to fetch: ${error.message}</div>`;
+            } finally {
+                // Re-enable all buttons
+                document.querySelectorAll('.api-button').forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // Test all APIs
+        async function testAllAPIs() {
+            const testAllBtn = document.getElementById('testAllBtn');
+            testAllBtn.disabled = true;
+            testAllBtn.innerHTML = 'Testing All APIs...';
+
+            const responseContainer = document.getElementById('responseContainer');
+            const responseTitle = document.getElementById('responseTitle');
+            const responseContent = document.getElementById('responseContent');
+
+            responseContainer.classList.remove('hidden');
+            responseTitle.innerHTML = '⏳ Testing All APIs...';
+            responseContent.innerHTML = '<div class="text-center py-8"><div class="loading inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div><p class="mt-2 text-gray-600">Testing all endpoints...</p></div>';
+
+            const results = [];
+
+            for (const api of apiEndpoints) {
+                try {
+                    const response = await fetch(api.url);
+                    const data = await response.json();
+                    results.push({
+                        name: api.name,
+                        url: api.url,
+                        success: response.ok,
+                        status: response.status,
+                        data: data
+                    });
+                } catch (error) {
+                    results.push({
+                        name: api.name,
+                        url: api.url,
+                        success: false,
+                        error: error.message
+                    });
+                }
+            }
+
+            // Display results
+            responseTitle.innerHTML = '📊 All API Test Results';
+            let resultsHtml = '<div class="space-y-4">';
+
+            results.forEach(result => {
+                const statusClass = result.success ? 'text-green-800 bg-green-50 border-green-200' : 'text-red-800 bg-red-50 border-red-200';
+                const statusIcon = result.success ? '✅' : '❌';
+
+                resultsHtml += `
+                    <div class="border rounded-lg p-4 ${statusClass}">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-semibold">${statusIcon} ${result.name}</h4>
+                            <span class="text-sm">${result.success ? 'Success' : 'Failed'}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">${result.url}</p>
+                        ${result.success ?
+                            `<div class="response-json text-sm">${JSON.stringify(result.data, null, 2)}</div>` :
+                            `<div class="text-red-700">Error: ${result.error || 'HTTP ' + result.status}</div>`
+                        }
+                    </div>
+                `;
+            });
+
+            resultsHtml += '</div>';
+            responseContent.innerHTML = resultsHtml;
+
+            testAllBtn.disabled = false;
+            testAllBtn.innerHTML = 'Test All APIs';
+        }
+
+        // Copy to clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('API URL copied to clipboard!');
+            });
+        }
+
+        // Clear results
+        function clearResults() {
+            document.getElementById('responseContainer').classList.add('hidden');
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initApiGrid);
+    </script>
+</body>
+</html>

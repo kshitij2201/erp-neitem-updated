@@ -20,7 +20,7 @@ const Login = ({ onLogin = () => {} }) => {
         : { employeeId: emailOrId, password };
 
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/auth/login",
+        "http://localhost:4000/api/auth/login",
         {
           method: "POST",
           headers: {

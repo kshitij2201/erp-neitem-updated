@@ -41,7 +41,7 @@ const Signup = () => {
 
     try {
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/auth/signup",
+        "http://localhost:4000/api/auth/signup",
         {
           name: formData.name,
           email: formData.email,

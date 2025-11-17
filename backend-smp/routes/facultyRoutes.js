@@ -4,6 +4,7 @@ import { protect } from "../middleware/auth.js";
 import Salary from "../models/Salary.js";
 import PF from "../models/PF.js";
 import IncomeTax from "../models/IncomeTax.js";
+import GratuityRecord from "../models/GratuityRecord.js";
 import {
   facultyRegister,
   staffLogin,
@@ -34,6 +35,7 @@ import {
   assignHod,
   assignPrincipal,
 } from "../controllers/facultyHistoryController.js";
+import { getTotalSalary } from "../controllers/salaryController.js";
 import Department from "../models/Department.js";
 import Student from "../models/student.js";
 import Subject from "../models/Subject.js";
@@ -783,6 +785,60 @@ router.get("/dashboard/data", protect, async (req, res) => {
   } catch (err) {
     console.error('Faculty dashboard data error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Salary total route
+router.get("/salary/total", getTotalSalary);
+
+// Faculty tax income status
+router.get("/tax/income", async (req, res) => {
+  try {
+    const incomeTaxData = await IncomeTax.find({});
+    const status = incomeTaxData.length > 0 ? "Compliant" : "Unknown";
+    res.json({ status });
+  } catch (err) {
+    res.status(500).json({ status: "Error" });
+  }
+});
+
+// Faculty PF status
+router.get("/pf/status", async (req, res) => {
+  try {
+    const pfData = await PF.find({});
+    const status = pfData.length > 0 ? "Updated" : "Unknown";
+    res.json({ status });
+  } catch (err) {
+    res.status(500).json({ status: "Error" });
+  }
+});
+
+// Faculty gratuity status
+router.get("/gratuity/status", async (req, res) => {
+  try {
+    const gratuityData = await GratuityRecord.find({});
+    const status = gratuityData.length > 0 ? "Processed" : "Unknown";
+    res.json({ status });
+  } catch (err) {
+    res.status(500).json({ status: "Error" });
+  }
+});
+
+// Faculty compliance status
+router.get("/compliance/status", async (req, res) => {
+  try {
+    // Simple compliance check - if we have data in all tables
+    const [salaryCount, pfCount, taxCount, gratuityCount] = await Promise.all([
+      Salary.countDocuments({}),
+      PF.countDocuments({}),
+      IncomeTax.countDocuments({}),
+      GratuityRecord.countDocuments({})
+    ]);
+    
+    const status = (salaryCount > 0 && pfCount > 0 && taxCount > 0 && gratuityCount > 0) ? "All Clear" : "Pending";
+    res.json({ status });
+  } catch (err) {
+    res.status(500).json({ status: "Error" });
   }
 });
 

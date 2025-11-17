@@ -1,24 +1,230 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function StudentDetails() {
-  const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]); // Store all students for pagination
+  const [students, setStudents] = useState([]); // Current page students
   const [feeData, setFeeData] = useState({});
   const [insuranceData, setInsuranceData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [showAllFeeHeads, setShowAllFeeHeads] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [financialSummary, setFinancialSummary] = useState({
+    totalFeesCollected: 0,
+    pendingFees: 0,
+    totalExpenses: 0,
+    totalRevenue: 0,
+    netBalanceStudentFees: 0,
+    pendingCollection: 0,
+    facultySalaries: 0,
+  });
+  const studentsPerPage = 10;
+  const [totalStudents, setTotalStudents] = useState(0);
 
-  // Debounce search term to avoid too many API calls
+  // Calculate pagination values
+  const startIndex = (currentPage - 1) * studentsPerPage;
+  const endIndex = Math.min(startIndex + studentsPerPage, totalStudents);
+  const totalPages = Math.ceil(totalStudents / studentsPerPage);
+
+  // Fetch financial summary on component mount
+  useEffect(() => {
+    fetchFinancialSummary();
+  }, []);
+
+  // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
+
+  // Update students when allStudents or currentPage changes
+  useEffect(() => {
+    const currentPageStudents = allStudents.slice(startIndex, endIndex);
+    setStudents(currentPageStudents);
+  }, [allStudents, currentPage, studentsPerPage]);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleStudentClick = async (student) => {
+    setSelectedStudent(student);
+    
+    // Fetch fee data for the selected student if not already available
+    if (!feeData[student._id]) {
+      await fetchFeeHeads([student]);
+    }
+
+    // Fetch insurance data for the selected student if not already available
+    if (!insuranceData[student._id]) {
+      await fetchInsurancePolicies([student]);
+    }
+  };
+
+  const handleBackToList = () => {
+    setSelectedStudent(null);
+  };
+
+  const fetchInsurancePolicies = async (studentList) => {
+    if (!studentList || studentList.length === 0) return;
+    
+    const insuranceMap = {};
+    const token = localStorage.getItem("token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    // Process in batches to avoid overwhelming the API
+    const batchSize = 10;
+    for (let i = 0; i < studentList.length; i += batchSize) {
+      const batch = studentList.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (student) => {
+          try {
+            const res = await axios.get(
+              `http://localhost:4000/api/insurance/student/${student._id}`,
+              { headers }
+            );
+            insuranceMap[student._id] = res.data || [];
+          } catch (err) {
+            console.error(`Error fetching insurance for student ${student._id}:`, err);
+            insuranceMap[student._id] = [];
+          }
+        })
+      );
+    }
+    setInsuranceData(prev => ({ ...prev, ...insuranceMap }));
+  };
+
+  const fetchFeeHeads = async (studentList) => {
+    if (!studentList || studentList.length === 0) return;
+    
+    const feesMap = {};
+    const token = localStorage.getItem("token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    // Process in batches of 5 for faster initial load
+    const batchSize = 5;
+    for (let i = 0; i < studentList.length; i += batchSize) {
+      const batch = studentList.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (student) => {
+        try {
+          // Fetch fee heads with semester matching
+          const feeRes = await axios.get(
+            `http://localhost:4000/api/fee-heads/applicable/${student._id}`,
+            {
+              headers,
+              params: {
+                semester: student.currentSemester,
+                stream: student.stream?.name || student.stream,
+                department: student.department?.name || student.department,
+              },
+            }
+          );
+          const heads = feeRes.data;
+          console.log(
+            `Student ${student.firstName} ${student.lastName} (Sem ${student.currentSemester}): Total fee heads received: ${heads.length}`
+          );
+
+          // Filter fee heads that match student's current semester
+          const applicableHeads = heads.filter((head) => {
+            // Check if fee head is for student's current semester
+            if (head.semester && student.currentSemester) {
+              const matches = head.semester === student.currentSemester;
+              if (!matches) {
+                console.log(
+                  `Fee head "${head.title}" (Sem ${head.semester}) filtered out for student in Sem ${student.currentSemester}`
+                );
+              }
+              return matches;
+            }
+            // If no semester specified in fee head, apply to all
+            console.log(
+              `Fee head "${head.title}" has no semester - applying to all students`
+            );
+            return true;
+          });
+
+          console.log(
+            `Student ${student.firstName}: Applicable fee heads after filtering: ${applicableHeads.length}`
+          );
+
+          const total = applicableHeads.reduce((sum, h) => sum + h.amount, 0);
+          const paid = student.feesPaid || 0;
+          const pending = total - paid;
+
+          feesMap[student._id] = {
+            total,
+            paid,
+            pending,
+            heads: applicableHeads,
+            semester: student.currentSemester,
+            totalHeadsReceived: heads.length,
+            applicableHeadsCount: applicableHeads.length,
+          };
+        } catch (err) {
+          console.error(
+            `Error fetching fee heads for student ${student._id}:`,
+            err
+          );
+          // Provide fallback data instead of failing completely
+          feesMap[student._id] = {
+            total: 0,
+            paid: student.feesPaid || 0,
+            pending: 0,
+            heads: [],
+            semester: student.currentSemester,
+            totalHeadsReceived: 0,
+            applicableHeadsCount: 0,
+          };
+        }
+        })
+      );
+    }
+    setFeeData(prev => ({ ...prev, ...feesMap }));
+  };
+
+  const fetchFinancialSummary = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await axios.get("http://localhost:4000/api/accounts/financial-summary", { headers });
+
+      setFinancialSummary(response.data);
+    } catch (err) {
+      console.error("Error fetching financial summary:", err);
+      // Fallback to zero values
+      setFinancialSummary({
+        totalFeesCollected: 0,
+        pendingFees: 0,
+        totalExpenses: 0,
+        totalRevenue: 0,
+        netBalanceStudentFees: 0,
+        pendingCollection: 0,
+        facultySalaries: 0,
+      });
+    }
+  };
+
+
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -29,22 +235,33 @@ export default function StudentDetails() {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        // Use local API for students with search term
+        // Fetch all students for search (no pagination in API call)
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students",
+          "http://localhost:4000/api/students/public",
           {
-            params: { search: debouncedSearchTerm },
-            headers,
+            params: { 
+              search: debouncedSearchTerm,
+              limit: 10000, // Get all students
+              page: 1
+            }
           }
         );
-        const studentList = res.data;
-        setStudents(studentList);
-
-        // Fetch related data for the filtered students in parallel
-        await Promise.all([
-          fetchFeeHeads(studentList),
-          fetchInsurancePolicies(studentList),
-        ]);
+        
+        // Parse response - get all students
+        let allStudentList = [];
+        if (res.data) {
+          if (Array.isArray(res.data.data)) {
+            allStudentList = res.data.data;
+          } else if (Array.isArray(res.data.students)) {
+            allStudentList = res.data.students;
+          } else if (Array.isArray(res.data)) {
+            allStudentList = res.data;
+          }
+        }
+        
+        console.log('Fetched all students:', allStudentList.length);
+        setAllStudents(allStudentList);
+        setTotalStudents(allStudentList.length);
       } catch (err) {
         console.error("API call failed:", err);
         if (err.response?.status === 401) {
@@ -53,127 +270,18 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on http://localhost:4000"
           );
         } else {
           setError(
             "Failed to load student data. Please check your backend server."
           );
         }
+        setAllStudents([]);
         setStudents([]);
       } finally {
         setLoading(false);
       }
-    };
-
-    const fetchFeeHeads = async (studentList) => {
-      const feesMap = {};
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      await Promise.all(
-        studentList.map(async (student) => {
-          try {
-            // Fetch fee heads with semester matching
-            const feeRes = await axios.get(
-              `https://backenderp.tarstech.in/api/fee-heads/applicable/${student._id}`,
-              {
-                headers,
-                params: {
-                  semester: student.currentSemester,
-                  stream: student.stream?.name || student.stream,
-                  department: student.department?.name || student.department,
-                },
-              }
-            );
-            const heads = feeRes.data;
-            console.log(
-              `Student ${student.firstName} ${student.lastName} (Sem ${student.currentSemester}): Total fee heads received: ${heads.length}`
-            );
-
-            // Filter fee heads that match student's current semester
-            const applicableHeads = showAllFeeHeads
-              ? heads
-              : heads.filter((head) => {
-                  // Check if fee head is for student's current semester
-                  if (head.semester && student.currentSemester) {
-                    const matches = head.semester === student.currentSemester;
-                    if (!matches) {
-                      console.log(
-                        `Fee head "${head.title}" (Sem ${head.semester}) filtered out for student in Sem ${student.currentSemester}`
-                      );
-                    }
-                    return matches;
-                  }
-                  // If no semester specified in fee head, apply to all
-                  console.log(
-                    `Fee head "${head.title}" has no semester - applying to all students`
-                  );
-                  return true;
-                });
-
-            console.log(
-              `Student ${student.firstName}: Applicable fee heads after filtering: ${applicableHeads.length}`
-            );
-
-            const total = applicableHeads.reduce((sum, h) => sum + h.amount, 0);
-            const paid = student.feesPaid || 0;
-            const pending = total - paid;
-
-            feesMap[student._id] = {
-              total,
-              paid,
-              pending,
-              heads: applicableHeads,
-              semester: student.currentSemester,
-              totalHeadsReceived: heads.length,
-              applicableHeadsCount: applicableHeads.length,
-            };
-          } catch (err) {
-            console.error(
-              `Error fetching fee heads for student ${student._id}:`,
-              err
-            );
-            // Provide fallback data instead of failing completely
-            feesMap[student._id] = {
-              total: 0,
-              paid: student.feesPaid || 0,
-              pending: 0,
-              heads: [],
-              semester: student.currentSemester,
-              totalHeadsReceived: 0,
-              applicableHeadsCount: 0,
-            };
-          }
-        })
-      );
-      setFeeData(feesMap);
-    };
-
-    const fetchInsurancePolicies = async (studentList) => {
-      const insuranceMap = {};
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      await Promise.all(
-        studentList.map(async (student) => {
-          try {
-            const res = await axios.get(
-              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
-              { headers }
-            );
-            insuranceMap[student._id] = res.data;
-          } catch (err) {
-            console.error(
-              `Error fetching insurance for student ${student._id}:`,
-              err
-            );
-            // Insurance API might not exist, so fail gracefully
-            insuranceMap[student._id] = [];
-          }
-        })
-      );
-      setInsuranceData(insuranceMap);
     };
 
     fetchStudents();
@@ -255,217 +363,109 @@ export default function StudentDetails() {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white p-4 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-4">🧑 Student Detail Records</h1>
-
-        {/* Search Section */}
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Students
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, ID, or email..."
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+      {selectedStudent ? (
+        // Detailed Student View
+        <div className="space-y-6">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleBackToList}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 flex items-center space-x-2"
+            >
+              ← Back to List
+            </button>
+            <h1 className="text-3xl font-bold">🧑 Student Details</h1>
           </div>
-          <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={showAllFeeHeads}
-                onChange={(e) => setShowAllFeeHeads(e.target.checked)}
-                className="form-checkbox h-5 w-5 text-blue-600"
-              />
-              <span className="text-sm text-gray-700">
-                Show All Fee Heads (Ignore Semester)
-              </span>
-            </label>
-          </div>
-        </div>
 
-        {/* Search Results Count */}
-        <div className="mt-2 text-sm text-gray-600">
-          Found {students.length} student{students.length !== 1 ? "s" : ""}
-        </div>
-
-        {/* Stream-wise Fee Summary */}
-        {students.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold mb-2">
-              Stream-wise Fee Summary
+          <div className="bg-white rounded shadow p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              {selectedStudent.firstName}{" "}
+              {selectedStudent.middleName ? `${selectedStudent.middleName} ` : ""}
+              {selectedStudent.lastName}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(
-                students.reduce((acc, student) => {
-                  const stream =
-                    student.stream?.name || student.stream || "Unknown";
-                  const fee = feeData[student._id] || {
-                    total: 0,
-                    paid: 0,
-                    pending: 0,
-                  };
-                  if (!acc[stream])
-                    acc[stream] = { total: 0, paid: 0, pending: 0, count: 0 };
-                  acc[stream].total += fee.total;
-                  acc[stream].paid += fee.paid;
-                  acc[stream].pending += fee.pending;
-                  acc[stream].count += 1;
-                  return acc;
-                }, {})
-              ).map(([stream, data]) => (
-                <div key={stream} className="bg-blue-50 rounded p-3">
-                  <div className="font-bold text-blue-700">{stream}</div>
-                  <div className="text-sm text-gray-700">
-                    Students: {data.count}
-                  </div>
-                  <div className="text-sm">Total Fees: ₹{data.total}</div>
-                  <div className="text-sm">
-                    Paid: <span className="text-green-600">₹{data.paid}</span>
-                  </div>
-                  <div className="text-sm">
-                    Pending:{" "}
-                    <span
-                      className={
-                        data.pending > 0 ? "text-red-600" : "text-green-700"
-                      }
-                    >
-                      ₹{data.pending}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Student Cards in Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {students.length === 0 ? (
-          <div className="bg-white rounded shadow p-6 text-center col-span-full">
-            <p className="text-gray-500">
-              {searchTerm
-                ? "No students match your search."
-                : "No students found."}
-            </p>
-            {!searchTerm && (
-              <p className="text-sm text-gray-400 mt-2">
-                Try running:{" "}
-                <code className="bg-gray-100 px-2 py-1 rounded">
-                  cd backend && node seed-data.js
-                </code>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800 font-medium">
+              <p>
+                <strong>Student ID:</strong> {selectedStudent.studentId}
               </p>
-            )}
-          </div>
-        ) : (
-          students.map((student) => {
-            const fee = feeData[student._id] || {
-              total: 0,
-              paid: 0,
-              pending: 0,
-              heads: [],
-            };
-            const insurancePolicies = insuranceData[student._id] || [];
+              <p>
+                <strong>Enrollment No:</strong> {selectedStudent.enrollmentNumber}
+              </p>
+              <p>
+                <strong>Email:</strong> {selectedStudent.email}
+              </p>
+              <p>
+                <strong>Mobile:</strong> {selectedStudent.mobileNumber || "N/A"}
+              </p>
+              <p>
+                <strong>Father Name:</strong> {selectedStudent.fatherName || "N/A"}
+              </p>
+              <p>
+                <strong>Department:</strong>{" "}
+                {selectedStudent.department?.name || selectedStudent.department || "N/A"}
+              </p>
+              <p>
+                <strong>Stream:</strong>{" "}
+                {selectedStudent.stream?.name || selectedStudent.stream || "N/A"}
+              </p>
+              <p>
+                <strong>Section:</strong> {selectedStudent.section || "N/A"}
+              </p>
+              <p>
+                <strong>Current Semester:</strong>{" "}
+                <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded font-bold">
+                  {selectedStudent.currentSemester}
+                </span>
+              </p>
+              <p>
+                <strong>Gender:</strong> {selectedStudent.gender || "N/A"}
+              </p>
+              <p>
+                <strong>Caste Category:</strong>{" "}
+                {selectedStudent.casteCategory || "N/A"}
+              </p>
+              <p>
+                <strong>Admission Type:</strong>{" "}
+                {selectedStudent.admissionType || "N/A"}
+              </p>
+              <p>
+                <strong>Date of Birth:</strong>{" "}
+                {selectedStudent.dateOfBirth
+                  ? new Date(selectedStudent.dateOfBirth).toLocaleDateString()
+                  : "N/A"}
+              </p>
+              <p>
+                <strong>Address:</strong> {selectedStudent.address || "N/A"}
+              </p>
+              <p>
+                <strong>Guardian Number:</strong>{" "}
+                {selectedStudent.guardianNumber || "N/A"}
+              </p>
+              <p>
+                <strong>Nationality:</strong> {selectedStudent.nationality || "N/A"}
+              </p>
+              <p>
+                <strong>Academic Status:</strong>{" "}
+                {selectedStudent.academicStatus || "Active"}
+              </p>
+              <p>
+                <strong>Enrollment Year:</strong> {selectedStudent.enrollmentYear}
+              </p>
+            </div>
 
-            // Calculate insurance stats using helper function
-            const insuranceStats = calculateInsuranceStats(insurancePolicies);
-
-            return (
-              <div
-                key={student._id}
-                className="bg-white rounded shadow p-3 space-y-2 border-l-2 border-blue-400"
-              >
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {student.firstName}{" "}
-                  {student.middleName ? `${student.middleName} ` : ""}
-                  {student.lastName}
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-800 font-medium">
-                  <p>
-                    <strong>Student ID:</strong> {student.studentId}
-                  </p>
-                  <p>
-                    <strong>Enrollment No:</strong> {student.enrollmentNumber}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {student.email}
-                  </p>
-                  <p>
-                    <strong>Mobile:</strong> {student.mobileNumber || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Father Name:</strong> {student.fatherName || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Department:</strong>{" "}
-                    {student.department?.name || student.department || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Stream:</strong>{" "}
-                    {student.stream?.name || student.stream || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Section:</strong> {student.section || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Current Semester:</strong>{" "}
-                    <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded font-bold">
-                      {student.currentSemester}
-                    </span>
-                  </p>
-                  <p>
-                    <strong>Gender:</strong> {student.gender || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Caste Category:</strong>{" "}
-                    {student.casteCategory || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Admission Type:</strong>{" "}
-                    {student.admissionType || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Date of Birth:</strong>{" "}
-                    {student.dateOfBirth
-                      ? new Date(student.dateOfBirth).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {student.address || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Guardian Number:</strong>{" "}
-                    {student.guardianNumber || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Nationality:</strong> {student.nationality || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Academic Status:</strong>{" "}
-                    {student.academicStatus || "Active"}
-                  </p>
-                  <p>
-                    <strong>Enrollment Year:</strong> {student.enrollmentYear}
-                  </p>
-                  <p>
-                    <strong>Academic Status:</strong> {student.academicStatus}
-                  </p>
-                  <p>
-                    <strong>Caste Category:</strong> {student.casteCategory}
-                  </p>
-                  <p>
-                    <strong>Stream:</strong> {student.stream?.name || "N/A"}
-                  </p>
-
+            {/* Fee Information */}
+            {(() => {
+              const fee = feeData[selectedStudent._id] || {
+                total: 0,
+                paid: 0,
+                pending: 0,
+                heads: [],
+              };
+              return (
+                <>
                   {/* Semester-based Fee Summary */}
-                  <div className="col-span-full bg-green-50 p-3 rounded-lg">
+                  <div className="bg-green-50 p-4 rounded-lg mt-6">
                     <p className="font-bold text-green-900 mb-2 text-lg">
-                      Semester {student.currentSemester} Fees:
+                      Semester {selectedStudent.currentSemester} Fees:
                     </p>
                     <p className="font-bold">
                       <strong>Total Fees:</strong> ₹{fee.total}
@@ -503,240 +503,494 @@ export default function StudentDetails() {
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Applied Fee Heads for Current Semester */}
-                {fee.heads.length > 0 ? (
-                  <div className="mt-4">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h3 className="font-bold text-blue-900 mb-3 flex items-center text-lg">
-                        💰 Applied Fee Heads for Semester{" "}
-                        {student.currentSemester}
-                        <span className="ml-2 bg-blue-200 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
-                          {fee.heads.length} items
-                        </span>
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {fee.heads.map((h, i) => (
-                          <div
-                            key={i}
-                            className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <h4 className="font-bold text-gray-900 text-base">
-                                  {h.title}
-                                </h4>
-                                {h.description && (
-                                  <p className="text-sm text-gray-700 mt-1 font-medium">
-                                    {h.description}
-                                  </p>
-                                )}
-                                {h.semester && (
-                                  <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm mt-2 font-bold">
-                                    Semester {h.semester}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-right ml-3">
-                                <div className="font-bold text-xl text-green-700">
-                                  ₹{h.amount}
-                                </div>
-                                {h.dueDate && (
-                                  <div className="text-sm text-gray-600 font-semibold">
-                                    Due:{" "}
-                                    {new Date(h.dueDate).toLocaleDateString()}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Fee Heads Summary */}
-                      <div className="mt-4 pt-3 border-t border-blue-200">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-sm text-gray-700 font-bold">
-                              Total Amount
-                            </div>
-                            <div className="font-bold text-xl text-blue-700">
-                              ₹{fee.total}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-700 font-bold">
-                              Amount Paid
-                            </div>
-                            <div className="font-bold text-xl text-green-700">
-                              ₹{fee.paid}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-700 font-bold">
-                              Balance Due
-                            </div>
+                  {/* Applied Fee Heads */}
+                  {fee.heads.length > 0 && (
+                    <div className="mt-6">
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <h3 className="font-bold text-blue-900 mb-3 flex items-center text-lg">
+                          💰 Applied Fee Heads for Semester{" "}
+                          {selectedStudent.currentSemester}
+                          <span className="ml-2 bg-blue-200 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
+                            {fee.heads.length} items
+                          </span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {fee.heads.map((h, i) => (
                             <div
-                              className={`font-bold text-xl ${
-                                fee.pending > 0
-                                  ? "text-red-700"
-                                  : "text-green-700"
-                              }`}
+                              key={i}
+                              className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm"
                             >
-                              ₹{fee.pending}
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h4 className="font-bold text-gray-900 text-base">
+                                    {h.title}
+                                  </h4>
+                                  {h.description && (
+                                    <p className="text-sm text-gray-700 mt-1 font-medium">
+                                      {h.description}
+                                    </p>
+                                  )}
+                                  {h.semester && (
+                                    <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm mt-2 font-bold">
+                                      Semester {h.semester}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-right ml-3">
+                                  <div className="font-bold text-xl text-green-700">
+                                    ₹{h.amount}
+                                  </div>
+                                  {h.dueDate && (
+                                    <div className="text-sm text-gray-600 font-semibold">
+                                      Due:{" "}
+                                      {new Date(h.dueDate).toLocaleDateString()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Fee Heads Summary */}
+                        <div className="mt-4 pt-3 border-t border-blue-200">
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <div className="text-sm text-gray-700 font-bold">
+                                Total Amount
+                              </div>
+                              <div className="font-bold text-xl text-blue-700">
+                                ₹{fee.total}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-700 font-bold">
+                                Amount Paid
+                              </div>
+                              <div className="font-bold text-xl text-green-700">
+                                ₹{fee.paid}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-700 font-bold">
+                                Balance Due
+                              </div>
+                              <div
+                                className={`font-bold text-xl ${
+                                  fee.pending > 0
+                                    ? "text-red-700"
+                                    : "text-green-700"
+                                }`}
+                              >
+                                ₹{fee.pending}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <div className="bg-gray-50 rounded-lg p-4 text-center">
-                      <div className="text-gray-400 text-4xl mb-2">📄</div>
-                      <h3 className="font-bold text-gray-700 mb-1 text-lg">
-                        No Fee Heads Applied
-                      </h3>
-                      <p className="text-base text-gray-600 font-semibold">
-                        No fee heads are currently applicable for Semester{" "}
-                        {student.currentSemester}
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Insurance Policies */}
+            {(() => {
+              const insurancePolicies = insuranceData[selectedStudent._id] || [];
+              const insuranceStats = calculateInsuranceStats(insurancePolicies);
+
+              return insuranceStats && (
+                <div className="mt-6 space-y-2">
+                  <h3 className="text-base font-semibold text-purple-800">
+                    🛡️ Insurance Policies
+                  </h3>
+
+                  {/* Insurance Summary Card */}
+                  <div className="grid grid-cols-4 gap-2 bg-purple-50 p-2 rounded-lg">
+                    <div className="text-center">
+                      <p className="text-sm text-purple-600">
+                        Total Policies
                       </p>
-                      {fee.totalHeadsReceived > 0 && (
-                        <p className="text-sm text-orange-700 mt-2 font-bold">
-                          {fee.totalHeadsReceived} fee heads available but
-                          filtered by semester
-                        </p>
-                      )}
+                      <p className="text-lg font-bold text-purple-800">
+                        {insuranceStats.totalPolicies}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-purple-600">
+                        Active Policies
+                      </p>
+                      <p className="text-lg font-bold text-purple-800">
+                        {insuranceStats.activePolicies}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-purple-600">
+                        Total Coverage
+                      </p>
+                      <p className="text-lg font-bold text-purple-800">
+                        ₹{insuranceStats.totalCoverage.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-purple-600">Total Premium</p>
+                      <p className="text-lg font-bold text-purple-800">
+                        ₹{insuranceStats.totalPremium.toLocaleString()}
+                      </p>
                     </div>
                   </div>
-                )}
 
-                {/* Insurance Policies */}
-                {insuranceStats && (
-                  <div className="mt-4 space-y-2">
-                    <h3 className="text-base font-semibold text-purple-800">
-                      🛡️ Insurance Policies
-                    </h3>
-
-                    {/* Insurance Summary Card */}
-                    <div className="grid grid-cols-4 gap-2 bg-purple-50 p-2 rounded-lg">
-                      <div className="text-center">
-                        <p className="text-sm text-purple-600">
-                          Total Policies
-                        </p>
-                        <p className="text-lg font-bold text-purple-800">
-                          {insuranceStats.totalPolicies}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm text-purple-600">
-                          Active Policies
-                        </p>
-                        <p className="text-lg font-bold text-purple-800">
-                          {insuranceStats.activePolicies}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm text-purple-600">
-                          Total Coverage
-                        </p>
-                        <p className="text-lg font-bold text-purple-800">
-                          ₹{insuranceStats.totalCoverage.toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm text-purple-600">Total Premium</p>
-                        <p className="text-lg font-bold text-purple-800">
-                          ₹{insuranceStats.totalPremium.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Insurance Policies Table */}
-                    <div className="bg-white border border-purple-100 rounded-lg overflow-hidden">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-purple-50">
-                          <tr>
-                            <th className="p-3 text-left font-medium text-purple-800">
-                              Policy Number
-                            </th>
-                            <th className="p-3 text-left font-medium text-purple-800">
-                              Provider
-                            </th>
-                            <th className="p-3 text-left font-medium text-purple-800">
-                              Type
-                            </th>
-                            <th className="p-3 text-right font-medium text-purple-800">
-                              Coverage (₹)
-                            </th>
-                            <th className="p-3 text-right font-medium text-purple-800">
-                              Premium (₹)
-                            </th>
-                            <th className="p-3 text-left font-medium text-purple-800">
-                              Status
-                            </th>
-                            <th className="p-3 text-left font-medium text-purple-800">
-                              Payment
-                            </th>
-                            <th className="p-3 text-left font-medium text-purple-800">
-                              Valid Till
-                            </th>
+                  {/* Insurance Policies Table */}
+                  <div className="bg-white border border-purple-100 rounded-lg overflow-hidden">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-purple-50">
+                        <tr>
+                          <th className="p-3 text-left font-medium text-purple-800">
+                            Policy Number
+                          </th>
+                          <th className="p-3 text-left font-medium text-purple-800">
+                            Provider
+                          </th>
+                          <th className="p-3 text-left font-medium text-purple-800">
+                            Type
+                          </th>
+                          <th className="p-3 text-right font-medium text-purple-800">
+                            Coverage (₹)
+                          </th>
+                          <th className="p-3 text-right font-medium text-purple-800">
+                            Premium (₹)
+                          </th>
+                          <th className="p-3 text-left font-medium text-purple-800">
+                            Status
+                          </th>
+                          <th className="p-3 text-left font-medium text-purple-800">
+                            Payment
+                          </th>
+                          <th className="p-3 text-left font-medium text-purple-800">
+                            Valid Till
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-purple-100">
+                        {insurancePolicies.map((policy, i) => (
+                          <tr key={i} className="hover:bg-purple-50">
+                            <td className="p-3 font-mono text-sm">
+                              {policy.policyNumber}
+                            </td>
+                            <td className="p-3">
+                              {policy.insuranceProvider}
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                                {policy.policyType}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right font-medium">
+                              {policy.coverageAmount?.toLocaleString()}
+                            </td>
+                            <td className="p-3 text-right font-medium">
+                              {policy.premiumAmount?.toLocaleString()}
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceStatusColor(
+                                  policy.status
+                                )}`}
+                              >
+                                {policy.status}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(
+                                  policy.paymentStatus
+                                )}`}
+                              >
+                                {policy.paymentStatus}
+                              </span>
+                            </td>
+                            <td className="p-3 text-sm">
+                              {new Date(policy.endDate).toLocaleDateString()}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-purple-100">
-                          {insurancePolicies.map((policy, i) => (
-                            <tr key={i} className="hover:bg-purple-50">
-                              <td className="p-3 font-mono text-sm">
-                                {policy.policyNumber}
-                              </td>
-                              <td className="p-3">
-                                {policy.insuranceProvider}
-                              </td>
-                              <td className="p-3">
-                                <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
-                                  {policy.policyType}
-                                </span>
-                              </td>
-                              <td className="p-3 text-right font-medium">
-                                {policy.coverageAmount?.toLocaleString()}
-                              </td>
-                              <td className="p-3 text-right font-medium">
-                                {policy.premiumAmount?.toLocaleString()}
-                              </td>
-                              <td className="p-3">
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceStatusColor(
-                                    policy.status
-                                  )}`}
-                                >
-                                  {policy.status}
-                                </span>
-                              </td>
-                              <td className="p-3">
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(
-                                    policy.paymentStatus
-                                  )}`}
-                                >
-                                  {policy.paymentStatus}
-                                </span>
-                              </td>
-                              <td className="p-3 text-sm">
-                                {new Date(policy.endDate).toLocaleDateString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      ) : (
+        // Student List View
+        <>
+          {/* Financial Summary Dashboard */}
+          <div className="bg-white p-6 rounded-lg shadow mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">📊 Financial Summary</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Total Fees Collected</p>
+                    <p className="text-2xl font-bold text-green-800">₹{financialSummary.totalFeesCollected.toLocaleString()}</p>
+                  </div>
+                  <div className="text-green-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-600">Pending Fees</p>
+                    <p className="text-2xl font-bold text-red-800">₹{financialSummary.pendingFees.toLocaleString()}</p>
+                  </div>
+                  <div className="text-red-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Total Expenses</p>
+                    <p className="text-2xl font-bold text-blue-800">₹{financialSummary.totalExpenses.toLocaleString()}</p>
+                  </div>
+                  <div className="text-blue-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">Total Revenue</p>
+                    <p className="text-2xl font-bold text-purple-800">₹{financialSummary.totalRevenue.toLocaleString()}</p>
+                  </div>
+                  <div className="text-purple-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-indigo-600">Net Balance Student Fees</p>
+                    <p className="text-2xl font-bold text-indigo-800">₹{financialSummary.netBalanceStudentFees.toLocaleString()}</p>
+                  </div>
+                  <div className="text-indigo-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-yellow-600">Pending Collection</p>
+                    <p className="text-2xl font-bold text-yellow-800">₹{financialSummary.pendingCollection.toLocaleString()}</p>
+                  </div>
+                  <div className="text-yellow-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-teal-600">Faculty Salaries</p>
+                    <p className="text-2xl font-bold text-teal-800">₹{financialSummary.facultySalaries.toLocaleString()}</p>
+                  </div>
+                  <div className="text-teal-500">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gray-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Net Profit/Loss</p>
+                    <p className={`text-2xl font-bold ${financialSummary.totalRevenue - financialSummary.totalExpenses - financialSummary.facultySalaries >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                      ₹{(financialSummary.totalRevenue - financialSummary.totalExpenses - financialSummary.facultySalaries).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className={financialSummary.totalRevenue - financialSummary.totalExpenses - financialSummary.facultySalaries >= 0 ? 'text-green-500' : 'text-red-500'}>
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h1 className="text-3xl font-bold mb-4">🧑 Student Detail Records</h1>
+
+            {/* Search Section */}
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Search Students
+                </label>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by student name..."
+                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Search Results Count */}
+            <div className="mt-2 text-sm text-gray-600">
+              Found {totalStudents} student{totalStudents !== 1 ? "s" : ""} • Showing {startIndex + 1}-{endIndex} of {totalStudents}
+            </div>
+
+            {/* Stream-wise Student Count */}
+            {allStudents.length > 0 && (
+              <div className="mt-4">
+                <h2 className="text-lg font-semibold mb-2">
+                  Stream-wise Student Count
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(
+                    allStudents.reduce((acc, student) => {
+                      const stream =
+                        student.stream?.name || student.stream || "Unknown";
+                      if (!acc[stream]) acc[stream] = 0;
+                      acc[stream] += 1;
+                      return acc;
+                    }, {})
+                  ).map(([stream, count]) => (
+                    <div key={stream} className="bg-blue-50 rounded p-3">
+                      <div className="font-bold text-blue-700">{stream}</div>
+                      <div className="text-sm text-gray-700">
+                        Students: {count}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Student Cards in Grid - Show 10 per page */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {students.length === 0 ? (
+              <div className="bg-white rounded shadow p-6 text-center col-span-full">
+                <p className="text-gray-500">
+                  {searchTerm
+                    ? "No students match your search."
+                    : "No students found."}
+                </p>
+                {!searchTerm && (
+                  <p className="text-sm text-gray-400 mt-2">
+                    Try running:{" "}
+                    <code className="bg-gray-100 px-2 py-1 rounded">
+                      cd backend && node seed-data.js
+                    </code>
+                  </p>
                 )}
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              students.map((student) => (
+                <div
+                  key={student._id}
+                  className="bg-white rounded shadow p-4 space-y-3 border-l-4 border-blue-400 cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => handleStudentClick(student)}
+                >
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {student.firstName}{" "}
+                    {student.middleName ? `${student.middleName} ` : ""}
+                    {student.lastName}
+                  </h2>
+
+                  <div className="space-y-2 text-sm text-gray-800">
+                    <p>
+                      <strong>Student ID:</strong> {student.studentId}
+                    </p>
+                    <p>
+                      <strong>Enrollment No:</strong> {student.enrollmentNumber}
+                    </p>
+                    <p>
+                      <strong>Email:</strong> {student.email}
+                    </p>
+                    <p>
+                      <strong>Department:</strong>{" "}
+                      {student.department?.name || student.department || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Gender:</strong> {student.gender || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Caste Category:</strong>{" "}
+                      {student.casteCategory || "N/A"}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Pagination */}
+          {totalStudents > studentsPerPage && (
+            <div className="flex justify-center items-center space-x-4 mt-8">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded font-medium ${
+                  currentPage === 1
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
+              >
+                Previous
+              </button>
+
+              <span className="text-gray-700 font-medium">
+                Page {currentPage} of {totalPages} ({totalStudents} total students)
+              </span>
+
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 rounded font-medium ${
+                  currentPage === totalPages
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

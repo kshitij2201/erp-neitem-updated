@@ -97,17 +97,37 @@ export const getAttendanceWithFullDetails = async (req, res) => {
 // Get all students with details
 export const getAllStudentsWithDetails = async (req, res) => {
   try {
-    const students = await Student.find()
+    const { search, page = 1, limit = 10 } = req.query;
+    
+    let query = {};
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { studentId: { $regex: search, $options: 'i' } },
+        { enrollmentNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const skip = (page - 1) * limit;
+    
+    const students = await Student.find(query)
       .populate('caste')
       .populate('stream')
       .populate('department')
       .populate('semester')
-      .limit(50); // Limit for performance
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Student.countDocuments(query);
 
     res.status(200).json({
       success: true,
       data: students,
-      count: students.length
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit)
     });
   } catch (error) {
     console.error('Error fetching students:', error);

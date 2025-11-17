@@ -166,6 +166,44 @@ router.get('/info/tax-slabs', async (req, res) => {
   }
 });
 
+// GET: Tax status summary
+router.get('/status', async (req, res) => {
+  try {
+    const currentFY = '2024-2025'; // You can make this dynamic
+    
+    const totalRecords = await IncomeTax.countDocuments({ financialYear: currentFY });
+    
+    const complianceStats = await IncomeTax.aggregate([
+      { $match: { financialYear: currentFY } },
+      { $group: { _id: '$complianceStatus', count: { $sum: 1 } } }
+    ]);
+    
+    const totalTaxLiability = await IncomeTax.aggregate([
+      { $match: { financialYear: currentFY } },
+      { $group: { _id: null, total: { $sum: '$totalTax' } } }
+    ]);
+    
+    const status = totalRecords > 0 ? "Active" : "No Records";
+    
+    res.json({ 
+      status,
+      totalRecords,
+      complianceStats,
+      totalTaxLiability: totalTaxLiability[0]?.total || 0
+    });
+  } catch (err) {
+    console.error('Error fetching tax status:', err);
+    // Return a safe fallback response instead of 500 error
+    res.json({ 
+      status: "Unknown",
+      totalRecords: 0,
+      complianceStats: [],
+      totalTaxLiability: 0,
+      error: "Unable to fetch tax status"
+    });
+  }
+});
+
 // GET: Dashboard statistics
 router.get('/stats/dashboard', async (req, res) => {
   try {
@@ -385,6 +423,24 @@ router.get('/faculty/:employeeId', async (req, res) => {
   } catch (err) {
     console.error('Error fetching faculty income tax data:', err);
     res.status(500).json({ message: 'Error fetching faculty income tax data' });
+  }
+});
+
+// Get tax status
+router.get('/status', async (req, res) => {
+  try {
+    const currentFY = '2024-2025'; // You can make this dynamic
+    const totalRecords = await IncomeTax.countDocuments({ financialYear: currentFY });
+    const compliantRecords = await IncomeTax.countDocuments({ 
+      financialYear: currentFY, 
+      complianceStatus: 'Compliant' 
+    });
+    
+    const status = totalRecords > 0 ? `${compliantRecords}/${totalRecords} Compliant` : "No Records";
+    res.json({ status });
+  } catch (error) {
+    console.error('Tax status error:', error);
+    res.status(500).json({ status: "Error" });
   }
 });
 

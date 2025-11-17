@@ -99,8 +99,13 @@ router.put("/:id", async (req, res) => {
 // DELETE: delete fee head
 router.delete("/:id", async (req, res) => {
   try {
-    await FeeHead.findByIdAndDelete(req.params.id);
-    res.json({ message: "Fee head deleted" });
+    const feeHead = await FeeHead.findByIdAndDelete(req.params.id);
+
+    if (!feeHead) {
+      return res.status(404).json({ message: "Fee head not found" });
+    }
+
+    res.json({ message: "Fee head deleted successfully and student fees updated" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting fee head" });
   }

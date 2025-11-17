@@ -21,7 +21,7 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
 
   const fetchFeeHeads = async () => {
     try {
-      const response = await fetch("https://backenderp.tarstech.in/api/fee-heads");
+      const response = await fetch("http://localhost:4000/api/fee-heads");
       if (response.ok) {
         const data = await response.json();
         // Filter fee heads based on student's stream and caste category
@@ -66,7 +66,7 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
 
       console.log("Sending payment data:", paymentData);
 
-      const response = await fetch("https://backenderp.tarstech.in/api/payments", {
+      const response = await fetch("http://localhost:4000/api/payments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

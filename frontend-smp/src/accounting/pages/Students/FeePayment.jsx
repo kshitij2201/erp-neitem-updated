@@ -18,7 +18,7 @@ export default function FeePayment() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const localRes = await axios.get(
-          "https://backenderp.tarstech.in/api/students",
+          "http://localhost:4000/api/students",
           {
             headers,
           }
@@ -51,14 +51,15 @@ export default function FeePayment() {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
             const feeRes = await axios.get(
-              `https://backenderp.tarstech.in/api/fee-heads/applicable/${student._id}`,
+              `http://localhost:4000/api/fee-heads/applicable/${student._id}`,
               { headers }
             );
             const heads = feeRes.data;
             const total = heads.reduce((sum, h) => sum + h.amount, 0);
             const paid = student.feesPaid || 0;
             const scholarship = student.scholarshipAmount || 0;
-            const pending = total - paid - scholarship;
+            // Use stored pendingAmount instead of calculating it
+            const pending = student.pendingAmount || 0;
 
             feesMap[student._id] = {
               total,
@@ -68,11 +69,17 @@ export default function FeePayment() {
               heads,
             };
           } catch (err) {
+            // Use stored values as fallback
+            const paid = student.feesPaid || 0;
+            const scholarship = student.scholarshipAmount || 0;
+            const pending = student.pendingAmount || 0;
+            const total = paid + pending; // Estimate total from stored values
+            
             feesMap[student._id] = {
-              total: 0,
-              paid: 0,
-              pending: 0,
-              scholarship: 0,
+              total,
+              paid,
+              pending,
+              scholarship,
               heads: [],
             };
           }
@@ -111,6 +118,20 @@ export default function FeePayment() {
   if (loading) return <p>Loading student records…</p>;
   if (error) return <p className="text-red-600">{error}</p>;
 
+  // Calculate overall totals
+  const overallTotals = students.reduce(
+    (totals, student) => {
+      const fee = feeData[student._id] || { total: 0, paid: 0, pending: 0, scholarship: 0 };
+      return {
+        totalFees: totals.totalFees + fee.total,
+        totalPaid: totals.totalPaid + fee.paid,
+        totalPending: totals.totalPending + fee.pending,
+        totalScholarship: totals.totalScholarship + fee.scholarship,
+      };
+    },
+    { totalFees: 0, totalPaid: 0, totalPending: 0, totalScholarship: 0 }
+  );
+
   return (
     <div className="space-y-4">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -127,6 +148,52 @@ export default function FeePayment() {
           >
             Student Details & Overview
           </a>
+        </div>
+      </div>
+
+      {/* Overall Fee Summary */}
+      <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <span className="text-2xl">📊</span>
+          Overall Fee Summary - All Students
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="text-sm text-gray-600 font-medium">Total Fees Applied</div>
+            <div className="text-2xl font-bold text-blue-600 mt-1">
+              ₹{overallTotals.totalFees.toLocaleString('en-IN')}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">From Fee Heads</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="text-sm text-gray-600 font-medium">Total Paid</div>
+            <div className="text-2xl font-bold text-green-600 mt-1">
+              ₹{overallTotals.totalPaid.toLocaleString('en-IN')}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">By All Students</div>
+          </div>
+          <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="text-sm text-gray-600 font-medium">Total Scholarship</div>
+            <div className="text-2xl font-bold text-yellow-600 mt-1">
+              ₹{overallTotals.totalScholarship.toLocaleString('en-IN')}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Applied</div>
+          </div>
+          <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+            <div className="text-sm text-gray-600 font-medium">Total Pending</div>
+            <div className={`text-2xl font-bold mt-1 ${
+              overallTotals.totalPending > 0 ? "text-red-600" : "text-green-700"
+            }`}>
+              ₹{overallTotals.totalPending.toLocaleString('en-IN')}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">To Collect</div>
+          </div>
+        </div>
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="text-sm text-gray-700">
+            <strong>Collection Progress:</strong> {((overallTotals.totalPaid / overallTotals.totalFees) * 100).toFixed(1)}% of total fees collected
+            ({overallTotals.totalPaid.toLocaleString('en-IN')} out of {overallTotals.totalFees.toLocaleString('en-IN')})
+          </div>
         </div>
       </div>
       {students.length === 0 ? (

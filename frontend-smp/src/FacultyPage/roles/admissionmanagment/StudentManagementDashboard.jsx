@@ -81,7 +81,7 @@ const StudentManagementDashboard = () => {
         ? `?admissionType=${admissionTypeFilter}`
         : "";
       const res = await axios.get(
-        `https://backenderp.tarstech.in/api/students${query}`,
+        `http://localhost:4000/api/students${query}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -103,7 +103,7 @@ const StudentManagementDashboard = () => {
       setLoadingCastes(true);
       try {
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/superadmin/castes",
+          "http://localhost:4000/api/superadmin/castes",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -130,13 +130,13 @@ const StudentManagementDashboard = () => {
       try {
         const [streamRes, departmentRes, semesterRes, subjectRes] =
           await Promise.all([
-            axios.get("https://backenderp.tarstech.in/api/streams", {
+            axios.get("http://localhost:4000/api/streams", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
             }),
             axios.get(
-              "https://backenderp.tarstech.in/api/superadmin/departments",
+              "http://localhost:4000/api/superadmin/departments",
               {
                 headers: {
                   Authorization: `Bearer ${localStorage.getItem(
@@ -145,12 +145,12 @@ const StudentManagementDashboard = () => {
                 },
               }
             ),
-            axios.get("https://backenderp.tarstech.in/api/superadmin/semesters", {
+            axios.get("http://localhost:4000/api/superadmin/semesters", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
             }),
-            axios.get("https://backenderp.tarstech.in/superadmin/api/subjects", {
+            axios.get("http://localhost:4000/superadmin/api/subjects", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
               },
@@ -195,7 +195,7 @@ const StudentManagementDashboard = () => {
         setLoading(true);
         try {
           const res = await axios.get(
-            `https://backenderp.tarstech.in/api/students/subjects/${formData.semester}/${formData.department}`,
+            `http://localhost:4000/api/students/subjects/${formData.semester}/${formData.department}`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -341,7 +341,7 @@ const StudentManagementDashboard = () => {
 
       if (editingId) {
         await axios.put(
-          `https://backenderp.tarstech.in/api/students/${editingId}`,
+          `http://localhost:4000/api/students/${editingId}`,
           data,
           {
             headers: {
@@ -353,7 +353,7 @@ const StudentManagementDashboard = () => {
         alert("Student updated successfully!");
         setEditingId(null);
       } else {
-        await axios.post("https://backenderp.tarstech.in/api/students", data, {
+        await axios.post("http://localhost:4000/api/students", data, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
             "Content-Type": "multipart/form-data",
@@ -382,7 +382,7 @@ const StudentManagementDashboard = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this student?")) {
       try {
-        await axios.delete(`https://backenderp.tarstech.in/api/students/${id}`, {
+        await axios.delete(`http://localhost:4000/api/students/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
           },
@@ -398,7 +398,7 @@ const StudentManagementDashboard = () => {
   const handlePromote = async (id) => {
     try {
       const response = await axios.put(
-        `https://backenderp.tarstech.in/api/students/promote/${id}`,
+        `http://localhost:4000/api/students/promote/${id}`,
         {},
         {
           headers: {
@@ -418,7 +418,7 @@ const StudentManagementDashboard = () => {
   const openBacklogModal = async (studentId) => {
     try {
       const res = await axios.get(
-        `https://backenderp.tarstech.in/api/students/${studentId}`,
+        `http://localhost:4000/api/students/${studentId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -431,7 +431,7 @@ const StudentManagementDashboard = () => {
       if (semesterId && student.department?._id) {
         try {
           const subjectsRes = await axios.get(
-            `https://backenderp.tarstech.in/api/students/subjects/${semesterId}/${student.department._id}`,
+            `http://localhost:4000/api/students/subjects/${semesterId}/${student.department._id}`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -489,7 +489,7 @@ const StudentManagementDashboard = () => {
     if (semesterId && backlogModal.departmentId) {
       try {
         const res = await axios.get(
-          `https://backenderp.tarstech.in/api/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `http://localhost:4000/api/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -572,7 +572,7 @@ const StudentManagementDashboard = () => {
         );
         if (!existingBacklog) {
           await axios.post(
-            `https://backenderp.tarstech.in/api/students/${studentId}/add-backlog`,
+            `http://localhost:4000/api/students/${studentId}/add-backlog`,
             { subjectIds: [subjectId], semesterId },
             {
               headers: {
@@ -591,7 +591,7 @@ const StudentManagementDashboard = () => {
         );
         if (backlog) {
           await axios.put(
-            `https://backenderp.tarstech.in/api/students/${studentId}/update-backlog/${backlog._id}`,
+            `http://localhost:4000/api/students/${studentId}/update-backlog/${backlog._id}`,
             { status: "Completed" },
             {
               headers: {
@@ -603,7 +603,7 @@ const StudentManagementDashboard = () => {
       }
 
       await axios.put(
-        `https://backenderp.tarstech.in/api/students/${studentId}`,
+        `http://localhost:4000/api/students/${studentId}`,
         { semesterRecords: updatedSemesterRecords },
         {
           headers: {
@@ -615,7 +615,7 @@ const StudentManagementDashboard = () => {
       alert(`Subject status updated to ${status}!`);
       fetchStudents();
       const res = await axios.get(
-        `https://backenderp.tarstech.in/api/students/${studentId}`,
+        `http://localhost:4000/api/students/${studentId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
@@ -702,7 +702,7 @@ const StudentManagementDashboard = () => {
     const handleDownload = async () => {
       try {
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/export",
+          "http://localhost:4000/api/students/export",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("facultyToken")}`,
