@@ -98,7 +98,7 @@ export default function StudentDetails() {
         batch.map(async (student) => {
           try {
             const res = await axios.get(
-              `http://localhost:4000/api/insurance/student/${student._id}`,
+              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data || [];
@@ -128,7 +128,7 @@ export default function StudentDetails() {
         try {
           // Fetch fee heads with semester matching
           const feeRes = await axios.get(
-            `http://localhost:4000/api/fee-heads/applicable/${student._id}`,
+            `https://backenderp.tarstech.in/api/fee-heads/applicable/${student._id}`,
             {
               headers,
               params: {
@@ -206,7 +206,7 @@ export default function StudentDetails() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("http://localhost:4000/api/accounts/financial-summary", { headers });
+      const response = await axios.get("https://backenderp.tarstech.in/api/accounts/financial-summary", { headers });
 
       setFinancialSummary(response.data);
     } catch (err) {
@@ -237,7 +237,7 @@ export default function StudentDetails() {
 
         // Fetch all students for search (no pagination in API call)
         const res = await axios.get(
-          "http://localhost:4000/api/students/public",
+          "https://backenderp.tarstech.in/api/students/public",
           {
             params: { 
               search: debouncedSearchTerm,
@@ -270,7 +270,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on http://localhost:4000"
+            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
           );
         } else {
           setError(

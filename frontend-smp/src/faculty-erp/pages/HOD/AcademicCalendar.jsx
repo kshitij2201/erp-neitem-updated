@@ -66,7 +66,7 @@ const AcademicCalendar = ({ userData }) => {
       queryParams.append("t", Date.now());
 
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar?${queryParams}`,
+        `https://backenderp.tarstech.in/api/academic-calendar?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -89,7 +89,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/subjects/department/${userData.department}`,
+        `https://backenderp.tarstech.in/api/subjects/department/${userData.department}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -109,7 +109,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/faculty/department/${userData.department}`,
+        `https://backenderp.tarstech.in/api/faculty/department/${userData.department}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -130,7 +130,7 @@ const AcademicCalendar = ({ userData }) => {
       try {
         const token = localStorage.getItem("authToken");
         const response = await fetch(
-          `http://localhost:4000/api/academic-calendar/${id}`,
+          `https://backenderp.tarstech.in/api/academic-calendar/${id}`,
           {
             method: "DELETE",
             headers: {
@@ -152,7 +152,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar/${id}/publish`,
+        `https://backenderp.tarstech.in/api/academic-calendar/${id}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -614,7 +614,7 @@ const CreateCalendarModal = ({
       setLoadingFaculties(true);
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/faculty/subject/${subjectId}`,
+        `https://backenderp.tarstech.in/api/faculty/subject/${subjectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -655,7 +655,7 @@ const CreateCalendarModal = ({
       };
 
       const response = await fetch(
-        "http://localhost:4000/api/academic-calendar",
+        "https://backenderp.tarstech.in/api/academic-calendar",
         {
           method: "POST",
           headers: {
@@ -1524,7 +1524,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar/${calendar._id}/publish`,
+        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -1555,7 +1555,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar/${calendar._id}/topics`,
+        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}/topics`,
         {
           method: "POST",
           headers: {
@@ -1596,7 +1596,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar/${calendar._id}/topics/${topicId}`,
+        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}/topics/${topicId}`,
         {
           method: "PATCH",
           headers: {

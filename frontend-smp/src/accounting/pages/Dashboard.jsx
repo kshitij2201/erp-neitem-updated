@@ -70,9 +70,9 @@ export default function Dashboard() {
     try {
       // Fetch real financial data from database
       const [accountsResult, financialSummaryResult, revenueResult] = await Promise.allSettled([
-        safeFetch("http://localhost:4000/api/accounts/stats/overview", {}),
-        safeFetch("http://localhost:4000/api/accounts/financial-summary", {}),
-        safeFetch("http://localhost:4000/api/accounts/revenue/breakdown", {}),
+        safeFetch("https://backenderp.tarstech.in/api/accounts/stats/overview", {}),
+        safeFetch("https://backenderp.tarstech.in/api/accounts/financial-summary", {}),
+        safeFetch("https://backenderp.tarstech.in/api/accounts/revenue/breakdown", {}),
       ]);
 
       const accountsData = accountsResult.status === "fulfilled" && accountsResult.value?.success 

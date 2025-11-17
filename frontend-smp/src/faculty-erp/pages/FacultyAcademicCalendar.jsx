@@ -41,7 +41,7 @@ const FacultyAcademicCalendar = ({ userData }) => {
       });
 
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar?${queryParams}`,
+        `https://backenderp.tarstech.in/api/academic-calendar?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -67,7 +67,7 @@ const FacultyAcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:4000/api/academic-calendar/${calendarId}/topics/${topicId}/status`,
+        `https://backenderp.tarstech.in/api/academic-calendar/${calendarId}/topics/${topicId}/status`,
         {
           method: "PUT",
           headers: {

@@ -377,7 +377,7 @@ export default function Ledger() {
 
     // Fetch ledger data and fee heads in parallel
     Promise.all([
-      fetch("http://localhost:4000/api/ledger", { headers }).then(
+      fetch("https://backenderp.tarstech.in/api/ledger", { headers }).then(
         (res) => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -385,7 +385,7 @@ export default function Ledger() {
           return res.json();
         }
       ),
-      fetch("http://localhost:4000/api/fee-heads", { headers }).then(
+      fetch("https://backenderp.tarstech.in/api/fee-heads", { headers }).then(
         (res) => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
