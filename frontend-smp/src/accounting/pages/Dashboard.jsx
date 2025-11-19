@@ -10,20 +10,17 @@ export default function Dashboard() {
     totalAppliedFeeHeads: "Loading...",
     totalExpenses: "Loading...",
     facultySalary: "Loading...",
-    storeItems: "Loading...",
-    maintenanceRequests: "Loading...",
-    departmentPurchases: "Loading...",
-    taxStatus: "Loading...",
-    facultyIncomeTax: "Loading...",
-    facultyPF: "Loading...",
-    facultyGratuity: "Loading...",
-    facultyCompliance: "Loading...",
     totalFeePaidRaw: 0,
     totalAppliedFeeHeadsRaw: 0,
   });
 
   const [analyticsData, setAnalyticsData] = useState({});
   const [revenueData, setRevenueData] = useState({});
+  const [operationalData, setOperationalData] = useState({
+    departments: "Loading...",
+    storeItems: "Loading...",
+    maintenanceRequests: "Loading...",
+  });
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,96 +40,166 @@ export default function Dashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-    setIsLoading(true);
     setError(null);
 
-    // Safe API fetch function with error handling
-    const safeFetch = async (url, defaultValue = null) => {
+    // small client-side cache to show quick results while refreshing in background
+    const cacheKey = "dashboard_cache_v1";
+    const cacheTTL = 15 * 1000; // 15 seconds
+
+    // fetch with timeout
+    const fetchWithTimeout = async (url, opts = {}, timeout = 10000) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const res = await fetch(url, { signal: controller.signal, ...opts });
+        clearTimeout(id);
+        return res;
+      } catch (err) {
+        clearTimeout(id);
+        throw err;
+      }
+    };
+
+    const safeFetch = async (url, defaultValue = null, timeout = 10000) => {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-        const response = await fetch(url, { headers });
-
-        if (!response.ok) {
-          console.warn(`API ${url} returned ${response.status}`);
+        const response = await fetchWithTimeout(url, { headers }, timeout);
+        if (!response || !response.ok) {
+          console.warn(`API ${url} returned ${response ? response.status : "no-response"}`);
           return defaultValue;
         }
-
         const result = await response.json();
         return result;
       } catch (error) {
-        console.warn(`API ${url} failed:`, error.message);
+        console.warn(`API ${url} failed:`, error?.message || error);
         return defaultValue;
       }
     };
 
     try {
-      // Fetch real financial data from database
-      const [accountsResult, financialSummaryResult, revenueResult] = await Promise.allSettled([
-        safeFetch("https://backenderp.tarstech.in/api/accounts/stats/overview", {}),
-        safeFetch("https://backenderp.tarstech.in/api/accounts/financial-summary", {}),
-        safeFetch("https://backenderp.tarstech.in/api/accounts/revenue/breakdown", {}),
+      const apiBase = import.meta.env.DEV ? "/api" : "https://backenderp.tarstech.in/api";
+
+      // Try to read fresh cache
+      try {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Date.now() - parsed.ts < cacheTTL) {
+            // show cached UI immediately
+            setData(parsed.data.data);
+            setAnalyticsData(parsed.data.analyticsData || {});
+            setRevenueData(parsed.data.revenueData || {});
+            setOperationalData(parsed.data.operationalData || {});
+            setCollectionRate(parsed.data.collectionRate || 0);
+            // continue to refresh in background
+          }
+        }
+      } catch (e) {
+        // ignore cache errors
+      }
+
+      // Phase 1: critical fast fetches (financial summary + accounts overview + fee-heads + dashboard stats)
+      setIsLoading(true);
+      const [financialSummaryData, accountsData, feeHeadsData, dashboardStatsData] = await Promise.all([
+        safeFetch(`${apiBase}/accounts/financial-summary`, { totalFeesCollected: 0 }),
+        safeFetch(`${apiBase}/accounts/stats/overview`, { success: false }),
+        safeFetch(`${apiBase}/fee-heads`, []),
+        safeFetch(`${apiBase}/dashboard/stats`, {}),
       ]);
 
-      const accountsData = accountsResult.status === "fulfilled" && accountsResult.value?.success 
-        ? accountsResult.value.data 
-        : { totalPaid: 0, totalBalance: 0, totalAccounts: 0, totalAmount: 0, totalExpenses: 0 };
-      const financialSummaryData = financialSummaryResult.status === "fulfilled" 
-        ? financialSummaryResult.value 
-        : { totalFeesCollected: 0, pendingFees: 0, totalAppliedFeeHeads: 0, totalExpenses: 0 };
-      const revenueFetchedData = revenueResult.status === "fulfilled" 
-        ? revenueResult.value 
-        : {};
+  const acct = accountsData?.success ? accountsData.data : (accountsData || { totalPaid: 0, totalBalance: 0, totalAccounts: 0, totalAmount: 0, totalExpenses: 0 });
+  const fin = financialSummaryData || { totalFeesCollected: 0, pendingFees: 0, totalAppliedFeeHeads: 0, totalExpenses: 0 };
 
-      // Set analytics and revenue data
-      setAnalyticsData({});
-      setRevenueData(revenueFetchedData);
+  // Calculate applied from fee-heads * student count (user requested behaviour)
+  const feeHeadsArray = Array.isArray(feeHeadsData) ? feeHeadsData : (feeHeadsData?.data || []);
+  const sumFeeHeads = feeHeadsArray.reduce((s, h) => s + (Number(h?.amount) || 0), 0);
+  // student count: prefer dashboardStatsData.totalStudents, fallback to accounts totalAccounts
+  const studentCount = (dashboardStatsData && dashboardStatsData.totalStudents) || acct.totalAccounts || 0;
+  const totalAppliedFromFeeHeads = sumFeeHeads > 0 && studentCount > 0 ? (sumFeeHeads * studentCount) : 0;
 
-      // Calculate basic stats from available data
-      const studentCount = accountsData.totalAccounts || 0;
-      const facultyCount = 0; // Not fetching faculty anymore
+  // Prefer the fee-heads * studentCount calculation if available per your request; otherwise fall back to backend financial summary
+  const totalApplied = totalAppliedFromFeeHeads > 0 ? totalAppliedFromFeeHeads : (fin.totalAppliedFeeHeads || 0);
+      const totalCollected = fin.totalFeesCollected || acct.totalPaid || 0;
+      const pending = Math.max(0, totalApplied - totalCollected);
+      const expenses = fin.totalExpenses || acct.totalExpenses || 0;
+      const facultySalary = fin.facultySalaries || 0;
 
-      // Use financial summary data as primary source, fallback to accounts data
-      const totalFeePaid = financialSummaryData.totalFeesCollected || accountsData.totalPaid || 0;
-      const pendingFees = financialSummaryData.pendingFees || accountsData.totalBalance || 0;
-      const totalAppliedFeeHeads = financialSummaryData.totalAppliedFeeHeads || 0;
-      const totalExpenses = financialSummaryData.totalExpenses || accountsData.totalExpenses || 0;
-      const facultySalary = financialSummaryData.facultySalaries || 0;
+      const calcCollectionRate = totalApplied > 0 ? Number(((totalCollected / totalApplied) * 100).toFixed(1)) : 0;
 
-      console.log('Dashboard data received:', {
-        accountsData,
-        financialSummaryData,
-        calculated: { totalFeePaid, pendingFees, totalAppliedFeeHeads, totalExpenses, facultySalary }
-      });
-
-      // Calculate collection rate
-      const calculatedCollectionRate = totalAppliedFeeHeads > 0 ? 
-        ((totalFeePaid / totalAppliedFeeHeads) * 100).toFixed(1) : 0;
-      setCollectionRate(calculatedCollectionRate);
-
-      setData((prevData) => ({
-        ...prevData,
-        totalFeePaid: totalFeePaid ? `₹${totalFeePaid.toLocaleString('en-IN')}` : "₹0",
-        pendingFees: pendingFees ? `₹${pendingFees.toLocaleString('en-IN')}` : "₹0",
-        totalAppliedFeeHeads: totalAppliedFeeHeads ? `₹${totalAppliedFeeHeads.toLocaleString('en-IN')}` : "₹0",
-        totalExpenses: totalExpenses ? `₹${totalExpenses.toLocaleString('en-IN')}` : "₹0",
+      // update critical UI immediately
+      setData((prev) => ({
+        ...prev,
+        totalFeePaid: totalCollected ? `₹${totalCollected.toLocaleString('en-IN')}` : "₹0",
+        pendingFees: pending ? `₹${pending.toLocaleString('en-IN')}` : "₹0",
+        totalAppliedFeeHeads: totalApplied ? `₹${totalApplied.toLocaleString('en-IN')}` : "₹0",
+        totalExpenses: expenses ? `₹${expenses.toLocaleString('en-IN')}` : "₹0",
         facultySalary: facultySalary ? `₹${facultySalary.toLocaleString('en-IN')}` : "₹0",
-        storeItems: "0 items",
-        maintenanceRequests: "0 pending",
-        departmentPurchases: "₹0",
-        taxStatus: "Unknown",
-        facultyIncomeTax: "Unknown",
-        facultyPF: "Unknown",
-        facultyGratuity: "Unknown",
-        facultyCompliance: "Unknown",
-        totalFeePaidRaw: totalFeePaid,
-        totalAppliedFeeHeadsRaw: totalAppliedFeeHeads,
+        totalFeePaidRaw: totalCollected,
+        totalAppliedFeeHeadsRaw: totalApplied,
       }));
+      setCollectionRate(calcCollectionRate);
+      setIsLoading(false);
+
+      // Phase 2: background fetches for analytics and operational metrics (note: fee-heads and dashboard stats already fetched above)
+      Promise.allSettled([
+        safeFetch(`${apiBase}/accounts/revenue/breakdown`, {}),
+        safeFetch(`${apiBase}/store/items/count`, {}),
+        safeFetch(`${apiBase}/maintenance/requests/count`, {}),
+      ]).then((results) => {
+        try {
+          const [revenueRes, storeItemsRes, maintenanceRes] = results;
+
+          const revenueFetchedData = revenueRes.status === 'fulfilled' ? revenueRes.value : {};
+          const storeItems = storeItemsRes.status === 'fulfilled' ? storeItemsRes.value : {};
+          const maintenanceRequests = maintenanceRes.status === 'fulfilled' ? maintenanceRes.value : {};
+
+          // update analytics/revenue and operational data
+          setAnalyticsData({});
+          setRevenueData(revenueFetchedData || {});
+          setOperationalData({
+            departments: dashboardStatsData?.departments || 0,
+            storeItems: storeItems.count || 0,
+            maintenanceRequests: maintenanceRequests.count || 0,
+          });
+
+          // cache combined results for short time
+          try {
+            const cache = {
+              ts: Date.now(),
+              data: {
+                data: {
+                  totalFeePaid: totalCollected ? `₹${totalCollected.toLocaleString('en-IN')}` : "₹0",
+                  pendingFees: pending ? `₹${pending.toLocaleString('en-IN')}` : "₹0",
+                  totalAppliedFeeHeads: totalApplied ? `₹${totalApplied.toLocaleString('en-IN')}` : "₹0",
+                  totalExpenses: expenses ? `₹${expenses.toLocaleString('en-IN')}` : "₹0",
+                  facultySalary: facultySalary ? `₹${facultySalary.toLocaleString('en-IN')}` : "₹0",
+                  totalFeePaidRaw: totalCollected,
+                  totalAppliedFeeHeadsRaw: totalApplied,
+                },
+                analyticsData: {},
+                revenueData: revenueFetchedData || {},
+                operationalData: {
+                  departments: dashboardStats.departments || 0,
+                  storeItems: storeItems.count || 0,
+                  maintenanceRequests: maintenanceRequests.count || 0,
+                },
+                collectionRate: calcCollectionRate,
+              }
+            };
+            sessionStorage.setItem(cacheKey, JSON.stringify(cache));
+          } catch (e) {
+            // ignore cache write errors
+          }
+        } catch (e) {
+          console.warn('Background dashboard update failed', e);
+        }
+      }).catch((e) => console.warn('Background fetch failed', e));
+
     } catch (error) {
       console.error("Dashboard data fetch error:", error);
       setError("Failed to load dashboard data. Please check your connection.");
-      // Set error state
+      // Set error state with real zeros, no fake data
       setData((prevData) => ({
         ...prevData,
         totalFeePaid: "₹0",
@@ -140,18 +207,9 @@ export default function Dashboard() {
         totalAppliedFeeHeads: "₹0",
         totalExpenses: "₹0",
         facultySalary: "₹0",
-        storeItems: "0 items",
-        maintenanceRequests: "0 pending",
-        departmentPurchases: "₹0",
-        taxStatus: "Unknown",
-        facultyIncomeTax: "Unknown",
-        facultyPF: "Unknown",
-        facultyGratuity: "Unknown",
-        facultyCompliance: "Unknown",
         totalFeePaidRaw: 0,
         totalAppliedFeeHeadsRaw: 0,
       }));
-    } finally {
       setIsLoading(false);
     }
   };
@@ -171,6 +229,23 @@ export default function Dashboard() {
   if (isLoading) {
     return <DashboardLoader />;
   }
+  // Safe numeric helpers to avoid render-time exceptions when data is missing
+  const totalFeePaidRawNum = Number(data?.totalFeePaidRaw || 0);
+  const totalAppliedFeeHeadsRawNum = Number(data?.totalAppliedFeeHeadsRaw || 0);
+  const pendingRaw = (() => {
+    try {
+      if (typeof data?.pendingFees === 'string') {
+        const cleaned = data.pendingFees.replace(/[₹,]/g, '');
+        const n = Number(cleaned);
+        if (!isNaN(n)) return n;
+      }
+      // fallback to computed difference
+      return Math.max(0, totalAppliedFeeHeadsRawNum - totalFeePaidRawNum);
+    } catch (e) {
+      return Math.max(0, totalAppliedFeeHeadsRawNum - totalFeePaidRawNum);
+    }
+  })();
+
   console.log(data);
 
   return (
@@ -294,10 +369,8 @@ export default function Dashboard() {
               </div>
               <div className="text-center p-4 bg-white rounded-lg border border-red-200 shadow-sm">
                 <div className="text-sm text-gray-600 font-medium">Total Pending</div>
-                <div className={`text-xl font-bold mt-1 ${
-                  parseFloat(data.pendingFees.replace(/[₹,]/g, '')) > 0 ? "text-red-600" : "text-green-700"
-                }`}>
-                  {data.pendingFees}
+                <div className={`text-xl font-bold mt-1 ${pendingRaw > 0 ? "text-red-600" : "text-green-700"}`}>
+                  {data.pendingFees ?? `₹${pendingRaw.toLocaleString('en-IN')}`}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">To Collect</div>
               </div>
@@ -305,7 +378,7 @@ export default function Dashboard() {
             <div className="mt-4 p-3 bg-white/50 rounded-lg border border-blue-100">
               <div className="text-sm text-gray-700">
                 <strong>Collection Rate:</strong> {collectionRate}% collected
-                ({data.totalFeePaidRaw.toLocaleString('en-IN')} out of {data.totalAppliedFeeHeadsRaw.toLocaleString('en-IN')})
+                ({totalFeePaidRawNum.toLocaleString('en-IN')} out of {totalAppliedFeeHeadsRawNum.toLocaleString('en-IN')})
               </div>
             </div>
           </div>
@@ -364,41 +437,33 @@ export default function Dashboard() {
           <UnifiedAnalytics analyticsData={analyticsData} revenueData={revenueData} />
         </div>
 
-        {/* Secondary Metrics */}
+        {/* Operational Metrics Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-            <span className="text-3xl">🏢</span>
-            Operational Overview
+            <span className="text-3xl">📊</span>
+            Operational Metrics
           </h2>
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <OperationalCard
-              title="Store Inventory"
-              value={data.storeItems}
-              unit="items"
-              icon="📦"
-              color="bg-blue-500"
-            />
-            <OperationalCard
-              title="Maintenance"
-              value={data.maintenanceRequests}
-              unit="tickets"
-              icon="🔧"
-              color="bg-yellow-500"
-            />
-            <OperationalCard
-              title="Purchases"
-              value={data.departmentPurchases}
-              unit=""
-              icon="🛒"
+              title="Departments"
+              value={operationalData.departments}
+              unit="active"
+              icon="🏢"
               color="bg-green-500"
             />
             <OperationalCard
-              title="Tax Status"
-              value="Current"
-              unit=""
-              icon="📋"
-              color="bg-purple-500"
-              subtitle={data.taxStatus}
+              title="Store Items"
+              value={operationalData.storeItems}
+              unit="items"
+              icon="📦"
+              color="bg-amber-500"
+            />
+            <OperationalCard
+              title="Maintenance Requests"
+              value={operationalData.maintenanceRequests}
+              unit="pending"
+              icon="🔧"
+              color="bg-red-500"
             />
           </div>
         </div>
@@ -417,38 +482,6 @@ export default function Dashboard() {
               icon="💰"
               description="Monthly salary processing and records"
               color="from-green-400 to-emerald-600"
-            />
-            <ModernFacultyCard
-              title="Income Tax"
-              status={data.facultyIncomeTax}
-              link="/faculty/incometax"
-              icon="📊"
-              description="Tax calculations and TDS management"
-              color="from-blue-400 to-indigo-600"
-            />
-            <ModernFacultyCard
-              title="PF & Professional Tax"
-              status={data.facultyPF}
-              link="/faculty/pfproftax"
-              icon="🏦"
-              description="Provident fund and tax deductions"
-              color="from-purple-400 to-violet-600"
-            />
-            <ModernFacultyCard
-              title="Gratuity Management"
-              status={data.facultyGratuity}
-              link="/faculty/gratuitytax"
-              icon="🎁"
-              description="Gratuity calculations and processing"
-              color="from-orange-400 to-red-600"
-            />
-            <ModernFacultyCard
-              title="Compliance Status"
-              status={data.facultyCompliance}
-              link="/faculty/compliance"
-              icon="✅"
-              description="Regulatory compliance tracking"
-              color="from-teal-400 to-cyan-600"
             />
           </div>
         </div>

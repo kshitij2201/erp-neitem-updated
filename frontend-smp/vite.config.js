@@ -35,17 +35,16 @@ export default defineConfig(({ mode }) => {
       ],
     proxy: {
       "/api": {
-        target: "http://backenderp.tarstech.in:4000", // <-- use http:// NOT https://
+        target: "https://backenderp.tarstech.in", // Use local backend if running, otherwise update to your backend server
         changeOrigin: true,
-        secure: false, // fine for dev; keeps things tolerant of certs (no-op for http)
-        rewrite: (path) => path.replace(/^\/api/, ""),
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, "/api"), // Keep /api in path
         configure: (proxy) => {
           proxy.on('error', (err, req, res) => {
-            console.error('[vite-proxy] proxy error:', err && (err.message || err));
-            if (!res.headersSent) {
-              res.writeHead(502, { 'Content-Type': 'application/json' });
-            }
-            res.end(JSON.stringify({ error: 'proxy_error', details: err && err.message }));
+            console.error('[vite-proxy] error:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('[vite-proxy] ' + req.method + ' ' + req.url);
           });
         }
       }
