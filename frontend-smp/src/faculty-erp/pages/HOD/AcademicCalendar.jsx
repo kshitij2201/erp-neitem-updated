@@ -278,7 +278,7 @@ const AcademicCalendar = ({ userData }) => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <Calendar className="text-blue-600" />
-            Teacher Plan
+            Teaching Plan
           </h1>
           <p className="text-gray-600 mt-1">
             Manage subject-wise academic schedules and track progress
@@ -289,7 +289,7 @@ const AcademicCalendar = ({ userData }) => {
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={20} />
-          Create Teacher Plan
+          Create Teaching Plan
         </button>
       </div>
 
@@ -709,7 +709,7 @@ const CreateCalendarModal = ({
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">
-            Teacher's Plan
+            Teaching Plan
           </h2>
           <button
             onClick={onClose}

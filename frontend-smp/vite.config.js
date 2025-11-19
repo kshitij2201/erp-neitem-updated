@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       ],
     proxy: {
       "/api": {
-        target: "http://backenderp.tarstech.in:4000", // <-- use http:// NOT https://
+        target: "https://backenderp.tarstech.in:4000", // <-- use http:// NOT https://
         changeOrigin: true,
         secure: false, // fine for dev; keeps things tolerant of certs (no-op for http)
         rewrite: (path) => path.replace(/^\/api/, ""),

@@ -29,12 +29,12 @@ const BookDetails = () => {
         try {
           // First try by ACCNO
           const response = await axios.get(
-            `backenderp.tarstech.in/api/books/by-accno/${accno}`
+            `backenderp.tarstech.in/api/books/accno/${accno}`
           );
           bookData = response.data;
-          console.log("Book found via by-accno endpoint:", bookData);
+          console.log("Book found via accno endpoint:", bookData);
         } catch (err) {
-          console.log("by-accno endpoint failed, trying alternatives...");
+          console.log("accno endpoint failed, trying alternatives...");
           try {
             // Try by ID endpoint
             const response = await axios.get(

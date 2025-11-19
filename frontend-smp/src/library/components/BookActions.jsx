@@ -425,38 +425,40 @@ const BookActions = () => {
       let bookData = null;
 
       try {
-        // First try the by-accno endpoint
+        // First try the accno endpoint
         const response = await axios.get(
-          `backenderp.tarstech.in/api/books/by-accno/${accno}`,
+          `https://backenderp.tarstech.in/api/books/accno/${accno}`,
           { headers: getAuthHeaders() }
         );
         bookData = response.data;
 
         // Verify the ACCNO matches exactly
-        if (bookData && bookData.ACCNO !== accno) {
+        if (bookData && String(bookData.ACCNO) !== String(accno)) {
           bookData = null;
         }
       } catch (err) {
         try {
           // Try alternative endpoint
-          const response = await axios.get(`backenderp.tarstech.in/api/books/${accno}`);
+          const response = await axios.get(`https://backenderp.tarstech.in/api/books/${accno}`);
           bookData = response.data;
 
           // Verify the ACCNO matches exactly
-          if (bookData && bookData.ACCNO !== accno) {
+          if (bookData && String(bookData.ACCNO) !== String(accno)) {
             bookData = null;
           }
         } catch (err2) {
           try {
             // Try search endpoint
             const response = await axios.get(
-              `backenderp.tarstech.in/api/books?search=${accno}`
+              `https://backenderp.tarstech.in/api/books?search=${encodeURIComponent(
+                accno
+              )}`
             );
             const books =
               response.data.data || response.data.books || response.data;
-            if (Array.isArray(books) && books.length > 0) {
-              // Find exact ACCNO match only
-              bookData = books.find((book) => book.ACCNO === accno);
+              if (Array.isArray(books) && books.length > 0) {
+              // Find exact ACCNO match only (compare as strings to avoid type mismatch)
+              bookData = books.find((book) => String(book.ACCNO) === String(accno));
               if (bookData) {
               } else {
               }
@@ -466,11 +468,11 @@ const BookActions = () => {
           } catch (err3) {
             try {
               // Last attempt - get all books and filter
-              const response = await axios.get(`backenderp.tarstech.in/api/books`);
+              const response = await axios.get(`https://backenderp.tarstech.in/api/books`);
               const allBooks =
                 response.data.data || response.data.books || response.data;
               if (Array.isArray(allBooks)) {
-                bookData = allBooks.find((book) => book.ACCNO === accno);
+                bookData = allBooks.find((book) => String(book.ACCNO) === String(accno));
                 if (bookData) {
                 } else {
                 }
@@ -481,7 +483,7 @@ const BookActions = () => {
       }
 
       // Only proceed if we have book data with matching ACCNO
-      if (bookData && bookData.ACCNO === accno) {
+      if (bookData && String(bookData.ACCNO) === String(accno)) {
         const issueDate = new Date().toISOString().split("T")[0];
 
         setFormData((prev) => ({
@@ -1120,7 +1122,7 @@ const BookActions = () => {
       if (response.data.success) {
         // Find the renewed book details
         const renewedBook = issuedBooks.find(
-          (book) => book.ACCNO === selectedBookId
+          (book) => String(book.ACCNO) === String(selectedBookId)
         );
 
         // Set renewed book details for the modal
@@ -1860,7 +1862,7 @@ const BookActions = () => {
 
       // Check if the selected book exists in the issued books list
       const selectedBook = currentIssuedBooks.find(
-        (book) => book.ACCNO === selectedBookId
+        (book) => String(book.ACCNO) === String(selectedBookId)
       );
       if (!selectedBook) {
         setError("Selected book is not currently issued to this borrower.");
@@ -1915,7 +1917,7 @@ const BookActions = () => {
       } catch (endpointErr) {
         // If there's an error, let's check if the book exists in the issued books array
         const matchingBook = currentIssuedBooks.find(
-          (book) => book.ACCNO === selectedBookId
+          (book) => String(book.ACCNO) === String(selectedBookId)
         );
 
         if (matchingBook) {
@@ -1939,7 +1941,7 @@ const BookActions = () => {
       if (success) {
         // Get book details for the modal using fresh data
         const returnedBook = currentIssuedBooks.find(
-          (book) => book.ACCNO === selectedBookId
+          (book) => String(book.ACCNO) === String(selectedBookId)
         );
 
         let fineAmount = 0;
@@ -2367,13 +2369,13 @@ const BookActions = () => {
       );
 
       // Update UI immediately
-      setIssuedBooks((prev) => prev.filter((book) => book.ACCNO !== ACCNO));
+      setIssuedBooks((prev) => prev.filter((book) => String(book.ACCNO) !== String(ACCNO)));
 
       // Add the returned book to history if it's not already there
       setHistory((prev) => {
-        const returnedBook = issuedBooks.find((book) => book.ACCNO === ACCNO);
+        const returnedBook = issuedBooks.find((book) => String(book.ACCNO) === String(ACCNO));
         if (returnedBook) {
-          const existingIndex = prev.findIndex((h) => h.ACCNO === ACCNO);
+          const existingIndex = prev.findIndex((h) => String(h.ACCNO) === String(ACCNO));
           if (existingIndex >= 0) {
             // Update existing history entry
             const updated = [...prev];

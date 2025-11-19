@@ -191,7 +191,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
             routeName: "department_students",
           },
           {
-            title: "Teacher Plan",
+            title: "Teaching Plan",
             icon: <Calendar size={20} />,
             href: "/faculty-erp/academic-calendar",
             routeName: "academic_calendar",
@@ -292,7 +292,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
     ...(userData?.role === "teaching"
       ? [
           {
-            title: "Teacher Plan",
+            title: "Teaching Plan",
             icon: <Calendar size={20} />,
             href: "/faculty-erp/academic-calendar",
             routeName: "academic_calendar",
@@ -420,7 +420,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
             sectionTitle: "Class Management",
           },
           {
-            title: "Teacher Plan",
+            title: "Teaching Plan",
             icon: <Calendar size={20} />,
             href: "/faculty-erp/academic-calendar",
             routeName: "academic_calendar",

@@ -125,7 +125,7 @@ router.get('/', async (req, res) => {
     const students = await Student.find(query)
       .populate('stream', 'name code')
       .populate('department', 'name code')
-      .populate('semester', 'semesterNumber name')
+      .populate('semester', 'number name')
       .sort({ createdAt: -1 });
     
     console.log(`[Students Route] Found ${students.length} students matching query:`, {

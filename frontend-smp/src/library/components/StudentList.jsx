@@ -12,6 +12,8 @@ const StudentList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalStudents, setTotalStudents] = useState(0);
+  const [totalDepartments, setTotalDepartments] = useState(0);
+  const [departmentsList, setDepartmentsList] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const navigate = useNavigate();
 
@@ -418,13 +420,17 @@ const StudentList = () => {
 
     // If it's an object, try different properties
     if (typeof semesterData === "object") {
-      return (
+      console.log("Extracting semester from object:", semesterData);
+      const result = (
         semesterData.number ||
+        semesterData.semesterNumber ||
         semesterData.sem ||
         semesterData.semester ||
         semesterData.value ||
         ""
       );
+      console.log("Extracted semester:", result);
+      return result;
     }
 
     return "";
@@ -470,6 +476,7 @@ const StudentList = () => {
       if (studentsData.length > 0) {
         console.log("Sample student data:", studentsData[0]);
         console.log("Semester field:", studentsData[0].semester);
+        console.log("Enrollment number:", studentsData[0].enrollmentNumber);
       }
 
       if (!studentsData || studentsData.length === 0) {
@@ -571,6 +578,13 @@ const StudentList = () => {
 
       // Now implement CLIENT-SIDE pagination since server doesn't support it properly
       const allStudents = formattedStudents;
+      // Compute department list and total departments across ALL students
+      const deptSet = new Set(
+        allStudents.map((s) => (s.department ? String(s.department) : "Unknown"))
+      );
+      const deptArray = Array.from(deptSet).sort();
+      setDepartmentsList(deptArray);
+      setTotalDepartments(deptArray.length);
       const totalCount = allStudents.length;
       
       // Calculate pagination
@@ -907,9 +921,7 @@ const StudentList = () => {
           </div>
           <div className="bg-white rounded-xl shadow p-4">
             <h3 className="text-lg font-semibold text-gray-700">Departments</h3>
-            <p className="text-3xl font-bold text-indigo-600">
-              {Object.keys(getStudentStats().byDepartment).length}
-            </p>
+            <p className="text-3xl font-bold text-indigo-600">{totalDepartments}</p>
           </div>
           <div className="bg-white rounded-xl shadow p-4">
             <h3 className="text-lg font-semibold text-gray-700">
@@ -940,7 +952,7 @@ const StudentList = () => {
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="all">All Departments</option>
-                {Object.keys(getStudentStats().byDepartment).map((dept) => (
+                {departmentsList.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
                   </option>
