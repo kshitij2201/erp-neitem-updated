@@ -572,6 +572,17 @@ router.get('/overdue', async (req, res) => {
   }
 });
 
+// Get requests count
+router.get('/requests/count', async (req, res) => {
+  try {
+    const count = await MaintenanceTicket.countDocuments({ status: { $in: ['open', 'in-progress'] } });
+    res.json({ count });
+  } catch (error) {
+    console.error('Requests count error:', error);
+    res.status(500).json({ count: 0 });
+  }
+});
+
 export default router;
 
 

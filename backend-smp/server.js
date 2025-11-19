@@ -11,6 +11,7 @@ import cron from "node-cron";
 // Import Mongoose Models
 import Announcement from "./models/Announcement.js";
 import Counter from "./models/Counter.js";
+import Student from "./models/StudentManagement.js";
 
 // Import Custom Error Handler
 import { errorHandler } from "./utils/errorHandler.js";
@@ -103,6 +104,7 @@ import eventRoutes from "./routes/event.js";
 import semesterRoutes from "./routes/semester.js";
 import facultyAuthRoutes from "./routes/facultyAuth.js";
 import accountRoutes from "./routes/account.js";
+import accountsRoutes from "./routes/accounts.js";
 import feeHeaderRoutes from "./routes/feeHeaders.js";
 import feePaymentRoutes from "./routes/feepayments.js";
 import scholarshipRoutes from "./routes/scholarships.js";
@@ -148,6 +150,7 @@ import facultySubjectRoutes from "./routes/facultySubjectRoutes.js";
 import facultyDepartmentSubjectRoutes from "./routes/facultyDepartmentSubjectRoutes.js";
 import duesRoutes from "./routes/duesRoutes.js";
 import academicCalendarRoutes from "./routes/academicCalendar.js";
+import analyticsRoutes from "./routes/analytics.js";
 
 // Setup __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -378,8 +381,10 @@ app.use("/api/superadmin/events", eventRoutes);
 app.use("/api/superadmin/semesters", semesterRoutes);
 app.use("/api/faculty/auth", facultyAuthRoutes);
 app.use("/api/student/auth", studentAuthRoutes);
-app.use("/api/students", protect, studentsFeeRoutes);
+// Mount public student routes first (without protection for /public endpoint)
+app.use("/api/students", studentsFeeRoutes);
 app.use("/api/students/management", protect, studentManagementRoutes);
+app.use("/api/accounts", accountsRoutes);
 app.use("/api/account", accountRoutes);
 app.use("/api/fee-headers", protect, feeHeaderRoutes);
 app.use("/api/fee-heads", protect, feeHeadsRoutes);
@@ -406,6 +411,7 @@ app.use("/api/feedback", feedbackRoutes);
 // app.use("/api/test", testFacultySubjectRoutes);
 app.use("/api/academic-calendar", academicCalendarRoutes);
 
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/subjects", subjectRoutes);
@@ -423,19 +429,20 @@ app.use("/api/schedules", scheduleRoutes);
 app.use("/api/problems", problemRoutes);
 
 // Purchase and Maintenance Routes
-app.use("/api/purchase", protect, purchaseRoutes);
-app.use("/api/maintenance", protect, maintenanceRoutes);
+app.use("/api/purchases", purchaseRoutes);
+app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/payments", protect, paymentsRoutes);
 app.use("/api/expenses", protect, expensesRoutes);
 app.use("/api/receipts", protect, receiptsRoutes);
 app.use("/api/audit", protect, auditRoutes);
 app.use("/api/ledger", protect, ledgerRoutes);
-app.use("/api/income-tax", protect, incomeTaxRoutes);
+app.use("/api/income-tax", incomeTaxRoutes);
+app.use("/api/tax", incomeTaxRoutes);
 app.use("/api/gratuity", protect, gratuityRoutes);
 app.use("/api/pf", protect, pfRoutes);
 
 // Store Management Routes
-app.use("/api/store", protect, storeRoutes);
+app.use("/api/store", storeRoutes);
 
 // Connect to MongoDB
 mongoose

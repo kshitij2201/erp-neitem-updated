@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export default function UnifiedAnalytics() {
+export default function UnifiedAnalytics({ analyticsData = {}, revenueData = {} }) {
   const [analytics, setAnalytics] = useState({
     financial: {
       totalRevenue: 0,
@@ -26,101 +26,77 @@ export default function UnifiedAnalytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUnifiedAnalytics();
-  }, []);
+    // Update analytics when props change (passed from Dashboard)
+    if (revenueData && Object.keys(revenueData).length > 0) {
+      updateAnalyticsFromProps();
+    } else {
+      // Fallback: fetch if no props provided
+      fetchUnifiedAnalytics();
+    }
+  }, [analyticsData, revenueData]);
+
+  const updateAnalyticsFromProps = () => {
+    // Use real data passed from Dashboard via props
+    const totalRevenue = revenueData.totalRevenue || analyticsData.totalRevenue || 0;
+    const totalExpenses = revenueData.totalExpenses || analyticsData.totalExpenses || 0;
+    const studentFees = revenueData.studentFees || analyticsData.studentFees || 0;
+    const facultySalaries = revenueData.facultySalaries || analyticsData.facultySalaries || 0;
+    const pendingCollections = revenueData.pendingCollections || analyticsData.pendingCollections || 0;
+    const totalStudents = analyticsData.totalStudents || 0;
+    const totalFaculty = analyticsData.totalFaculty || 0;
+
+    const netBalance = totalRevenue - totalExpenses;
+    const paymentSuccessRate = totalRevenue > 0 ? ((studentFees / totalRevenue) * 100).toFixed(1) : 0;
+    const complianceRate = 95;
+
+    setAnalytics({
+      financial: {
+        totalRevenue,
+        totalExpenses,
+        netBalance,
+        studentFees,
+        facultySalaries,
+        pendingCollections,
+      },
+      operational: {
+        totalStudents,
+        totalFaculty,
+        totalTransactions: analyticsData.totalTransactions || 0,
+        complianceRate,
+        activeInsurancePolicies: 3,
+      },
+      trends: {
+        monthlyGrowth: 5.2,
+        paymentSuccessRate: Number(paymentSuccessRate),
+        averageTransactionValue: totalRevenue > 0 ? totalRevenue / Math.max(1, analyticsData.totalTransactions || 1) : 0,
+      },
+    });
+    setLoading(false);
+  };
 
   const fetchUnifiedAnalytics = async () => {
+    // Deprecated: Now uses real data from Dashboard props
+    // This is kept as fallback only
     try {
       setLoading(true);
-
-      // Safe API fetch function with error handling
-      const safeFetch = async (url, defaultValue = null) => {
-        try {
-          const token = localStorage.getItem("token");
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-          const response = await fetch(url, { headers });
-
-          if (!response.ok) {
-            console.warn(`Analytics API ${url} returned ${response.status}`);
-            return defaultValue;
-          }
-
-          const result = await response.json();
-          return result;
-        } catch (error) {
-          console.warn(`Analytics API ${url} failed:`, error.message);
-          return defaultValue;
-        }
-      };
-
-      // Only fetch from APIs that exist, use mock data for others
-      const [students, faculty] = await Promise.allSettled([
-        safeFetch("https://backenderp.tarstech.in/api/students", []),
-        safeFetch("https://backenderp.tarstech.in/api/faculty/faculties", []),
-      ]);
-
-      const studentData = students.status === "fulfilled" ? students.value : [];
-      const facultyData = faculty.status === "fulfilled" ? faculty.value : [];
-
-      // Calculate analytics from available data with realistic mock values
-      const studentCount = Array.isArray(studentData) ? studentData.length : 0;
-      const facultyCount = Array.isArray(facultyData) ? facultyData.length : 0;
-
-      // Mock financial data based on realistic college metrics
-      const totalRevenue = 2500000; // ₹25,00,000
-      const totalExpenses = 1800000; // ₹18,00,000
-      const netBalance = totalRevenue - totalExpenses;
-
-      const complianceRate = 95; // 95% compliance rate
-
-      setAnalytics({
-        financial: {
-          totalRevenue,
-          totalExpenses,
-          netBalance,
-          studentFees: 2200000, // ₹22,00,000
-          facultySalaries: 1200000, // ₹12,00,000
-          pendingCollections: 300000, // ₹3,00,000
-        },
+      // Try to fetch students if analytics not passed as props
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const apiBase = import.meta.env.DEV ? "/api" : "https://backenderp.tarstech.in/api";
+      
+      const studentsResponse = await fetch(`${apiBase}/students`, { headers }).catch(() => null);
+      const studentData = studentsResponse && studentsResponse.ok ? await studentsResponse.json() : [];
+      
+      setAnalytics((prev) => ({
+        ...prev,
         operational: {
-          totalStudents: studentCount || 450, // Mock data if no real data
-          totalFaculty: facultyCount || 25,
-          totalTransactions: 125,
-          complianceRate,
-          activeInsurancePolicies: 3,
+          ...prev.operational,
+          totalStudents: Array.isArray(studentData) ? studentData.length : 0,
         },
-        trends: {
-          monthlyGrowth: 5.2,
-          paymentSuccessRate: 95.8,
-          averageTransactionValue: totalRevenue / 125, // Average per transaction
-        },
-      });
+      }));
     } catch (error) {
-      console.error("Error fetching unified analytics:", error);
-      // Set fallback data even if everything fails
-      setAnalytics({
-        financial: {
-          totalRevenue: 2500000,
-          totalExpenses: 1800000,
-          netBalance: 700000,
-          studentFees: 2200000,
-          facultySalaries: 1200000,
-          pendingCollections: 300000,
-        },
-        operational: {
-          totalStudents: 450,
-          totalFaculty: 25,
-          totalTransactions: 125,
-          complianceRate: 95,
-          activeInsurancePolicies: 3,
-        },
-        trends: {
-          monthlyGrowth: 5.2,
-          paymentSuccessRate: 95.8,
-          averageTransactionValue: 20000,
-        },
-      });
+      console.warn("Fallback analytics fetch failed:", error.message);
     } finally {
       setLoading(false);
     }

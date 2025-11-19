@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 
 const IncomeTax = () => {
   const [loading, setLoading] = useState(false);
@@ -35,6 +35,13 @@ const IncomeTax = () => {
   });
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [showReport, setShowReport] = useState(false);
+
+  // Autocomplete states
+  const [employeeSuggestions, setEmployeeSuggestions] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const searchTimeoutRef = useRef(null);
 
   // Salary calculation states
   const [salaryCalculationType, setSalaryCalculationType] = useState("actual");
@@ -822,43 +829,60 @@ const IncomeTax = () => {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await fetch(
-        "https://backenderp.tarstech.in/api/faculty/faculties",
-        { headers }
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch employees");
-      }
-      const data = await response.json();
+      let allFaculties = [];
+      let page = 1;
+      let pages = 1;
 
-      if (data.success && data.data && data.data.faculties) {
-        // Extract employee names from faculty data
-        const employeeNames = data.data.faculties
-          .map((faculty) => {
-            // Try different possible name formats
-            return (
-              faculty.personalInfo?.fullName ||
-              faculty.fullName ||
-              `${faculty.personalInfo?.firstName || faculty.firstName || ""} ${
-                faculty.personalInfo?.lastName || faculty.lastName || ""
-              }`.trim() ||
-              faculty.email
-            );
-          })
-          .filter((name) => name && name.trim() !== "");
+      // Fetch paginated results and accumulate all pages
+      do {
+        const url = `https://backenderp.tarstech.in/api/faculty/faculties?page=${page}&limit=100`;
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch employees (page ${page})`);
+        }
+        const data = await response.json();
 
-        setAvailableEmployees(employeeNames);
-        console.log("Fetched employees:", employeeNames);
-      }
+        const faculties =
+          (data && data.data && data.data.faculties) || data.faculties ||
+          (Array.isArray(data) ? data : []);
+
+        allFaculties = allFaculties.concat(faculties || []);
+
+        const pagination = (data && data.data && data.data.pagination) || data.pagination || null;
+        pages = pagination?.pages || 1;
+        page++;
+      } while (page <= pages);
+
+      // Extract employee names from accumulated faculty data
+      const employeeNames = allFaculties
+        .map((faculty) => {
+          return (
+            faculty.personalInfo?.fullName ||
+            faculty.fullName ||
+            `${faculty.personalInfo?.firstName || faculty.firstName || ""} ${
+              faculty.personalInfo?.lastName || faculty.lastName || ""
+            }`.trim() ||
+            faculty.email ||
+            faculty.employeeId ||
+            ""
+          );
+        })
+        .filter((name) => name && name.trim() !== "");
+
+      setAvailableEmployees(employeeNames);
+      console.log("Fetched employees (all pages):", employeeNames.length);
+      return employeeNames;
     } catch (error) {
       console.error("Error fetching employees:", error);
       // Fallback to mock data if API fails
-      setAvailableEmployees([
+      const fallback = [
         "Dr. John Smith",
         "Prof. Jane Doe",
         "Dr. Mike Johnson",
         "Prof. Sarah Wilson",
-      ]);
+      ];
+      setAvailableEmployees(fallback);
+      return fallback;
     }
   };
 
@@ -966,9 +990,15 @@ const IncomeTax = () => {
         !historyFilters.year || record.year == historyFilters.year;
       const matchesStatus =
         !historyFilters.status || record.status === historyFilters.status;
+
+      // Improved salary type matching
+      const selectedType = historyFilters.salaryType?.toLowerCase();
+      const recordType = (record.salaryType || "").toLowerCase();
       const matchesType =
         !historyFilters.salaryType ||
-        record.salaryType === historyFilters.salaryType;
+        selectedType === "all" ||
+        (selectedType === "teaching" && recordType.includes("teaching") && !recordType.includes("non-teaching")) ||
+        (selectedType === "non-teaching" && recordType.includes("non-teaching"));
 
       return (
         matchesEmployee &&
@@ -979,6 +1009,61 @@ const IncomeTax = () => {
       );
     });
   };
+
+  // Search employees for autocomplete
+  const searchEmployees = async (term) => {
+    if (term.length < 2) {
+      setEmployeeSuggestions([]);
+      return;
+    }
+    setSuggestionsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch(
+        `https://backenderp.tarstech.in/api/faculty/search/${encodeURIComponent(term)}`,
+        { headers }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const suggestions = (data.data?.faculties || data.faculties || []).map(f =>
+          f.personalInfo?.fullName || f.fullName || `${f.personalInfo?.firstName || f.firstName || ""} ${f.personalInfo?.lastName || f.lastName || ""}`.trim() || f.email || f.employeeId || ""
+        ).filter(name => name);
+        setEmployeeSuggestions(suggestions);
+      } else {
+        // Fallback to availableEmployees
+        const filtered = availableEmployees.filter(emp => emp.toLowerCase().includes(term.toLowerCase()));
+        setEmployeeSuggestions(filtered);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      // Fallback
+      const filtered = availableEmployees.filter(emp => emp.toLowerCase().includes(term.toLowerCase()));
+      setEmployeeSuggestions(filtered);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  // Deduplicate employees - keep only the latest record per employee
+  const uniqueEmployees = useMemo(() => {
+    const map = new Map();
+    getFilteredHistory().forEach((r) => {
+      const key = r.employeeName || r.name || r.employeeId;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, r);
+      } else {
+        // Compare dates to keep the latest record
+        const existingDate = new Date(existing.calculatedOn || existing.paymentDate || 0);
+        const rDate = new Date(r.calculatedOn || r.paymentDate || 0);
+        if (rDate > existingDate) {
+          map.set(key, r);
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [salaryHistory, historyFilters]);
 
   // Generate salary slip from history record - Modified to fetch specific faculty data
   const generateSlipFromHistory = async (record) => {
@@ -1167,10 +1252,21 @@ const IncomeTax = () => {
 
   // Generate different types of reports
   const generateReport = (reportType = "summary") => {
-    const recordsToReport =
+    let recordsToReport =
       selectedRecords.length > 0
-        ? salaryHistory.filter((record) => selectedRecords.includes(record._id))
+        ? getFilteredHistory().filter((record) => selectedRecords.includes(record._id))
         : getFilteredHistory();
+
+    // Deduplicate records by employee name to avoid showing duplicates
+    const uniqueRecordsMap = new Map();
+    recordsToReport.forEach((record) => {
+      const key = record.employeeName || record.name || record.employeeId;
+      const existing = uniqueRecordsMap.get(key);
+      if (!existing || new Date(record.calculatedOn || record.paymentDate) > new Date(existing.calculatedOn || existing.paymentDate)) {
+        uniqueRecordsMap.set(key, record);
+      }
+    });
+    recordsToReport = Array.from(uniqueRecordsMap.values());
 
     if (recordsToReport.length === 0) {
       setError("No records selected for report");
@@ -1403,6 +1499,42 @@ const IncomeTax = () => {
 
   // Generate Detailed Report
   const generateDetailedReport = (records) => {
+    // Calculate totals for numeric columns
+    const totals = {
+      basic: 0,
+      hra: 0,
+      da: 0,
+      medical: 0,
+      transport: 0,
+      others: 0,
+      gross: 0,
+      pf: 0,
+      esi: 0,
+      pt: 0,
+      tds: 0,
+      otherDed: 0,
+      totalDed: 0,
+      net: 0
+    };
+
+    // Sum up all records
+    records.forEach(record => {
+      totals.basic += parseFloat(record.basicSalary || 0);
+      totals.hra += parseFloat(record.allowances?.hra || 0);
+      totals.da += parseFloat(record.allowances?.da || 0);
+      totals.medical += parseFloat(record.allowances?.medicalAllowance || 0);
+      totals.transport += parseFloat(record.allowances?.transportAllowance || 0);
+      totals.others += parseFloat(record.allowances?.otherAllowances || 0);
+      totals.gross += parseFloat(record.grossSalary || record.amount || 0);
+      totals.pf += parseFloat(record.deductions?.epf || record.deductions?.pf || 0);
+      totals.esi += parseFloat(record.deductions?.esi || 0);
+      totals.pt += parseFloat(record.deductions?.professionalTax || 0);
+      totals.tds += parseFloat(record.deductions?.tds || 0);
+      totals.otherDed += parseFloat(record.deductions?.otherDeductions || 0);
+      totals.totalDed += parseFloat(record.totalDeductions || 0);
+      totals.net += parseFloat(record.netSalary || 0);
+    });
+
     return `
       <!DOCTYPE html>
       <html>
@@ -1426,6 +1558,8 @@ const IncomeTax = () => {
             tr:nth-child(even) { background: #f9f9f9; }
             .amount { text-align: right; font-weight: 600; }
             .breakdown { background: #f8f9fa; padding: 4px; border-radius: 4px; }
+            .total-row { background: #1e3a8a !important; color: white; font-weight: bold; }
+            .total-row td { border-top: 2px solid #fff; }
             @media print { @page { margin: 0.5cm; size: A4 landscape; } }
           </style>
         </head>
@@ -1530,6 +1664,26 @@ const IncomeTax = () => {
                   )
                   .join("")}
               </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td colspan="2" style="text-align: center; font-weight: bold;">TOTAL</td>
+                  <td class="amount">₹${totals.basic.toLocaleString()}</td>
+                  <td class="amount">₹${totals.hra.toLocaleString()}</td>
+                  <td class="amount">₹${totals.da.toLocaleString()}</td>
+                  <td class="amount">₹${totals.medical.toLocaleString()}</td>
+                  <td class="amount">₹${totals.transport.toLocaleString()}</td>
+                  <td class="amount">₹${totals.others.toLocaleString()}</td>
+                  <td class="amount">₹${totals.gross.toLocaleString()}</td>
+                  <td class="amount">₹${totals.pf.toLocaleString()}</td>
+                  <td class="amount">₹${totals.esi.toLocaleString()}</td>
+                  <td class="amount">₹${totals.pt.toLocaleString()}</td>
+                  <td class="amount">₹${totals.tds.toLocaleString()}</td>
+                  <td class="amount">₹${totals.otherDed.toLocaleString()}</td>
+                  <td class="amount">₹${totals.totalDed.toLocaleString()}</td>
+                  <td class="amount">₹${totals.net.toLocaleString()}</td>
+                  <td style="text-align: center;">-</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -3281,7 +3435,7 @@ Please:
                     </span>
                     Employee & Salary Period
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Employee Name
@@ -4023,7 +4177,7 @@ Please:
                 <div>
                   {staffType === "teaching" && (
                     <div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="">
                         {/* Employee Name */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -6148,18 +6302,81 @@ Please:
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Employee Name
                 </label>
-                <input
-                  type="text"
-                  value={historyFilters.employeeName}
-                  onChange={(e) =>
-                    setHistoryFilters((prev) => ({
-                      ...prev,
-                      employeeName: e.target.value,
-                    }))
-                  }
-                  placeholder="Search employee..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={historyFilters.employeeName}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setHistoryFilters((prev) => ({
+                        ...prev,
+                        employeeName: value,
+                      }));
+                      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+                      searchTimeoutRef.current = setTimeout(() => searchEmployees(value), 300);
+                      setShowSuggestions(true);
+                      setActiveSuggestionIndex(-1);
+                    }}
+                    onFocus={() => {
+                      if (availableEmployees.length === 0) {
+                        fetchEmployees();
+                      }
+                      setShowSuggestions(true);
+                      setEmployeeSuggestions(availableEmployees);
+                      setActiveSuggestionIndex(-1);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowSuggestions(false), 200);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!showSuggestions || employeeSuggestions.length === 0) return;
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setActiveSuggestionIndex(prev => prev < employeeSuggestions.length - 1 ? prev + 1 : 0);
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setActiveSuggestionIndex(prev => prev > 0 ? prev - 1 : employeeSuggestions.length - 1);
+                      } else if (e.key === 'Enter' && activeSuggestionIndex >= 0) {
+                        e.preventDefault();
+                        setHistoryFilters((prev) => ({
+                          ...prev,
+                          employeeName: employeeSuggestions[activeSuggestionIndex],
+                        }));
+                        setShowSuggestions(false);
+                      } else if (e.key === 'Escape') {
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    placeholder="Search employee..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {showSuggestions && (
+                    <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
+                      {suggestionsLoading ? (
+                        <li className="px-3 py-2 text-gray-500">Loading...</li>
+                      ) : employeeSuggestions.length > 0 ? (
+                        employeeSuggestions.map((suggestion, index) => (
+                          <li
+                            key={index}
+                            className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${index === activeSuggestionIndex ? 'bg-blue-100' : ''}`}
+                            onClick={() => {
+                              setHistoryFilters((prev) => ({
+                                ...prev,
+                                employeeName: suggestion,
+                              }));
+                              setShowSuggestions(false);
+                            }}
+                            title={suggestion}
+                          >
+                            <div className="whitespace-normal break-words text-sm">{suggestion}</div>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="px-3 py-2 text-gray-500">No employees found</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -6198,7 +6415,7 @@ Please:
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Years</option>
-                  {[2024, 2023, 2022, 2021, 2020].map((year) => (
+                  {[2030,2029,2028,2027,2026,2025,2024, 2023, 2022, 2021, 2020].map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>
@@ -6240,10 +6457,8 @@ Please:
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Types</option>
-                  <option value="Calculated Salary">Calculated Salary</option>
-                  <option value="Advance Payment">Advance Payment</option>
-                  <option value="Bonus">Bonus</option>
-                  <option value="Arrears">Arrears</option>
+                  <option value="Teaching">Teaching</option>
+                  <option value="Non-teaching">Non-Teaching</option>
                 </select>
               </div>
             </div>
@@ -6263,8 +6478,7 @@ Please:
                 Clear Filters
               </button>
               <span className="text-sm text-gray-600 flex items-center">
-                Showing {getFilteredHistory().length} of {salaryHistory.length}{" "}
-                records
+                Showing {uniqueEmployees.length} of {salaryHistory.length} records
               </span>
             </div>
           </div>
@@ -6286,17 +6500,14 @@ Please:
                           type="checkbox"
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedRecords(
-                                getFilteredHistory().map((r) => r._id)
-                              );
+                              setSelectedRecords(uniqueEmployees.map((r) => r._id));
                             } else {
                               setSelectedRecords([]);
                             }
                           }}
                           checked={
-                            selectedRecords.length ===
-                              getFilteredHistory().length &&
-                            getFilteredHistory().length > 0
+                            selectedRecords.length === uniqueEmployees.length &&
+                            uniqueEmployees.length > 0
                           }
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
@@ -6331,7 +6542,7 @@ Please:
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {getFilteredHistory().length === 0 ? (
+                    {uniqueEmployees.length === 0 ? (
                       <tr>
                         <td
                           colSpan="10"
@@ -6343,7 +6554,7 @@ Please:
                         </td>
                       </tr>
                     ) : (
-                      getFilteredHistory().map((record, index) => (
+                      uniqueEmployees.map((record, index) => (
                         <tr
                           key={`${record._id}-${index}`}
                           className="hover:bg-gray-50"
@@ -6447,14 +6658,14 @@ Please:
           </div>
 
           {/* Summary Stats */}
-          {getFilteredHistory().length > 0 && (
+          {uniqueEmployees.length > 0 && (
             <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="text-blue-600 text-sm font-medium">
                   Total Records
                 </div>
                 <div className="text-2xl font-bold text-blue-800">
-                  {getFilteredHistory().length}
+                  {uniqueEmployees.length}
                 </div>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
@@ -6463,7 +6674,7 @@ Please:
                 </div>
                 <div className="text-2xl font-bold text-green-800">
                   ₹
-                  {getFilteredHistory()
+                  {uniqueEmployees
                     .reduce(
                       (sum, r) =>
                         sum + parseFloat(r.grossSalary || r.amount || 0),
@@ -6478,7 +6689,7 @@ Please:
                 </div>
                 <div className="text-2xl font-bold text-red-800">
                   ₹
-                  {getFilteredHistory()
+                  {uniqueEmployees
                     .reduce(
                       (sum, r) => sum + parseFloat(r.totalDeductions || 0),
                       0
@@ -6492,7 +6703,7 @@ Please:
                 </div>
                 <div className="text-2xl font-bold text-purple-800">
                   ₹
-                  {getFilteredHistory()
+                  {uniqueEmployees
                     .reduce((sum, r) => sum + parseFloat(r.netSalary || 0), 0)
                     .toLocaleString()}
                 </div>

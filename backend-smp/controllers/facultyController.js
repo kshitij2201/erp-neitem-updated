@@ -652,7 +652,7 @@ const getFaculties = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    console.log("Get Faculties Filter:", department);
+    console.log("Get Faculties Filter:", department || "No department filter");
     const filter = {};
 
     // Handle department filtering with ObjectId lookup
@@ -697,7 +697,7 @@ const getFaculties = async (req, res) => {
       filter.type = { $in: ["teaching", "HOD", "principal", "cc"] };
     }
 
-    console.log("Get Faculties Filter:", filter);
+    console.log("Get Faculties Filter:", filter && Object.keys(filter).length > 0 ? filter : "No filters applied");
     let faculties;
     let populationError = null;
     try {

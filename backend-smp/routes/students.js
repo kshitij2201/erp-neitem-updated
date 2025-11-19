@@ -4,11 +4,12 @@ import Student from '../models/StudentManagement.js';
 import FeeHead from '../models/FeeHead.js';
 import Payment from '../models/Payment.js';
 import mongoose from 'mongoose';
+import { protect } from '../middleware/auth.js';
 
-// GET all students
-router.get('/', async (req, res) => {
+// GET all students (protected)
+router.get('/', protect, async (req, res) => {
   try {
-    const { department, program, academicStatus, search, semester, section } = req.query;
+    const { department, program, academicStatus, search, page = 1, limit = 10 } = req.query;
     
     let query = {};
     
@@ -68,60 +69,22 @@ router.get('/', async (req, res) => {
       query.academicStatus = academicStatus;
     }
     
-    // Filter by semester - handle both ObjectId and number
-    if (semester) {
-      if (mongoose.Types.ObjectId.isValid(semester)) {
-        query.semester = semester;
-      } else {
-        // Try to find semester by number
-        try {
-          // For NCAT2017 faculty specifically, if semester is "1", try to find semester "3" instead
-          // This is a temporary fix for the CC assignment data issue
-          let semesterToSearch = semester;
-          if (semester === "1" && req.user && (req.user.employeeId === "NCAT2017" || req.user.firstName === "Chralie")) {
-            console.log(`[Students] Adjusting semester from "1" to "3" for NCAT2017 faculty`);
-            semesterToSearch = "3";
-          }
-          
-          const semesterDoc = await mongoose.model('Semester').findOne({
-            $or: [
-              { semesterNumber: parseInt(semesterToSearch) },
-              { name: { $regex: semesterToSearch, $options: 'i' } }
-            ]
-          });
-          if (semesterDoc) {
-            query.semester = semesterDoc._id;
-            console.log(`[Students] Semester filter applied: ${semesterDoc.name || semesterDoc.semesterNumber} (${semesterDoc._id})`);
-          } else {
-            console.log(`[Students] No semester found for: ${semesterToSearch} (original: ${semester}) - skipping semester filter`);
-            // Skip semester filter if not found
-          }
-        } catch (err) {
-          console.log("Error finding semester:", err.message);
-          // Skip semester filter on error
-        }
-      }
-    }
-    
-    // Filter by section - direct string match (case insensitive)
-    if (section) {
-      query.section = { $regex: `^${section}$`, $options: 'i' };
-    }
-    
-    // Search by name, email, or student ID
+    // Search by student name, studentId, or enrollmentNumber
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
         { middleName: { $regex: search, $options: 'i' } },
         { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
         { studentId: { $regex: search, $options: 'i' } },
-        { enrollmentNumber: { $regex: search, $options: 'i' } },
-        { fatherName: { $regex: search, $options: 'i' } },
-        { scholarshipDetails: { $regex: search, $options: 'i' } }
+        { enrollmentNumber: { $regex: search, $options: 'i' } }
       ];
     }
     
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    const total = await Student.countDocuments(query);
     const students = await Student.find(query)
       .populate('stream', 'name code')
       .populate('department', 'name code')
@@ -148,8 +111,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET student statistics
-router.get('/stats/overview', async (req, res) => {
+// GET student statistics (protected)
+router.get('/stats/overview', protect, async (req, res) => {
   try {
     const totalStudents = await Student.countDocuments();
     const activeStudents = await Student.countDocuments({ academicStatus: 'Active' });
@@ -187,8 +150,8 @@ router.get('/stats/overview', async (req, res) => {
   }
 });
 
-// GET: pending fees for a specific student (must come before /:id route)
-router.get('/:id/pending-fees', async (req, res) => {
+// GET: pending fees for a specific student (must come before /:id route) (protected)
+router.get('/:id/pending-fees', protect, async (req, res) => {
   try {
     const { id } = req.params;
     const { academicYear } = req.query;
@@ -276,8 +239,8 @@ router.get('/:id/pending-fees', async (req, res) => {
   }
 });
 
-// GET: semester fees for a specific student and semester
-router.get('/:id/semester-fees/:semester', async (req, res) => {
+// GET: semester fees for a specific student and semester (protected)
+router.get('/:id/semester-fees/:semester', protect, async (req, res) => {
   try {
     const { id, semester } = req.params;
     const { academicYear } = req.query;
@@ -369,8 +332,54 @@ router.get('/:id/semester-fees/:semester', async (req, res) => {
   }
 });
 
-// GET student by ID
-router.get('/:id', async (req, res) => {
+// Unprotected endpoint for basic student data (for public dashboards) - MUST be before /:id route
+router.get('/public', async (req, res) => {
+  try {
+    const { search, limit = 10, page = 1, department } = req.query;
+    
+    let query = {};
+    
+    // Filter by department
+    if (department) {
+      query.department = { $regex: department, $options: 'i' };
+    }
+    
+    // Search by student name, studentId, or enrollmentNumber
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { studentId: { $regex: search, $options: 'i' } },
+        { enrollmentNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const students = await Student.find(query)
+      .select('firstName middleName lastName studentId enrollmentNumber email department stream gender casteCategory admissionType')
+      .populate('department', 'name')
+      .populate('stream', 'name')
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+      
+    const total = await Student.countDocuments(query);
+    
+    res.json({
+      students,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit))
+    });
+  } catch (err) {
+    console.error('Error fetching public student data:', err);
+    res.status(500).json({ error: 'Failed to fetch student data' });
+  }
+});
+
+// GET student by ID (protected)
+router.get('/:id', protect, async (req, res) => {
   try {
     const student = await Student.findById(req.params.id).populate('stream');
     
@@ -385,8 +394,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST create new student
-router.post('/', async (req, res) => {
+// POST create new student (protected)
+router.post('/', protect, async (req, res) => {
   try {
     const student = new Student(req.body);
     await student.save();
@@ -397,8 +406,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update student
-router.put('/:id', async (req, res) => {
+// PUT update student (protected)
+router.put('/:id', protect, async (req, res) => {
   try {
     const student = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(student);
@@ -408,8 +417,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE student
-router.delete('/:id', async (req, res) => {
+// DELETE student (protected)
+router.delete('/:id', protect, async (req, res) => {
   try {
     await Student.findByIdAndDelete(req.params.id);
     res.json({ message: 'Student deleted successfully' });
@@ -419,9 +428,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Dashboard aggregator
-// Dashboard aggregator (for all students, sum all applicable fee heads)
-router.get('/fees/status', async (req, res) => {
+// Dashboard aggregator (protected)
+router.get('/fees/status', protect, async (req, res) => {
   try {
     const students = await Student.find().populate("stream");
     let pendingFees = 0;
@@ -475,120 +483,100 @@ router.get('/fees/status', async (req, res) => {
   }
 });
 
-// Additional routes that frontend is trying to access
-router.get('/filter', async (req, res) => {
-  console.log('[Students Filter Route] Called with params:', req.query);
-  // Use the same logic as the main route
+// Filtered financial summary by department (unprotected)
+router.get('/financial-summary/filtered', async (req, res) => {
   try {
-    const { department, program, academicStatus, search, semester, section } = req.query;
+    const { department } = req.query;
     
-    let query = {};
-    
-    // Filter by department - handle both string and ObjectId
+    let studentQuery = {};
     if (department) {
-      if (mongoose.Types.ObjectId.isValid(department)) {
-        query.department = department;
-      } else {
-        // Find department by name first
-        try {
-          // First try exact match
-          let dept = await mongoose.model('AcademicDepartment').findOne({
-            name: { $regex: `^${department}$`, $options: 'i' }
-          });
-          
-          // If not found, try common typo corrections
-          if (!dept) {
-            const departmentVariations = [
-              department,
-              department.replace('Mechancial', 'Mechanical'), // Fix common typo
-              department.replace('Mechnical', 'Mechanical'),   // Another typo
-              department.replace('Machanical', 'Mechanical'),  // Another typo
-            ];
-            
-            for (const variation of departmentVariations) {
-              dept = await mongoose.model('AcademicDepartment').findOne({
-                name: { $regex: `^${variation}$`, $options: 'i' }
-              });
-              if (dept) {
-                console.log(`[Students Filter] Found department using variation: ${variation}`);
-                break;
-              }
-            }
-          }
-          
-          if (dept) {
-            query.department = dept._id;
-            console.log(`[Students Filter] Department filter applied: ${dept.name} (${dept._id})`);
-          } else {
-            console.log(`[Students Filter] No department found for: ${department} - skipping department filter`);
-          }
-        } catch (err) {
-          console.log("Error finding department:", err.message);
-        }
-      }
+      studentQuery.department = { $regex: department, $options: 'i' };
     }
     
-    // Filter by semester - handle both ObjectId and number
-    if (semester) {
-      if (mongoose.Types.ObjectId.isValid(semester)) {
-        query.semester = semester;
-      } else {
-        try {
-          let semesterToSearch = semester;
-          if (semester === "1" && req.user && (req.user.employeeId === "NCAT2017" || req.user.firstName === "Chralie")) {
-            console.log(`[Students Filter] Adjusting semester from "1" to "3" for NCAT2017 faculty`);
-            semesterToSearch = "3";
-          }
-          
-          const semesterDoc = await mongoose.model('Semester').findOne({
-            $or: [
-              { semesterNumber: parseInt(semesterToSearch) },
-              { name: { $regex: semesterToSearch, $options: 'i' } }
-            ]
-          });
-          if (semesterDoc) {
-            query.semester = semesterDoc._id;
-            console.log(`[Students Filter] Semester filter applied: ${semesterDoc.name || semesterDoc.semesterNumber} (${semesterDoc._id})`);
-          } else {
-            console.log(`[Students Filter] No semester found for: ${semesterToSearch} (original: ${semester}) - skipping semester filter`);
-          }
-        } catch (err) {
-          console.log("Error finding semester:", err.message);
-        }
-      }
+    const students = await Student.find(studentQuery).populate("stream department");
+    
+    if (students.length === 0) {
+      return res.json({
+        totalFeesCollected: 0,
+        pendingFees: 0,
+        totalExpenses: 0,
+        totalRevenue: 0,
+        netBalanceStudentFees: 0,
+        pendingCollection: 0,
+        facultySalaries: 0,
+        studentCount: 0
+      });
     }
-    
-    // Filter by section - direct string match (case insensitive)
-    if (section) {
-      query.section = { $regex: `^${section}$`, $options: 'i' };
+
+    let totalFeesCollected = 0;
+    let pendingFees = 0;
+    let totalExpenses = 0;
+    let totalRevenue = 0;
+    let netBalanceStudentFees = 0;
+    let pendingCollection = 0;
+    let facultySalaries = 0;
+
+    // Get all fee heads to filter applicable ones per student
+    const allFeeHeads = await FeeHead.find();
+
+    for (const student of students) {
+      // Filter applicable fee heads for this student
+      const applicableHeads = allFeeHeads.filter((head) => {
+        if (head.applyTo === "all") return true;
+
+        const matchStream = head.filters?.stream
+          ? String(head.filters.stream) === String(student.stream?._id)
+          : true;
+
+        // Normalize caste category mapping
+        let studentCaste = student.casteCategory || "Open";
+        const casteMapping = {
+          'sc': 'SC',
+          'st': 'ST', 
+          'obc': 'OBC',
+          'general': 'Open',
+          'open': 'Open'
+        };
+        const normalizedCaste = casteMapping[studentCaste.toLowerCase()] || 'Open';
+
+        const matchCaste = head.filters?.casteCategory
+          ? head.filters.casteCategory.toLowerCase() === normalizedCaste.toLowerCase()
+          : true;
+
+        return matchStream && matchCaste;
+      });
+
+      // Calculate fees for this student
+      const studentTotalFees = applicableHeads.reduce((sum, h) => sum + (h.amount || 0), 0);
+      const feesPaid = student.feesPaid || 0;
+      const studentPendingFees = Math.max(0, studentTotalFees - feesPaid);
+      
+      totalFeesCollected += feesPaid;
+      pendingFees += studentPendingFees;
+      pendingCollection += studentPendingFees;
     }
-    
-    console.log(`[Students Filter] Final query:`, query);
-    
-    const students = await Student.find(query)
-      .populate('stream', 'name code')
-      .populate('department', 'name code')
-      .populate('semester', 'semesterNumber name')
-      .sort({ createdAt: -1 });
-    
-    console.log(`[Students Filter] Found ${students.length} students`);
-    
+
+    // For expenses and faculty salaries, we might need to filter by department too
+    // For now, return 0 as these are not department-specific
+    totalExpenses = 0;
+    facultySalaries = 0;
+    totalRevenue = totalFeesCollected;
+    netBalanceStudentFees = totalFeesCollected - pendingFees;
+
     res.json({
-      success: true,
-      data: students,
-      message: `Found ${students.length} students`
+      totalFeesCollected,
+      pendingFees,
+      totalExpenses,
+      totalRevenue,
+      netBalanceStudentFees,
+      pendingCollection,
+      facultySalaries,
+      studentCount: students.length
     });
   } catch (err) {
-    console.error('Error in filter route:', err);
-    res.status(500).json({ message: 'Error fetching students' });
+    console.error('Error calculating filtered financial summary:', err);
+    res.status(500).json({ error: 'Failed to calculate financial summary' });
   }
-});
-
-// Alias route for /class - same as filter
-router.get('/class', async (req, res) => {
-  console.log('[Students Class Route] Redirecting to filter logic with params:', req.query);
-  req.url = '/filter';
-  return router.handle(req, res);
 });
 
 export default router;

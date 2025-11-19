@@ -276,6 +276,31 @@ const studentSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Fee-related fields
+    feesPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pendingAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    scholarshipAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    currentSemester: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Semester",
+    },
+    academicStatus: {
+      type: String,
+      enum: ["Active", "Inactive", "Graduated", "Suspended", "Transferred"],
+      default: "Active",
+    },
     semesterRecords: [semesterRecordSchema],
     backlogs: [backlogSchema],
   },

@@ -453,6 +453,31 @@ router.get('/faculty', async (req, res) => {
     }
 });
 
+// Get total purchases amount
+router.get('/total', async (req, res) => {
+  try {
+    const result = await PurchaseOrder.aggregate([
+      {
+        $match: {
+          status: { $in: ['Completed', 'Received'] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$totalAmount' }
+        }
+      }
+    ]);
+    
+    const total = result.length > 0 ? result[0].total : 0;
+    res.json({ total });
+  } catch (error) {
+    console.error('Total purchases error:', error);
+    res.status(500).json({ total: 0 });
+  }
+});
+
 export default router;
 
 

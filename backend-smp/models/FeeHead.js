@@ -40,4 +40,27 @@ const feeHeadSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Pre-delete middleware to update related FeePayment records
+feeHeadSchema.pre('findOneAndDelete', async function(next) {
+  try {
+    const feeHead = await this.model.findOne(this.getFilter());
+    if (feeHead) {
+      const FeePayment = mongoose.model('FeePayment');
+      const relatedPayments = await FeePayment.find({ feeHeader: feeHead._id });
+
+      // Update each FeePayment record by subtracting the fee head amount from pendingAmount
+      for (const payment of relatedPayments) {
+        const newPendingAmount = Math.max(0, payment.pendingAmount - feeHead.amount);
+        await FeePayment.findByIdAndUpdate(payment._id, {
+          pendingAmount: newPendingAmount,
+          updatedAt: new Date()
+        });
+      }
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default mongoose.model("FeeHead", feeHeadSchema);

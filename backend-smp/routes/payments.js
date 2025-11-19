@@ -364,8 +364,65 @@ router.post('/', async (req, res) => {
     }
 
     // Update student's fees paid using findByIdAndUpdate to avoid validation issues
+    // First, check if pendingAmount needs to be initialized
+    let currentPendingAmount = student.pendingAmount || 0;
+    
+    // If pendingAmount is 0, initialize it with total applicable fees
+    if (currentPendingAmount === 0) {
+      try {
+        // Get applicable fee heads for this student
+        const FeeHead = (await import('../models/FeeHead.js')).default;
+        const allHeads = await FeeHead.find();
+        
+        // Filter applicable fee heads for this student
+        const applicableHeads = allHeads.filter((head) => {
+          if (head.applyTo === "all") return true;
+
+          const matchStream = head.filters?.stream
+            ? String(head.filters.stream) === String(student.stream?._id)
+            : true;
+
+          // Map remote caste categories to our fee head filters
+          let studentCaste = student.casteCategory || "Open";
+          
+          // Normalize caste category mapping
+          const casteMapping = {
+            'sc': 'SC',
+            'st': 'ST', 
+            'obc': 'OBC',
+            'general': 'Open',
+            'open': 'Open'
+          };
+          
+          const normalizedCaste = casteMapping[studentCaste.toLowerCase()] || 'Open';
+
+          const matchCaste = head.filters?.casteCategory
+            ? head.filters.casteCategory.toLowerCase() === normalizedCaste.toLowerCase()
+            : true;
+
+          return matchStream && matchCaste;
+        });
+
+        // Add semester filtering if applicable
+        const semesterFilteredHeads = applicableHeads.filter((head) => {
+          if (head.semester && student.currentSemester) {
+            return head.semester === student.currentSemester;
+          }
+          return true; // If no semester specified, apply to all
+        });
+
+        // Sum the amounts
+        const totalFees = semesterFilteredHeads.reduce((sum, h) => sum + h.amount, 0);
+        currentPendingAmount = totalFees - (student.scholarshipAmount || 0);
+        console.log('Initialized pendingAmount for student:', student.firstName, 'Total fees:', totalFees, 'Pending after scholarship:', currentPendingAmount);
+      } catch (initErr) {
+        console.warn('Failed to initialize pendingAmount:', initErr.message);
+        // Continue with current value
+      }
+    }
+    
     const updatedFeesPaid = (student.feesPaid || 0) + parseFloat(amount);
-    const updatedPendingAmount = Math.max(0, (student.pendingAmount || 0) - parseFloat(amount));
+    const updatedPendingAmount = Math.max(0, currentPendingAmount - parseFloat(amount));
     
     await Student.findByIdAndUpdate(
       student._id,
@@ -428,8 +485,8 @@ router.post('/', async (req, res) => {
         updatedCollectionCount: feeHeadDetails.collectionCount
       } : null,
       updatedStudent: {
-        feesPaid: student.feesPaid,
-        pendingAmount: student.pendingAmount
+        feesPaid: updatedFeesPaid,
+        pendingAmount: updatedPendingAmount
       }
     });
   } catch (err) {

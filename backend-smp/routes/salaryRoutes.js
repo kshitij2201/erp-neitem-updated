@@ -3,13 +3,17 @@ import {
   getAllSalaryRecords,
   getSalaryRecordById,
   addSalaryRecord,
-  updateSalaryRecord
+  updateSalaryRecord,
+  getTotalSalary
 } from '../controllers/salaryController.js';
 
 const router = express.Router();
 
 // Get all salary records
 router.get('/', getAllSalaryRecords);
+
+// Get total salary amount
+router.get('/total', getTotalSalary);
 
 // Get a specific salary record by employeeId
 router.get('/:id', getSalaryRecordById);
