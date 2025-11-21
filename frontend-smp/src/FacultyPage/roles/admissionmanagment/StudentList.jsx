@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { jsPDF } from "jspdf";
@@ -20,6 +20,7 @@ function LeavingCertificate({
   numberToWords,
   months,
   standard,
+  serialNo,
   theme,
 }) {
   const dateOfBirth = student.dateOfBirth
@@ -195,6 +196,7 @@ function LeavingCertificate({
           the authority issuing it...)
         </p>
         <div className="text-right text-sm font-medium mb-4">
+          <p className={theme.textPrimary}>Serial No. {serialNo}</p>
           <p className={theme.textPrimary}>Register No. 1: 06</p>
           <p className={theme.textPrimary}>ABC ID: {student.abcId || "N/A"}</p>
         </div>
@@ -237,7 +239,7 @@ function LeavingCertificate({
             </motion.div>
           ))}
         </div>
-        <div className="mt-8 space-y-4 text-sm">
+        <div className="mt-2 space-y-4 text-sm">
           <div className="flex justify-between items-center">
             <span className={`${theme.textPrimary} font-medium`}>
               Seal No.: _______
@@ -252,7 +254,7 @@ function LeavingCertificate({
             Certified that the above information is in accordance with the
             Institute Register.
           </p>
-          <div className="flex justify-between mt-8">
+          <div className="flex justify-between">
             <p className={`${theme.textPrimary} text-sm font-medium`}>
               Date: {new Date().toLocaleDateString("en-GB")}
             </p>
@@ -426,12 +428,23 @@ function StudentList() {
     remarkYear: "",
     completionStatus: "",
     standard: "",
+    registerNo: "",
+    serialNo: 1000,
     error: null,
     isGenerating: false,
     showPreview: false,
     studentData: null,
   });
   const navigate = useNavigate();
+
+  const admissionTypeCounts = useMemo(() => {
+    const counts = {};
+    students.forEach(student => {
+      const type = student.admissionType || 'Unknown';
+      counts[type] = (counts[type] || 0) + 1;
+    });
+    return counts;
+  }, [students]);
 
   // Helper function to get auth headers
   const getAuthHeaders = () => {
@@ -728,6 +741,8 @@ function StudentList() {
         isCleared: true,
         completionStatus: type === "LC" ? "Completed" : "",
         standard: res.data.department?.name || "",
+        registerNo: "",
+        serialNo: certificateModal.serialNo + 1,
         error: null,
         isGenerating: false,
         showPreview: false,
@@ -757,6 +772,8 @@ function StudentList() {
       isCleared: true,
       completionStatus: "",
       standard: "",
+      registerNo: "",
+      serialNo: certificateModal.serialNo,
       error: null,
       isGenerating: false,
       showPreview: false,
@@ -810,6 +827,7 @@ function StudentList() {
       remarkSession,
       remarkYear,
       standard,
+      registerNo,
     } = certificateModal;
 
     if (!reason.trim()) {
@@ -848,6 +866,13 @@ function StudentList() {
       setCertificateModal((prev) => ({
         ...prev,
         error: "Standard is required",
+      }));
+      return;
+    }
+    if (!registerNo.trim()) {
+      setCertificateModal((prev) => ({
+        ...prev,
+        error: "Register No. is required",
       }));
       return;
     }
@@ -896,8 +921,8 @@ function StudentList() {
       const pageHeight = doc.internal.pageSize.getHeight();
       const marginLeft = 5;
       const marginRight = 5;
-      const marginTop = 4; // top border gap
-      const marginBottom = 4; // bottom border gap (keep equal to top)
+      const marginTop = 7; // top border gap
+      const marginBottom = 3; // bottom border gap (further reduced)
       const contentWidth = pageWidth - marginLeft - marginRight;
 
       doc.setFont("Helvetica");
@@ -981,7 +1006,8 @@ function StudentList() {
       y += ruleTextLines.length * 4;
 
       doc.setFontSize(12).setFont("Helvetica", "normal");
-      doc.text("Register No. 1: 06", pageWidth / 2 + contentWidth / 4, y);
+      doc.text(`Serial No. ${certificateModal.serialNo}`, pageWidth / 2 - contentWidth / 3, y);
+      doc.text(`Register No. ${registerNo || "1:06"}`, pageWidth / 2 + contentWidth / 4, y);
       y += 8;
 
       doc.setFontSize(12);
@@ -1145,7 +1171,7 @@ function StudentList() {
       y += certLines.length * 4 + 20;
 
       // Signature/date section placed relative to bottom margin
-      const signatureY = pageHeight - marginBottom - 12;
+      const signatureY = pageHeight - marginBottom - 34; // Moved higher up
       doc.setFontSize(12).setFont("Helvetica", "normal");
       doc.text(
         `Date: ${new Date().toLocaleDateString("en-GB")}`,
@@ -1171,6 +1197,7 @@ function StudentList() {
       doc.save(fileName);
 
       alert(`${type} generated and downloaded successfully!`);
+      
       closeCertificateModal();
     } catch (err) {
       console.error(`${type} generation error:`, err);
@@ -1659,6 +1686,14 @@ function StudentList() {
             </motion.div>
           </div>
 
+          <div className="mb-6">
+            <h3 className={`${currentTheme.textAccent} text-lg font-semibold mb-2`}>Total Students</h3>
+            <div className={`${currentTheme.cardBg} ${currentTheme.cardBorder} p-4 rounded-lg`}>
+              <p className={`${currentTheme.textPrimary} text-2xl font-bold`}>{filteredStudents.length}</p>
+              <p className={`${currentTheme.textSecondary}`}>Total Students in System</p>
+            </div>
+          </div>
+
           <AnimatePresence>
             {fetchError && (
               <motion.div
@@ -1704,6 +1739,7 @@ function StudentList() {
                     className={`${currentTheme.headerBg} ${currentTheme.textSecondary}`}
                   >
                     {[
+                      "Sr. No.",
                       "Name",
                       "Enrollment",
                       "Stream",
@@ -1734,6 +1770,13 @@ function StudentList() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
+                      <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
+                        <span
+                          className={`${currentTheme.textPrimary} font-medium`}
+                        >
+                          {index + 1}
+                        </span>
+                      </td>
                       <td className={`px-4 py-3 ${currentTheme.textPrimary}`}>
                         <span
                           className={`${currentTheme.textPrimary} font-medium`}
@@ -2084,6 +2127,14 @@ function StudentList() {
                     <div className="space-y-4">
                       {[
                         {
+                          label: "Register No.",
+                          id: "registerNo",
+                          type: "text",
+                          name: "registerNo",
+                          value: certificateModal.registerNo || "",
+                          placeholder: "e.g., 1:01",
+                        },
+                        {
                           label: "Reason for Leaving",
                           id: "reason",
                           type: "select",
@@ -2340,6 +2391,7 @@ function StudentList() {
                         numberToWords={numberToWords}
                         months={months}
                         standard={certificateModal.standard}
+                        serialNo={certificateModal.serialNo}
                         theme={currentTheme}
                       />
                       <div className="flex justify-end gap-3 mt-6">

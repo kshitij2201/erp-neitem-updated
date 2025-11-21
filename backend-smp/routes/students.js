@@ -89,6 +89,26 @@ router.get('/', protect, async (req, res) => {
       .populate('stream', 'name code')
       .populate('department', 'name code')
       .populate('semester', 'number name')
+      .populate({
+        path: 'subjects',
+        select: 'name subjectCode',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'backlogs.subject',
+        select: 'name subjectCode',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'semesterRecords.semester',
+        select: 'number name',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'semesterRecords.subjects.subject',
+        select: 'name subjectCode',
+        options: { strictPopulate: false }
+      })
       .sort({ createdAt: -1 });
     
     console.log(`[Students Route] Found ${students.length} students matching query:`, {

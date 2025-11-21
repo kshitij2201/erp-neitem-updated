@@ -723,6 +723,9 @@ const CCClassStudents = ({ userData }) => {
                 <thead className="bg-gray-50/50">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sr. No.
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Student Info
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -748,6 +751,9 @@ const CCClassStudents = ({ userData }) => {
                       key={student._id || index}
                       className="hover:bg-gray-50/50 transition-colors"
                     >
+                      <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
+                        {index + 1}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium">

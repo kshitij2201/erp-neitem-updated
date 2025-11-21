@@ -98,6 +98,7 @@ router.get("/", async (req, res) => {
         path: "semester",
         match: { _id: { $exists: true } },
       })
+      .populate("subjects")
       .populate({
         path: "semesterRecords.semester",
         match: { _id: { $exists: true } },
@@ -430,6 +431,7 @@ router.get("/:id", async (req, res) => {
       .populate("stream")
       .populate("department")
       .populate("semester")
+      .populate("subjects")
       .populate("semesterRecords.semester")
       .populate("semesterRecords.subjects.subject")
       .populate("backlogs.subject")
@@ -559,15 +561,17 @@ router.put("/:id", upload.single("photo"), async (req, res) => {
 
       student.semesterRecords = semesterRecords;
 
-      const latestRecord = semesterRecords[semesterRecords.length - 1];
-      if (
-        latestRecord &&
-        latestRecord.subjects &&
-        Array.isArray(latestRecord.subjects)
-      ) {
-        student.subjects = latestRecord.subjects
-          .filter((sub) => sub.status === "Pending")
-          .map((sub) => sub.subject);
+      // Find the semester record that matches the student's current semester
+      const currentSemesterRecord = semesterRecords.find(
+        (record) => String(record.semester) === String(student.semester)
+      );
+
+      if (currentSemesterRecord && currentSemesterRecord.subjects && Array.isArray(currentSemesterRecord.subjects)) {
+        // Set subjects to all subjects from current semester
+        student.subjects = currentSemesterRecord.subjects.map((sub) => sub.subject);
+      } else if (latestRecord && latestRecord.subjects && Array.isArray(latestRecord.subjects)) {
+        // Fallback to latest record if current semester not found
+        student.subjects = latestRecord.subjects.map((sub) => sub.subject);
       }
     }
 

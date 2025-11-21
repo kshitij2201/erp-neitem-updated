@@ -436,6 +436,9 @@ const DepartmentStudents = ({ userData }) => {
                     <thead>
                       <tr className="border-b border-gray-200">
                         <th className="text-left py-4 px-6 font-semibold text-gray-700">
+                          # Sr. No.
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-700">
                           👤 Name
                         </th>
                         <th className="text-left py-4 px-6 font-semibold text-gray-700">
@@ -467,6 +470,9 @@ const DepartmentStudents = ({ userData }) => {
                           key={student.id}
                           className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors duration-200"
                         >
+                          <td className="py-4 px-6 text-center font-semibold text-gray-600">
+                            {index + 1}
+                          </td>
                           <td className="py-4 px-6">
                             <div className="flex items-center">
                               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold mr-3">
