@@ -551,12 +551,12 @@ const DocumentManagementDashboard = () => {
       currentY += lineHeight * 3;
 
       const currentDate = formatDate(new Date());
-      doc.text(`Date: ${currentDate}`, marginLeft, currentY + 30);
-      doc.text("Checked by", pageWidth / 2 - 10, currentY + 30);
+      doc.text(`Date: ${currentDate}`, marginLeft, currentY + 20);
+      doc.text("Checked by", pageWidth / 2 - 10, currentY + 20);
       doc.text(
         "Principal/Vice-Principal",
         pageWidth - marginRight - 2,
-        currentY + 35,
+        currentY + 19.8,
         { align: "right" }
       );
       doc.save(`BC_${studentData._id}_${Date.now()}.pdf`);
