@@ -1262,41 +1262,46 @@ const Receipts = () => {
           body { 
             font-family: 'Times New Roman', serif; 
             margin: 0; 
-            padding: 5px;
+            padding: 3px;
             background: #f8f9fa;
-            line-height: 1.3;
+            line-height: 1.2;
             color: #2d3748;
-            font-size: 12px;
+            font-size: 10px;
           }
           .receipts-wrapper {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 8px;
             width: 100%;
+            height: 100vh;
+            align-items: flex-start;
           }
           .receipt-container {
-            width: 48%;
-            max-width: 550px;
-            border: 2px solid #2d3748;
+            width: 49%;
+            max-width: 500px;
+            border: 1px solid #2d3748;
             background: white;
-            padding: 10px;
+            padding: 6px;
             margin: 0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             page-break-inside: avoid;
+            height: fit-content;
+            max-height: 95vh;
+            overflow: hidden;
           }
           .receipt-header-box {
-            border: 2px solid #2d3748;
-            padding: 10px;
-            margin-bottom: 10px;
+            border: 1px solid #2d3748;
+            padding: 6px;
+            margin-bottom: 6px;
             position: relative;
             background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
           }
           .duplicate-label {
             position: absolute;
-            top: 5px;
-            right: 10px;
+            top: 2px;
+            right: 6px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 10px;
             text-transform: uppercase;
             color: #dc3545;
             margin-bottom: 15px;
@@ -1337,32 +1342,32 @@ const Receipts = () => {
           .header-text {
             flex: 1;
             text-align: center;
-            padding: 8px 0;
+            padding: 4px 0;
           }
           .society-name-simple {
-            font-size: 13px;
-            margin-bottom: 2px;
+            font-size: 8px;
+            margin-bottom: 1px;
             color: #6c757d;
           }
           .institute-name-simple {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 10px;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             color: #1a202c;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
           }
           .institute-address-simple {
-            font-size: 13px;
+            font-size: 8px;
             color: #6c757d;
           }
           .receipt-type-label {
             font-weight: bold;
             text-align: center;
             text-transform: uppercase;
-            font-size: 13px;
-            margin-bottom: 8px;
-            padding: 3px 8px;
+            font-size: 9px;
+            margin-bottom: 4px;
+            padding: 2px 4px;
             border: 2px solid #000;
             border-bottom: 1px solid #000;
             color: #000;
@@ -1508,14 +1513,22 @@ const Receipts = () => {
           @media print {
             @page {
               size: A4 landscape;
-              margin: 5mm;
+              margin: 3mm;
             }
             body {
               print-color-adjust: exact;
               -webkit-print-color-adjust: exact;
+              font-size: 8px;
             }
             .receipt-container {
               page-break-inside: avoid;
+              height: auto;
+              max-height: none;
+              overflow: visible;
+            }
+            .receipts-wrapper {
+              height: auto;
+              gap: 5px;
             }
           }
         </style>
@@ -1533,7 +1546,7 @@ const Receipts = () => {
                 <div class="header-text">
                   <div class="society-name-simple">Maitrey Educational Society's</div>
                   <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
-                  <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
+                  <div class="institute-address-simple">Nagpur - 440023</div>
                 </div>
                 <div class="logo-right">
                   <img src="/logo.png" alt="Logo" />
@@ -1557,20 +1570,14 @@ const Receipts = () => {
                 <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
               </tr>
               <tr>
-                <td class="label-cell">Category</td>
-                <td class="value-cell">: ${receiptData.student?.caste || 'N/A'}</td>
-                <td class="label-cell">Student Id.</td>
-                <td class="value-cell">: ${receiptData.student?.studentId}</td>
-              </tr>
-              <tr>
                 <td class="label-cell">Name</td>
                 <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
               </tr>
               <tr>
                 <td class="label-cell">Roll No</td>
                 <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-                <td class="label-cell">Section</td>
-                <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
+                <td class="label-cell">Student Id.</td>
+                <td class="value-cell">: ${receiptData.student?.studentId}</td>
               </tr>
             </table>
             
@@ -1614,8 +1621,7 @@ const Receipts = () => {
             <div class="payment-details-footer">
               <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
               ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
-                ? `<div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
-                   <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>`
+                ? `<div class="payment-info">UPI Amount : ₹${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | TID: ${receiptData.transactionId || 'N/A'} | ${receiptData.bankName || 'N/A'}</div>`
                 : ''
               }
               <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
@@ -1626,8 +1632,6 @@ const Receipts = () => {
               <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
               <div class="signature-label">RECEIVER'S SIGNATURE</div>
             </div>
-            
-            <div class="page-number">Page 1 of 1</div>
           </div>
 
           <!-- DUPLICATE RECEIPT -->
@@ -1641,7 +1645,7 @@ const Receipts = () => {
                 <div class="header-text">
                   <div class="society-name-simple">Maitrey Educational Society's</div>
                   <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
-                  <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
+                  <div class="institute-address-simple">Nagpur - 440023</div>
                 </div>
                 <div class="logo-right">
                   <img src="/logo.png" alt="Logo" />
@@ -1665,20 +1669,14 @@ const Receipts = () => {
                 <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
               </tr>
               <tr>
-                <td class="label-cell">Category</td>
-                <td class="value-cell">: ${receiptData.student?.caste || 'N/A'}</td>
-                <td class="label-cell">Student Id.</td>
-                <td class="value-cell">: ${receiptData.student?.studentId}</td>
-              </tr>
-              <tr>
                 <td class="label-cell">Name</td>
                 <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
               </tr>
               <tr>
                 <td class="label-cell">Roll No</td>
                 <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-                <td class="label-cell">Section</td>
-                <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
+                <td class="label-cell">Student Id.</td>
+                <td class="value-cell">: ${receiptData.student?.studentId}</td>
               </tr>
             </table>
             
@@ -1722,8 +1720,7 @@ const Receipts = () => {
             <div class="payment-details-footer">
               <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
               ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
-                ? `<div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
-                   <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>`
+                ? `<div class="payment-info">UPI Amount : ₹${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | TID: ${receiptData.transactionId || 'N/A'} | ${receiptData.bankName || 'N/A'}</div>`
                 : ''
               }
               <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
@@ -1734,8 +1731,6 @@ const Receipts = () => {
               <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
               <div class="signature-label">RECEIVER'S SIGNATURE</div>
             </div>
-            
-            <div class="page-number">Page 1 of 1</div>
           </div>
         </div>
       </body>
