@@ -147,11 +147,32 @@ export default function AddPayment() {
         params.append('search', searchTerm.trim());
       }
 
-      // Fetch students with search and pagination
-      const response = await axios.get(
-        `https://backenderp.tarstech.in/api/students?${params.toString()}`,
-        { headers }
-      );
+      // Try production API first, then fallback to local API
+      let response;
+      try {
+        // Fetch students with search and pagination from production API
+        response = await axios.get(
+          `https://backenderp.tarstech.in/api/students?${params.toString()}`,
+          { headers, timeout: 5000 }
+        );
+      } catch (productionError) {
+        console.warn('Production API failed, trying local API:', productionError.message);
+        
+        // Fallback to local API
+        try {
+          response = await axios.get(
+            `https://backenderp.tarstech.in/api/students?${params.toString()}`,
+            { headers, timeout: 5000 }
+          );
+          console.log('Successfully connected to local API');
+        } catch (localError) {
+          console.error('Both production and local APIs failed:', {
+            production: productionError.message,
+            local: localError.message
+          });
+          throw new Error(`API connection failed: ${productionError.message}`);
+        }
+      }
 
       // Handle different response formats
       let studentData = [];
@@ -206,12 +227,19 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get(
-        "https://backenderp.tarstech.in/api/fee-heads",
-        {
-          headers,
-        }
-      );
+      let response;
+      try {
+        response = await axios.get(
+          "https://backenderp.tarstech.in/api/fee-heads",
+          { headers, timeout: 5000 }
+        );
+      } catch (productionError) {
+        console.warn('Production fee-heads API failed, trying local API:', productionError.message);
+        response = await axios.get(
+          "https://backenderp.tarstech.in/api/fee-heads",
+          { headers, timeout: 5000 }
+        );
+      }
       // Remove duplicates based on title and sort in ascending order
       const feeHeadsData = Array.isArray(response.data) ? response.data : [];
       const uniqueFeeHeads = feeHeadsData.filter(
@@ -240,10 +268,19 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get(
-        "https://backenderp.tarstech.in/api/payments?limit=50",
-        { headers }
-      );
+      let response;
+      try {
+        response = await axios.get(
+          "https://backenderp.tarstech.in/api/payments?limit=50",
+          { headers, timeout: 5000 }
+        );
+      } catch (productionError) {
+        console.warn('Production payments API failed, trying local API:', productionError.message);
+        response = await axios.get(
+          "https://backenderp.tarstech.in/api/payments?limit=50",
+          { headers, timeout: 5000 }
+        );
+      }
       setRecentPayments(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching recent payments:", err);
@@ -262,10 +299,19 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get(
-        `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
-        { headers }
-      );
+      let response;
+      try {
+        response = await axios.get(
+          `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+          { headers, timeout: 5000 }
+        );
+      } catch (productionError) {
+        console.warn('Production pending-fees API failed, trying local API:', productionError.message);
+        response = await axios.get(
+          `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+          { headers, timeout: 5000 }
+        );
+      }
       setPendingFees(response.data || []);
     } catch (err) {
       console.error("Error fetching pending fees:", err);
@@ -280,10 +326,19 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const paymentsResponse = await axios.get(
-        `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
-        { headers }
-      );
+      let paymentsResponse;
+      try {
+        paymentsResponse = await axios.get(
+          `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
+          { headers, timeout: 5000 }
+        );
+      } catch (productionError) {
+        console.warn('Production payments API failed, trying local API:', productionError.message);
+        paymentsResponse = await axios.get(
+          `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
+          { headers, timeout: 5000 }
+        );
+      }
       const payments = paymentsResponse.data || [];
 
       // Calculate pending fees based on fee heads and payments
@@ -453,11 +508,21 @@ export default function AddPayment() {
 
       console.log('📤 Sending payment data to API:', JSON.stringify(paymentData, null, 2));
       
-      const response = await axios.post(
-        "https://backenderp.tarstech.in/api/payments",
-        paymentData,
-        { headers }
-      );
+      let response;
+      try {
+        response = await axios.post(
+          "https://backenderp.tarstech.in/api/payments",
+          paymentData,
+          { headers, timeout: 10000 }
+        );
+      } catch (productionError) {
+        console.warn('Production payments API failed, trying local API:', productionError.message);
+        response = await axios.post(
+          "https://backenderp.tarstech.in/api/payments",
+          paymentData,
+          { headers, timeout: 10000 }
+        );
+      }
       
       console.log('📥 API Response:', response.data);
 

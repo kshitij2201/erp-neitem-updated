@@ -11,7 +11,7 @@ import { protect } from '../middleware/auth.js';
 // GET all students (protected)
 router.get('/', protect, async (req, res) => {
   try {
-    const { department, program, academicStatus, search, page = 1, limit = 10 } = req.query;
+    const { department, program, academicStatus, search, page = 1, limit = 10, semester, section } = req.query;
     
     let query = {};
     
