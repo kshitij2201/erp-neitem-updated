@@ -984,6 +984,9 @@ const StudentList = () => {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
+                    <span className="text-blue-800">Sr. No.</span>
+                  </th>
+                  <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
                     <span className="text-blue-800">Name</span>
                   </th>
                   <th className="py-2 px-2 md:px-4 border text-xs md:text-base">
@@ -1001,8 +1004,11 @@ const StudentList = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student) => (
+                {filteredStudents.map((student, index) => (
                   <tr key={student._id} className="hover:bg-gray-50">
+                    <td className="py-2 px-2 md:px-4 border text-center">
+                      {index + 1}
+                    </td>
                     <td className="py-2 px-2 md:px-4 border max-w-xs">
                       <div className="font-medium text-gray-700 truncate">
                         {student.name || "N/A"}

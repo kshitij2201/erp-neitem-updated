@@ -474,6 +474,7 @@ const Download = () => {
             <table className="w-full border-collapse">
               <thead>
                 <tr className={currentTheme.tableHeader}>
+                  <th className="px-4 py-3 text-left">Sr. No.</th>
                   <th className="px-4 py-3 text-left">Name</th>
                   <th className="px-4 py-3 text-left">Enrollment</th>
                   <th className="px-4 py-3 text-left">Gender</th>
@@ -493,6 +494,7 @@ const Download = () => {
                     transition={{ delay: index * 0.05 }}
                     className={`border-t border-indigo-500/20 ${currentTheme.tableRow} transition-colors duration-200`}
                   >
+                    <td className="px-4 py-3">{index + 1}</td>
                     <td className="px-4 py-3">
                       {student.firstName} {student.middleName || ""}{" "}
                       {student.lastName || ""}
