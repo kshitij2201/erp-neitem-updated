@@ -58,12 +58,35 @@ export default function AddPayment() {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [studentSearchTerm, setStudentSearchTerm] = useState("");
+  const [studentSearchTimeout, setStudentSearchTimeout] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Handle student search with client-side filtering (no debouncing needed since all data is loaded)
+  const handleStudentSearch = (searchTerm) => {
+    setStudentSearchTerm(searchTerm);
+  };
+
+  // Load initial students when dropdown opens (all students already loaded, just open dropdown)
+  const handleDropdownOpen = () => {
+    setIsDropdownOpen(true);
+  };
 
   useEffect(() => {
-    fetchStudents();
     fetchFeeHeads();
     fetchRecentPayments();
+    // Load all students upfront for instant filtering
+    fetchStudents("", 1, 2000); // Load up to 2000 students to get all 1061
   }, []);
+
+  // Update selectedStudent when studentId changes
+  useEffect(() => {
+    if (formData.studentId && students.length > 0) {
+      const student = students.find(s => s._id === formData.studentId);
+      setSelectedStudent(student || null);
+    } else {
+      setSelectedStudent(null);
+    }
+  }, [formData.studentId, students]);
 
   // Helper function to get month name from month number
   const getMonthName = (monthNumber) => {
@@ -108,31 +131,44 @@ export default function AddPayment() {
 
   const academicYears = generateAcademicYears();
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (searchTerm = "", page = 1, limit = 1061) => {
     setLoadingStudents(true);
     try {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Fetch all students without pagination limit
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (searchTerm && searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+
+      // Fetch students with search and pagination
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/students?limit=5000", // Increased limit to ensure all students are fetched
-        {
-          headers,
-        }
+        `https://backenderp.tarstech.in/api/students?${params.toString()}`,
+        { headers }
       );
 
       // Handle different response formats
       let studentData = [];
+      let totalCount = 0;
+
       if (Array.isArray(response.data)) {
         studentData = response.data;
+        totalCount = response.data.length;
       } else if (response.data && Array.isArray(response.data.data)) {
         studentData = response.data.data;
+        totalCount = response.data.total || response.data.data.length;
       } else if (response.data && Array.isArray(response.data.students)) {
         studentData = response.data.students;
+        totalCount = response.data.total || response.data.students.length;
       }
 
-      console.log(`Fetched ${studentData.length} students from database`);
+      console.log(`Fetched ${studentData.length} students (page ${page}, search: "${searchTerm}")`);
 
       // Sort students by name in ascending order
       const sortedStudents = studentData.sort((a, b) => {
@@ -141,12 +177,22 @@ export default function AddPayment() {
         return nameA.localeCompare(nameB);
       });
 
-      setStudents(sortedStudents);
+      // If this is the first page and no search term, store all students
+      // If there's a search term, replace the current list
+      if (page === 1) {
+        setStudents(sortedStudents);
+      } else {
+        // For pagination, append to existing list
+        setStudents(prev => [...prev, ...sortedStudents]);
+      }
+
+      // Store total count for pagination
+      setStudents(prev => prev.map(student => ({ ...student, totalCount })));
+
       setLoadingStudents(false);
       console.log('Students loaded successfully:', sortedStudents.length);
     } catch (err) {
       console.error("Error fetching students:", err);
-      // Set empty array instead of using mock data
       setStudents([]);
       setLoadingStudents(false);
       setError(
@@ -366,7 +412,17 @@ export default function AddPayment() {
 
       // Add UTR for digital payment methods
       if (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod)) {
-        paymentData.utr = formData.utr || "";
+        console.log('🔍 UTR Debug - Payment Method:', formData.paymentMethod);
+        console.log('🔍 UTR Debug - formData.utr value:', formData.utr);
+        console.log('🔍 UTR Debug - formData.utr type:', typeof formData.utr);
+        
+        if (!formData.utr || formData.utr.trim() === "") {
+          setError("UTR number is required for digital payment methods (Online, Bank Transfer, Card, UPI)");
+          setLoading(false);
+          return;
+        }
+        paymentData.utr = formData.utr.trim();
+        console.log('🔍 UTR Debug - paymentData.utr (to be sent):', paymentData.utr);
       }
 
       // Add type-specific data
@@ -395,11 +451,15 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
+      console.log('📤 Sending payment data to API:', JSON.stringify(paymentData, null, 2));
+      
       const response = await axios.post(
         "https://backenderp.tarstech.in/api/payments",
         paymentData,
         { headers }
       );
+      
+      console.log('📥 API Response:', response.data);
 
       if (response.data) {
         let paymentTypeText = "";
@@ -798,9 +858,8 @@ export default function AddPayment() {
     setError("");
     setSuccess("");
     setPendingFees([]);
+    setSelectedStudent(null);
   };
-
-  const selectedStudent = students.find((s) => s._id === formData.studentId);
 
   const filteredStudents = students.filter((student) => {
     if (!studentSearchTerm) return true;
@@ -2711,6 +2770,7 @@ export default function AddPayment() {
                                   value={studentSearchTerm}
                                   onChange={(e) => {
                                     setStudentSearchTerm(e.target.value);
+                                    handleStudentSearch(e.target.value);
                                     e.stopPropagation();
                                   }}
                                   onClick={(e) => e.stopPropagation()}
@@ -2804,8 +2864,8 @@ export default function AddPayment() {
                             {/* Footer */}
                             <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 text-center">
                               {studentSearchTerm
-                                ? `Found ${filteredStudents.length} student${filteredStudents.length === 1 ? '' : 's'} • Scroll to see all`
-                                : `${students.length} students available • Type to search`
+                                ? `Found ${filteredStudents.length} student${filteredStudents.length === 1 ? '' : 's'} • Instant filtering active`
+                                : `${students.length} students loaded • Start typing to filter instantly`
                               }
                             </div>
                           </div>

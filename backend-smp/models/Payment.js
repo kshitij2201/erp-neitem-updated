@@ -52,7 +52,15 @@ const paymentSchema = new mongoose.Schema({
     trim: true
   },
   utr: {
-    type: String
+    type: String,
+    default: '',
+    set: function(value) {
+      // Handle undefined, null, or 'undefined' string
+      if (!value || value === 'undefined' || value === 'null') {
+        return '';
+      }
+      return String(value).trim();
+    }
   },
   remarks: {
     type: String,

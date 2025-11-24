@@ -22,7 +22,7 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
 
   const fetchFeeHeads = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/fee-heads");
+      const response = await fetch("https://backenderp.tarstech.in/api/fee-heads");
       if (response.ok) {
         const data = await response.json();
         // Filter fee heads based on student's stream and caste category
@@ -54,6 +54,14 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
     setSuccess("");
 
     try {
+      // Validate UTR for digital payment methods
+      const requiresUTR = ['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod);
+      if (requiresUTR && (!formData.utr || formData.utr.trim() === '')) {
+        setError(`UTR Number is required for ${formData.paymentMethod} payments`);
+        setLoading(false);
+        return;
+      }
+
       const paymentData = {
         studentId: student._id,
         amount: parseFloat(formData.amount),
@@ -61,14 +69,14 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
         feeHead: formData.feeHead || null,
         description: formData.description || "",
         transactionId: formData.transactionId || "",
-        utr: formData.utr || "",
+        utr: formData.utr && formData.utr.trim() !== '' ? formData.utr.trim() : "",
         collectedBy: formData.collectedBy || "",
         remarks: formData.remarks || "",
       };
 
       console.log("Sending payment data:", paymentData);
 
-      const response = await fetch("http://localhost:4000/api/payments", {
+      const response = await fetch("https://backenderp.tarstech.in/api/payments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -198,16 +206,20 @@ const PaymentForm = ({ student, onPaymentComplete }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              UTR Number (Optional)
+              UTR Number {['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod) ? <span className="text-red-500">*</span> : <span className="text-gray-500">(Optional)</span>}
             </label>
             <input
               type="text"
               name="utr"
               value={formData.utr}
               onChange={handleInputChange}
+              required={['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="UTR/Reference Number"
             />
+            {['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod) && (
+              <p className="text-xs text-red-600 mt-1">Required for {formData.paymentMethod} payments</p>
+            )}
           </div>
 
           <div>

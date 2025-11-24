@@ -465,13 +465,21 @@ router.post('/', async (req, res) => {
       description,
       transactionId,
       collectedBy,
-      remarks
+      remarks,
+      utr
     } = req.body;
 
     // Validate required fields
     if (!studentId || !amount || !paymentMethod) {
       console.log('Missing required fields:', { studentId, amount, paymentMethod });
       return res.status(400).json({ message: 'Student ID, amount, and payment method are required' });
+    }
+
+    // Validate UTR for digital payment methods
+    const digitalMethods = ['Online', 'Bank Transfer', 'Card', 'UPI'];
+    if (digitalMethods.includes(paymentMethod) && (!utr || utr.trim() === '')) {
+      console.log('Missing UTR for digital payment:', { paymentMethod, utr });
+      return res.status(400).json({ message: `UTR Number is required for ${paymentMethod} payments` });
     }
 
     // Check if student exists
@@ -503,11 +511,16 @@ router.post('/', async (req, res) => {
       feeHead: feeHead && feeHead !== '' ? feeHead : undefined,
       description: description || (feeHeadDetails ? `${feeHeadDetails.title} - ${student.firstName} ${student.lastName}` : ''),
       transactionId: transactionId || '',
-      utr: req.body.utr || '',
+      utr: (utr && utr !== 'undefined' && utr.trim() !== '') ? utr.trim() : '',
       collectedBy: collectedBy || '',
       remarks: remarks || (feeHeadDetails ? `Payment for ${feeHeadDetails.title}` : '')
     });
 
+    console.log('🔍 UTR Debug - Received from form:', utr);
+    console.log('🔍 UTR Debug - Type:', typeof utr);
+    console.log('🔍 UTR Debug - Value:', JSON.stringify(utr));
+    console.log('🔍 UTR Debug - After processing (payment.utr):', payment.utr);
+    console.log('🔍 UTR Debug - Payment method:', paymentMethod);
     console.log('Payment object created:', {
       ...payment.toObject(),
       feeHeadTitle: feeHeadDetails?.title
