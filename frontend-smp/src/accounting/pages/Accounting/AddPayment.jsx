@@ -161,7 +161,7 @@ export default function AddPayment() {
         // Fallback to local API
         try {
           response = await axios.get(
-            `https://backenderp.tarstech.in/api/students?${params.toString()}`,
+            `http://localhost:4000/api/students?${params.toString()}`,
             { headers, timeout: 5000 }
           );
           console.log('Successfully connected to local API');
@@ -236,7 +236,7 @@ export default function AddPayment() {
       } catch (productionError) {
         console.warn('Production fee-heads API failed, trying local API:', productionError.message);
         response = await axios.get(
-          "https://backenderp.tarstech.in/api/fee-heads",
+          "http://localhost:4000/api/fee-heads",
           { headers, timeout: 5000 }
         );
       }
@@ -277,7 +277,7 @@ export default function AddPayment() {
       } catch (productionError) {
         console.warn('Production payments API failed, trying local API:', productionError.message);
         response = await axios.get(
-          "https://backenderp.tarstech.in/api/payments?limit=50",
+          "http://localhost:4000/api/payments?limit=50",
           { headers, timeout: 5000 }
         );
       }
@@ -308,7 +308,7 @@ export default function AddPayment() {
       } catch (productionError) {
         console.warn('Production pending-fees API failed, trying local API:', productionError.message);
         response = await axios.get(
-          `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+          `http://localhost:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
           { headers, timeout: 5000 }
         );
       }
@@ -335,7 +335,7 @@ export default function AddPayment() {
       } catch (productionError) {
         console.warn('Production payments API failed, trying local API:', productionError.message);
         paymentsResponse = await axios.get(
-          `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
+          `http://localhost:4000/api/payments?studentId=${studentId}`,
           { headers, timeout: 5000 }
         );
       }
@@ -518,7 +518,7 @@ export default function AddPayment() {
       } catch (productionError) {
         console.warn('Production payments API failed, trying local API:', productionError.message);
         response = await axios.post(
-          "https://backenderp.tarstech.in/api/payments",
+          "http://localhost:4000/api/payments",
           paymentData,
           { headers, timeout: 10000 }
         );
