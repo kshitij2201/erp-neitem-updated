@@ -5,9 +5,8 @@ import Payment from '../models/Payment.js';
 import Student from '../models/StudentManagement.js';
 import FeeHead from '../models/FeeHead.js';
 import Salary from '../models/Salary.js';
-// const Student = require('../models/Student');
-// const FeeHead = require('../models/FeeHead');
-// const Salary = require('../models/Salary');
+import Expense from '../models/Expense.js';
+import DeletedReceipt from '../models/DeletedReceipt.js';
 
 // GET: unified payment history (student payments + salary payments)
 router.get('/history', async (req, res) => {
@@ -136,6 +135,176 @@ router.get('/history', async (req, res) => {
   }
 });
 
+// GET: unified ledger data (payments, expenses, deleted receipts)
+router.get('/ledger', async (req, res) => {
+  try {
+    const { search, startDate, endDate, type } = req.query;
+    
+    let allEntries = [];
+    
+    // Build date filter
+    let dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter = {};
+      if (startDate) dateFilter.$gte = new Date(startDate);
+      if (endDate) dateFilter.$lte = new Date(endDate);
+    }
+    
+    // Fetch payments if not filtered to exclude them
+    if (!type || type === 'all' || type === 'payments') {
+      let paymentQuery = {};
+      if (Object.keys(dateFilter).length > 0) {
+        paymentQuery.paymentDate = dateFilter;
+      }
+      
+      if (search) {
+        // Find students matching the search term first
+        const studentQuery = {
+          $or: [
+            { firstName: { $regex: search, $options: 'i' } },
+            { lastName: { $regex: search, $options: 'i' } },
+            { studentId: { $regex: search, $options: 'i' } },
+          ],
+        };
+        const matchingStudents = await Student.find(studentQuery).select('_id');
+        const studentIds = matchingStudents.map(s => s._id);
+
+        paymentQuery = {
+          ...paymentQuery,
+          $or: [
+            { studentId: { $in: studentIds } },
+            { paymentId: { $regex: search, $options: 'i' } },
+            { receiptNumber: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { transactionId: { $regex: search, $options: 'i' } },
+            { remarks: { $regex: search, $options: 'i' } },
+            { utr: { $regex: search, $options: 'i' } },
+          ],
+        };
+      }
+
+      const payments = await Payment.find(paymentQuery)
+        .populate('studentId', 'firstName lastName studentId department casteCategory')
+        .populate('feeHead', 'title')
+        .lean();
+      
+      // Transform payments to ledger format
+      const transformedPayments = payments.map(payment => ({
+        type: 'Payment',
+        date: payment.paymentDate,
+        personName: payment.studentName || `${payment.studentId?.firstName || ''} ${payment.studentId?.lastName || ''}`.trim(),
+        course: payment.studentId?.department || '',
+        description: payment.description || `Fee payment for ${payment.studentId?.firstName} ${payment.studentId?.lastName}`,
+        reference: payment.receiptNumber,
+        method: payment.paymentMethod,
+        feeHead: payment.feeHead?.title || '',
+        remarks: payment.remarks || '',
+        amount: payment.amount,
+        receiptNumber: payment.receiptNumber,
+        utr: payment.utr || '',
+        status: payment.status,
+        transactionId: payment.transactionId || ''
+      }));
+      
+      allEntries = [...allEntries, ...transformedPayments];
+    }
+    
+    // Fetch expenses if not filtered to exclude them
+    if (!type || type === 'all' || type === 'expenses') {
+      let expenseQuery = {};
+      if (Object.keys(dateFilter).length > 0) {
+        expenseQuery.expenseDate = dateFilter;
+      }
+      
+      if (search) {
+        expenseQuery = {
+          ...expenseQuery,
+          $or: [
+            { title: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { category: { $regex: search, $options: 'i' } },
+            { vendor: { $regex: search, $options: 'i' } },
+            { receiptNumber: { $regex: search, $options: 'i' } },
+            { remarks: { $regex: search, $options: 'i' } },
+          ],
+        };
+      }
+
+      const expenses = await Expense.find(expenseQuery).lean();
+      
+      // Transform expenses to ledger format
+      const transformedExpenses = expenses.map(expense => ({
+        type: 'Expense',
+        date: expense.expenseDate,
+        personName: expense.vendor || expense.title,
+        course: expense.department || '',
+        description: expense.description || expense.title,
+        reference: expense.receiptNumber || expense.expenseId,
+        method: expense.paymentMethod || '',
+        feeHead: expense.category,
+        remarks: expense.remarks || '',
+        amount: expense.totalAmount || expense.amount,
+        receiptNumber: expense.receiptNumber || '',
+        utr: '',
+        status: expense.status,
+        transactionId: ''
+      }));
+      
+      allEntries = [...allEntries, ...transformedExpenses];
+    }
+    
+    // Fetch deleted receipts if not filtered to exclude them
+    if (!type || type === 'all' || type === 'deleted') {
+      let deletedQuery = {};
+      if (Object.keys(dateFilter).length > 0) {
+        deletedQuery.paymentDate = dateFilter;
+      }
+      
+      if (search) {
+        deletedQuery = {
+          ...deletedQuery,
+          $or: [
+            { receiptNumber: { $regex: search, $options: 'i' } },
+            { recipientName: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { utr: { $regex: search, $options: 'i' } },
+          ],
+        };
+      }
+
+      const deletedReceipts = await DeletedReceipt.find(deletedQuery).lean();
+      
+      // Transform deleted receipts to ledger format
+      const transformedDeleted = deletedReceipts.map(deleted => ({
+        type: 'Deleted',
+        date: deleted.paymentDate || deleted.deletedAt,
+        personName: deleted.recipientName,
+        course: '',
+        description: `Deleted ${deleted.type} receipt - ${deleted.description}`,
+        reference: deleted.receiptNumber,
+        method: deleted.paymentMethod,
+        feeHead: '',
+        remarks: `Deleted by ${deleted.deletedBy} on ${deleted.deletedAt.toLocaleDateString()}`,
+        amount: deleted.amount,
+        receiptNumber: deleted.receiptNumber,
+        utr: deleted.utr || '',
+        status: 'Deleted',
+        transactionId: ''
+      }));
+      
+      allEntries = [...allEntries, ...transformedDeleted];
+    }
+    
+    // Sort by date (newest first)
+    allEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    res.json(allEntries);
+  } catch (err) {
+    console.error('Error fetching ledger data:', err);
+    res.status(500).json({ message: 'Error fetching ledger data' });
+  }
+});
+
 // GET: all payments
 router.get('/', async (req, res) => {
   try {
@@ -197,6 +366,7 @@ router.get('/', async (req, res) => {
           department: payment.studentId.department,
           casteCategory: payment.studentId.casteCategory
         } : null,
+        studentName: payment.studentName,
         feeHead: payment.feeHead ? {
           id: payment.feeHead._id,
           title: payment.feeHead.title,
@@ -327,11 +497,13 @@ router.post('/', async (req, res) => {
     // Create payment (receipt number and payment ID will be auto-generated)
     const payment = new Payment({
       studentId,
+      studentName: `${student.firstName} ${student.lastName}`.trim(),
       amount: parseFloat(amount),
       paymentMethod,
       feeHead: feeHead && feeHead !== '' ? feeHead : undefined,
       description: description || (feeHeadDetails ? `${feeHeadDetails.title} - ${student.firstName} ${student.lastName}` : ''),
       transactionId: transactionId || '',
+      utr: req.body.utr || '',
       collectedBy: collectedBy || '',
       remarks: remarks || (feeHeadDetails ? `Payment for ${feeHeadDetails.title}` : '')
     });
@@ -461,6 +633,7 @@ router.post('/', async (req, res) => {
           department: payment.studentId.department,
           casteCategory: payment.studentId.casteCategory
         },
+        studentName: payment.studentName,
         feeHead: payment.feeHead ? {
           id: payment.feeHead._id,
           title: payment.feeHead.title,
@@ -1347,7 +1520,7 @@ router.get('/:id', async (req, res) => {
 // BULK: POST /api/payments/exam-fee/bulk
 router.post('/exam-fee/bulk', async (req, res) => {
   try {
-    const { semester, amount, paymentMethod, transactionId, collectedBy } = req.body;
+    const { semester, amount, paymentMethod, transactionId, collectedBy, utr } = req.body;
     if (!semester || !amount || !paymentMethod) {
       return res.status(400).json({ message: 'Semester, amount, and payment method are required' });
     }
@@ -1364,10 +1537,12 @@ router.post('/exam-fee/bulk', async (req, res) => {
       try {
         const payment = new Payment({
           studentId: student._id,
+          studentName: `${student.firstName} ${student.lastName}`.trim(),
           amount: parseFloat(amount),
           paymentMethod,
           description: `Exam Fee - Semester ${semester}`,
           transactionId: transactionId || '',
+          utr: utr || '',
           collectedBy: collectedBy || '',
           remarks: `Bulk exam fee for semester ${semester}`,
           semester: semester,
@@ -1412,7 +1587,8 @@ router.post('/exam-fee', async (req, res) => {
       transactionId,
       collectedBy,
       description,
-      remarks
+      remarks,
+      utr
     } = req.body;
 
     // Validate required fields
@@ -1431,11 +1607,13 @@ router.post('/exam-fee', async (req, res) => {
     // Create exam fee payment
     const payment = new Payment({
       studentId,
+      studentName: `${student.firstName} ${student.lastName}`.trim(),
       semester: parseInt(semester),
       amount: parseFloat(amount),
       paymentMethod,
       description: description || `Exam Fee - Semester ${semester}`,
       transactionId: transactionId || '',
+      utr: utr || '',
       collectedBy: collectedBy || '',
       remarks: remarks || `Exam fee payment for semester ${semester}`
     });

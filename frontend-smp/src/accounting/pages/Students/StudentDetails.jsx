@@ -38,7 +38,7 @@ export default function StudentDetails() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 500);
+    }, 300); // Reduced to 300ms for faster response
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
@@ -98,7 +98,7 @@ export default function StudentDetails() {
         batch.map(async (student) => {
           try {
             const res = await axios.get(
-              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
+              `http://localhost:4000/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data || [];
@@ -128,7 +128,7 @@ export default function StudentDetails() {
         try {
           // Fetch fee heads with semester matching
           const feeRes = await axios.get(
-            `https://backenderp.tarstech.in/api/fee-heads/applicable/${student._id}`,
+            `http://localhost:4000/api/fee-heads/applicable/${student._id}`,
             {
               headers,
               params: {
@@ -206,7 +206,7 @@ export default function StudentDetails() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("https://backenderp.tarstech.in/api/accounts/financial-summary", { headers });
+      const response = await axios.get("http://localhost:4000/api/accounts/financial-summary", { headers });
 
       setFinancialSummary(response.data);
     } catch (err) {
@@ -237,7 +237,7 @@ export default function StudentDetails() {
 
         // Fetch all students for search (no pagination in API call)
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/public",
+          "http://localhost:4000/api/students/public",
           {
             params: { 
               search: debouncedSearchTerm,
@@ -246,6 +246,8 @@ export default function StudentDetails() {
             }
           }
         );
+        
+        console.log('API Response:', res.data);
         
         // Parse response - get all students
         let allStudentList = [];
@@ -259,7 +261,8 @@ export default function StudentDetails() {
           }
         }
         
-        console.log('Fetched all students:', allStudentList.length);
+        console.log('Parsed students:', allStudentList.length);
+        console.log('Search term used:', debouncedSearchTerm);
         setAllStudents(allStudentList);
         setTotalStudents(allStudentList.length);
       } catch (err) {
@@ -270,7 +273,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on http://localhost:4000"
           );
         } else {
           setError(
@@ -725,128 +728,6 @@ export default function StudentDetails() {
       ) : (
         // Student List View
         <>
-          {/* Financial Summary Dashboard */}
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">📊 Financial Summary</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-600">Total Fees Collected</p>
-                    <p className="text-2xl font-bold text-green-800">₹{financialSummary.totalFeesCollected.toLocaleString()}</p>
-                  </div>
-                  <div className="text-green-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-red-600">Pending Fees</p>
-                    <p className="text-2xl font-bold text-red-800">₹{financialSummary.pendingFees.toLocaleString()}</p>
-                  </div>
-                  <div className="text-red-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">Total Expenses</p>
-                    <p className="text-2xl font-bold text-blue-800">₹{financialSummary.totalExpenses.toLocaleString()}</p>
-                  </div>
-                  <div className="text-blue-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-purple-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-purple-800">₹{financialSummary.totalRevenue.toLocaleString()}</p>
-                  </div>
-                  <div className="text-purple-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-indigo-600">Net Balance Student Fees</p>
-                    <p className="text-2xl font-bold text-indigo-800">₹{financialSummary.netBalanceStudentFees.toLocaleString()}</p>
-                  </div>
-                  <div className="text-indigo-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-yellow-600">Pending Collection</p>
-                    <p className="text-2xl font-bold text-yellow-800">₹{financialSummary.pendingCollection.toLocaleString()}</p>
-                  </div>
-                  <div className="text-yellow-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-teal-600">Faculty Salaries</p>
-                    <p className="text-2xl font-bold text-teal-800">₹{financialSummary.facultySalaries.toLocaleString()}</p>
-                  </div>
-                  <div className="text-teal-500">
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gray-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Net Profit/Loss</p>
-                    <p className={`text-2xl font-bold ${financialSummary.totalRevenue - financialSummary.totalExpenses - financialSummary.facultySalaries >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                      ₹{(financialSummary.totalRevenue - financialSummary.totalExpenses - financialSummary.facultySalaries).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className={financialSummary.totalRevenue - financialSummary.totalExpenses - financialSummary.facultySalaries >= 0 ? 'text-green-500' : 'text-red-500'}>
-                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="bg-white p-4 rounded-lg shadow">
             <h1 className="text-3xl font-bold mb-4">🧑 Student Detail Records</h1>
 
@@ -860,7 +741,7 @@ export default function StudentDetails() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by student name..."
+                  placeholder="Search by name, caste, stream, or department..."
                   className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>

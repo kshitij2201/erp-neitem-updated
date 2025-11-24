@@ -3,6 +3,8 @@ const router = express.Router();
 import Student from '../models/StudentManagement.js';
 import FeeHead from '../models/FeeHead.js';
 import Payment from '../models/Payment.js';
+import AcademicDepartment from '../models/AcademicDepartment.js';
+import Stream from '../models/Stream.js';
 import mongoose from 'mongoose';
 import { protect } from '../middleware/auth.js';
 
@@ -337,40 +339,140 @@ router.get('/public', async (req, res) => {
   try {
     const { search, limit = 10, page = 1, department } = req.query;
     
-    let query = {};
+    console.log('Search API called with:', { search, limit, page, department });
     
-    // Filter by department
-    if (department) {
-      query.department = { $regex: department, $options: 'i' };
-    }
-    
-    // Search by student name, studentId, or enrollmentNumber
-    if (search) {
-      query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { studentId: { $regex: search, $options: 'i' } },
-        { enrollmentNumber: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    const students = await Student.find(query)
+    // Fetch all students with populated data
+    let allStudents = await Student.find()
       .select('firstName middleName lastName studentId enrollmentNumber email department stream gender casteCategory admissionType')
       .populate('department', 'name')
       .populate('stream', 'name')
-      .skip(skip)
-      .limit(parseInt(limit))
       .sort({ createdAt: -1 });
+    
+    console.log('Total students fetched:', allStudents.length);
+    
+    // Filter by department if specified
+    if (department) {
+      allStudents = allStudents.filter(student => 
+        student.department?.name?.toLowerCase().includes(department.toLowerCase())
+      );
+      console.log('After department filter:', allStudents.length);
+    }
+    
+    // Filter by search term if specified
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const searchNormalized = searchLower.replace(/[^a-z0-9]/g, '');
+      console.log('Filtering by search term:', searchLower, 'normalized:', searchNormalized);
       
-    const total = await Student.countDocuments(query);
+      // Helper function to normalize caste categories for better matching
+      const normalizeCaste = (caste) => {
+        if (!caste) return '';
+        const casteLower = caste.toLowerCase().trim();
+        const casteMapping = {
+          'sc': 'SC',
+          'st': 'ST', 
+          'obc': 'OBC',
+          'nt': 'NT',
+          'general': 'Open',
+          'open': 'Open',
+          'scheduled caste': 'SC',
+          'scheduled tribe': 'ST',
+          'other backward class': 'OBC',
+          'nomadic tribe': 'NT'
+        };
+        return casteMapping[casteLower] || caste;
+      };
+      
+      try {
+        // First check if search term matches any stream names
+        const matchingStreams = await Stream.find({
+          $or: [
+            { name: { $regex: searchLower, $options: 'i' } },
+            { name: { $regex: searchNormalized, $options: 'i' } }
+          ]
+        });
+        
+        // Check if search term matches any department names
+        const matchingDepartments = await AcademicDepartment.find({
+          $or: [
+            { name: { $regex: searchLower, $options: 'i' } },
+            { name: { $regex: searchNormalized, $options: 'i' } }
+          ]
+        });
+        
+        console.log('Matching streams:', matchingStreams.map(s => s.name));
+        console.log('Matching departments:', matchingDepartments.map(d => d.name));
+        
+        // If search matches specific streams or departments, filter only by those
+        if (matchingStreams.length > 0 || matchingDepartments.length > 0) {
+          allStudents = allStudents.filter(student => {
+            const streamMatch = matchingStreams.some(stream => 
+              String(student.stream) === String(stream._id) ||
+              student.stream?.name?.toLowerCase() === stream.name.toLowerCase()
+            );
+            const deptMatch = matchingDepartments.some(dept => 
+              String(student.department) === String(dept._id) ||
+              student.department?.name?.toLowerCase() === dept.name.toLowerCase()
+            );
+            return streamMatch || deptMatch;
+          });
+          console.log('After specific stream/department filter:', allStudents.length);
+        } else {
+          // Otherwise, do broad search across all fields
+          allStudents = allStudents.filter(student => 
+            student.firstName?.toLowerCase().includes(searchLower) ||
+            student.middleName?.toLowerCase().includes(searchLower) ||
+            student.lastName?.toLowerCase().includes(searchLower) ||
+            student.studentId?.toLowerCase().includes(searchLower) ||
+            student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
+            student.casteCategory?.toLowerCase().includes(searchLower) ||
+            student.subCaste?.toLowerCase().includes(searchLower) ||
+            normalizeCaste(student.casteCategory)?.toLowerCase().includes(searchLower) ||
+            normalizeCaste(student.subCaste)?.toLowerCase().includes(searchLower) ||
+            student.stream?.name?.toLowerCase().includes(searchLower) ||
+            student.stream?.name?.toLowerCase().replace(/[^a-z0-9]/g, '').includes(searchNormalized) ||
+            student.department?.name?.toLowerCase().includes(searchLower) ||
+            student.department?.name?.toLowerCase().replace(/[^a-z0-9]/g, '').includes(searchNormalized) ||
+            student.gender?.toLowerCase().includes(searchLower) ||
+            student.section?.toLowerCase().includes(searchLower)
+          );
+          console.log('After broad search filter:', allStudents.length);
+        }
+      } catch (searchError) {
+        console.error('Error during search:', searchError);
+        // Fallback to basic search if advanced search fails
+        allStudents = allStudents.filter(student => 
+          student.firstName?.toLowerCase().includes(searchLower) ||
+          student.middleName?.toLowerCase().includes(searchLower) ||
+          student.lastName?.toLowerCase().includes(searchLower) ||
+          student.studentId?.toLowerCase().includes(searchLower) ||
+          student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
+          student.casteCategory?.toLowerCase().includes(searchLower) ||
+          student.subCaste?.toLowerCase().includes(searchLower) ||
+          normalizeCaste(student.casteCategory)?.toLowerCase().includes(searchLower) ||
+          normalizeCaste(student.subCaste)?.toLowerCase().includes(searchLower) ||
+          student.gender?.toLowerCase().includes(searchLower) ||
+          student.section?.toLowerCase().includes(searchLower)
+        );
+        console.log('After fallback search filter:', allStudents.length);
+      }
+    }
+    
+    const total = allStudents.length;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Apply pagination
+    const students = allStudents.slice(skip, skip + limitNum);
+    
+    console.log('Returning students:', students.length, 'total:', total);
     
     res.json({
       students,
       total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit))
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum)
     });
   } catch (err) {
     console.error('Error fetching public student data:', err);

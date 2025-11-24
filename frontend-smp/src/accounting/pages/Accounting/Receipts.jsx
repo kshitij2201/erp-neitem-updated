@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 
+const API_URL = "http://localhost:4000";
+
 const Receipts = () => {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ const Receipts = () => {
 
       console.log("Fetching receipts with params:", params.toString());
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/receipts?${params}`,
+        `${API_URL}/api/receipts?${params}`,
         { headers }
       );
 
@@ -109,7 +111,7 @@ const Receipts = () => {
       if (receipt.type === "student") {
         // Fetch full payment details with student info
         const paymentResponse = await fetch(
-          `https://backenderp.tarstech.in/api/receipts/student/${receipt._id}`,
+          `${API_URL}/api/receipts/student/${receipt._id}`,
           { headers }
         );
         if (!paymentResponse.ok) {
@@ -514,7 +516,7 @@ const Receipts = () => {
 
       // Fetch faculty data to get complete employee information
       const facultyRes = await fetch(
-        "https://backenderp.tarstech.in/api/faculty",
+        `${API_URL}/api/faculty`,
         {
           headers,
         }
@@ -540,7 +542,7 @@ const Receipts = () => {
 
       // Fetch salary record details
       const salaryRes = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/salary`,
+        `${API_URL}/api/faculty/salary`,
         {
           headers,
         }
@@ -1163,7 +1165,7 @@ const Receipts = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const checkResponse = await fetch(
-        `https://backenderp.tarstech.in/api/receipts/${
+        `${API_URL}/api/receipts/${
           receipt.type === "student" ? "student" : "salary"
         }/${receipt._id}`,
         { headers }
@@ -1225,7 +1227,7 @@ const Receipts = () => {
 
       // First, verify the receipt exists by trying to fetch it
       const checkResponse = await fetch(
-        `https://backenderp.tarstech.in/api/receipts/${
+        `${API_URL}/api/receipts/${
           editReceipt.type === "student" ? "student" : "salary"
         }/${editReceipt._id}`,
         { headers }
@@ -1262,7 +1264,7 @@ const Receipts = () => {
       // If receipt exists, proceed with update
       const lastEditedBy = window.currentUser?.name || "Unknown User";
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/receipts/${
+        `${API_URL}/api/receipts/${
           editReceipt.type === "student" ? "student" : "salary"
         }/${editReceipt._id}`,
         {
@@ -1327,68 +1329,138 @@ const Receipts = () => {
       setLoading(true);
       setError("");
 
-      // First verify the receipt exists on the backend
+      // First verify the receipt exists on the backend (optional - we can still log deletion even if receipt is gone)
       const token = localStorage.getItem("token");
       const checkResponse = await fetch(
-        `https://backenderp.tarstech.in/api/receipts/${
+        `${API_URL}/api/receipts/${
           receipt.type === "student" ? "student" : "salary"
         }/${receipt._id}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
       );
-      if (!checkResponse.ok) {
-        if (checkResponse.status === 404) {
-          // Receipt doesn't exist on backend, remove it from frontend
-          console.warn(
-            `Receipt ${receipt._id} not found on server, removing from display`
-          );
-          setReceipts((prev) => prev.filter((r) => r._id !== receipt._id));
-          setError(
-            `Receipt ${
-              receipt.receiptNumber || receipt._id
-            } no longer exists on the server and has been removed from the display.`
-          );
-          return;
+      
+      let receiptExists = checkResponse.ok;
+      if (!receiptExists) {
+        console.warn(`Receipt ${receipt._id} not found on server (status: ${checkResponse.status}), but will still log deletion`);
+      }
+
+      // Fetch full payment details BEFORE deletion to ensure we have UTR
+      const paymentResponse = await fetch(`${API_URL}/api/payments/${receipt._id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      
+      let fullPayment = null;
+      if (paymentResponse.ok) {
+        fullPayment = await paymentResponse.json();
+        console.log("📄 Full payment details:", fullPayment);
+      } else {
+        console.warn("⚠️ Could not fetch payment details, using receipt data for logging");
+      }
+
+      // If receipt doesn't exist on server but we have payment details, still try to delete
+      if (!receiptExists && !fullPayment) {
+        console.warn("⚠️ Receipt not found and no payment details available, logging deletion with available data only");
+      }
+
+      // Attempt deletion only if receipt exists
+      if (receiptExists) {
+        const response = await fetch(
+          `${API_URL}/api/receipts/${
+            receipt.type === "student" ? "student" : "salary"
+          }/${receipt._id}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.warn(`Receipt ${receipt._id} already deleted on server`);
+            receiptExists = false; // Mark as doesn't exist for UI update
+          } else {
+            const errorText = await response.text();
+            console.error("Receipt delete error:", errorText);
+            throw new Error("Failed to delete receipt: " + errorText);
+          }
         } else {
-          throw new Error(`Failed to verify receipt: ${checkResponse.status}`);
+          console.log("✅ Receipt deleted from backend, now logging to ledger...");
         }
+      } else {
+        console.log("ℹ️ Receipt not found on server, skipping deletion but logging to ledger...");
       }
 
-      // Receipt exists, proceed with deletion
-      const response = await fetch(
-        `https://backenderp.tarstech.in/api/receipts/${
-          receipt.type === "student" ? "student" : "salary"
-        }/${receipt._id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
+      // Always log the deletion to the ledger (even if receipt doesn't exist on server)
+      console.log("🗑️ Deleting receipt:", receipt);
+      console.log("🗑️ Receipt UTR:", receipt.utr);
+      console.log("🗑️ Receipt transactionId:", receipt.transactionId);
+      console.log("🗑️ Receipt paymentMethod:", receipt.paymentMethod);
+      
+      // Use UTR from full payment data, with fallback logic
+      const utr = fullPayment ? (fullPayment.utr || (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(fullPayment.paymentMethod) ? fullPayment.transactionId : "") || fullPayment.paymentId || "") : (receipt.utr || (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(receipt.paymentMethod) ? receipt.transactionId : "") || receipt.paymentId || "");
+      
+      console.log("Calculated UTR:", utr);
+      
+      const deletionPayload = {
+        deletedReceiptId: receipt._id,
+        receiptNumber: receipt.receiptNumber || "N/A",
+        type: receipt.type || "student",
+        amount: receipt.amount || 0,
+        recipientName: receipt.recipientName || "Unknown",
+        studentId: receipt.studentId || "",
+        description: receipt.description || "Deleted Receipt",
+        paymentMethod: receipt.paymentMethod || "N/A",
+        paymentDate: receipt.paymentDate || new Date().toISOString(),
+        deletedAt: new Date().toISOString(),
+        deletedBy: localStorage.getItem("userEmail") || localStorage.getItem("userName") || "Admin",
+        utr: utr,
+        transactionId: fullPayment?.transactionId || receipt.transactionId || "",
+        remarks: receipt.remarks || "",
+        collectedBy: receipt.collectedBy || "",
+        department: receipt.department || "",
+        feeHead: receipt.feeHead || "",
+        semester: receipt.semester || null
+      };
+      
+      console.log("📤 Deletion payload UTR:", deletionPayload.utr);
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Receipt already doesn't exist, just remove from frontend
-          console.warn(
-            `Receipt ${receipt._id} already deleted on server, removing from display`
-          );
-          setReceipts((prev) => prev.filter((r) => r._id !== receipt._id));
-          setError(
-            "Receipt was already deleted on the server. Removed from display."
-          );
-          return;
+      console.log("📤 Sending deletion log to backend:", deletionPayload);
+      console.log("🔑 Token available:", token ? "YES" : "NO");
+
+      try {
+        const deletionLogResponse = await fetch(
+          `http://localhost:4000/api/ledger/log-deletion`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(deletionPayload),
+          }
+        );
+
+        console.log("📥 Deletion log response status:", deletionLogResponse.status);
+
+        if (deletionLogResponse.ok) {
+          const logResult = await deletionLogResponse.json();
+          console.log("✅ Deletion logged to ledger successfully:", logResult);
+        } else {
+          const errorText = await deletionLogResponse.text();
+          console.error("❌ Failed to log deletion to ledger:", deletionLogResponse.status, errorText);
         }
-        const errorText = await response.text();
-        console.error("Receipt delete error:", errorText);
-        throw new Error("Failed to delete receipt: " + errorText);
+      } catch (logError) {
+        console.error("❌ Error logging deletion to ledger:", logError);
       }
 
-      // Remove the receipt from the local state
+      // Remove the receipt from the local state (always do this since we're "deleting" it)
       setReceipts((prev) => prev.filter((r) => r._id !== receipt._id));
       console.log("Receipt deleted successfully:", receipt._id);
+      alert(`Receipt ${receipt.receiptNumber || receipt._id} has been deleted and logged in the ledger.`);
     } catch (err) {
       setError("Error deleting receipt: " + err.message);
     } finally {
@@ -1411,7 +1483,7 @@ const Receipts = () => {
         try {
           const token = localStorage.getItem("token");
           const checkResponse = await fetch(
-            `https://backenderp.tarstech.in/api/receipts/${
+            `${API_URL}/api/receipts/${
               receipt.type === "student" ? "student" : "salary"
             }/${receipt._id}`,
             {
@@ -1463,7 +1535,7 @@ const Receipts = () => {
             try {
               const token = localStorage.getItem("token");
               const checkResponse = await fetch(
-                `https://backenderp.tarstech.in/api/receipts/${
+                `${API_URL}/api/receipts/${
                   receipt.type === "student" ? "student" : "salary"
                 }/${receipt._id}`,
                 {

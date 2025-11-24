@@ -34,11 +34,11 @@ const cleanupAuditIndexes = async () => {
 };
 
 // Run cleanup once when the module loads
-if (mongoose.connection.readyState === 1) {
-  cleanupAuditIndexes();
-} else {
-  mongoose.connection.once('open', cleanupAuditIndexes);
-}
+// if (mongoose.connection.readyState === 1) {
+//   cleanupAuditIndexes();
+// } else {
+//   mongoose.connection.once('open', cleanupAuditIndexes);
+// }
 
 // GET all expenses
 router.get('/', async (req, res) => {

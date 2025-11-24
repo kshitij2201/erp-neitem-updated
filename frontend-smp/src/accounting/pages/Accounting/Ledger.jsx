@@ -195,7 +195,7 @@ function generateDCRHTML(data, dateFrom, dateTo) {
           <th>Course</th>
           <th>Fee Head</th>
           <th>Payment Mode</th>
-          <th>Chq/DD No.</th>
+          <th>Chq/DD No./UTR</th>
           <th>Remarks</th>
           <th>Amount</th>
         </tr>
@@ -213,7 +213,7 @@ function generateDCRHTML(data, dateFrom, dateTo) {
         <td>${entry.course || ""}</td>
         <td>${entry.feeHead || ""}</td>
         <td>${entry.method || ""}</td>
-        <td>${entry.reference || ""}</td>
+        <td>${entry.type === "Payment" && entry.method !== "Cash" ? (entry.utr || "-") : (entry.reference || "-")}</td>
         <td>${entry.remarks || ""}</td>
         <td class="amount">${
           typeof entry.amount === "number" && !isNaN(entry.amount)
@@ -377,7 +377,7 @@ export default function Ledger() {
 
     // Fetch ledger data and fee heads in parallel
     Promise.all([
-      fetch("https://backenderp.tarstech.in/api/ledger", { headers }).then(
+      fetch("http://localhost:4000/api/ledger", { headers }).then(
         (res) => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -385,7 +385,7 @@ export default function Ledger() {
           return res.json();
         }
       ),
-      fetch("https://backenderp.tarstech.in/api/fee-heads", { headers }).then(
+      fetch("http://localhost:4000/api/fee-heads", { headers }).then(
         (res) => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -395,7 +395,22 @@ export default function Ledger() {
       ),
     ])
       .then(([ledgerData, feeHeadsData]) => {
-        console.log("Ledger data received:", ledgerData);
+        console.log("📊 Complete Ledger data received:", ledgerData);
+        console.log("📊 Total entries:", ledgerData.length);
+        
+        // Check for different entry types
+        const paymentEntries = ledgerData.filter(e => e.type === "Payment");
+        const expenseEntries = ledgerData.filter(e => e.type === "Expense");
+        const deletedEntries = ledgerData.filter(e => e.type === "Deleted");
+        console.log(`💰 Payments: ${paymentEntries.length}`);
+        console.log(`💸 Expenses: ${expenseEntries.length}`);
+        console.log(`🗑️ Deleted: ${deletedEntries.length}`);
+        
+        if (paymentEntries.length > 0) {
+          console.log("Sample payment entry:", paymentEntries[0]);
+          console.log("Sample payment UTR:", paymentEntries[0].utr);
+        }
+        
         console.log("Sample ledger entry:", ledgerData[0]);
         setEntries(ledgerData);
         setFeeHeads(Array.isArray(feeHeadsData) ? feeHeadsData : []);
@@ -465,10 +480,11 @@ export default function Ledger() {
   // Add course filter state
   const [courseFilter, setCourseFilter] = useState("All");
 
-  // Filtering logic
+  // Filtering logic - Show all entries (payments, expenses, deleted receipts)
   const filteredEntries = entries.filter((entry) => {
-    // Type filter
+    // Type filter (All, Payment, Expense, Deleted)
     if (typeFilter !== "All" && entry.type !== typeFilter) return false;
+    
     // Person filter
     if (
       personFilter &&
@@ -487,14 +503,16 @@ export default function Ledger() {
     // Search filter
     if (search) {
       const s = search.toLowerCase();
+      const referenceValue = entry.reference || "";
       if (
         !(entry.description && entry.description.toLowerCase().includes(s)) &&
-        !(entry.reference && entry.reference.toLowerCase().includes(s)) &&
+        !(referenceValue && referenceValue.toLowerCase().includes(s)) &&
         !(entry.feeHead && entry.feeHead.toLowerCase().includes(s)) &&
         !(entry.course && entry.course.toLowerCase().includes(s)) &&
         !(
           entry.receiptNumber && entry.receiptNumber.toLowerCase().includes(s)
         ) &&
+        !(entry.utr && entry.utr.toLowerCase().includes(s)) &&
         !(entry.remarks && entry.remarks.toLowerCase().includes(s))
       ) {
         return false;
@@ -515,15 +533,9 @@ export default function Ledger() {
     } else if (sortBy === "amount") {
       valA = typeof valA === "number" ? valA : 0;
       valB = typeof valB === "number" ? valB : 0;
-    } else if (
-      sortBy === "feeHead" ||
-      sortBy === "course" ||
-      sortBy === "receiptNumber" ||
-      sortBy === "remarks"
-    ) {
-      // For fee head, course, receipt number, and remarks, we'll sort by title
-      valA = (valA || "").toString().toLowerCase();
-      valB = (valB || "").toString().toLowerCase();
+    } else if (sortBy === "reference") {
+      valA = (a.type === "Payment" && a.method !== "Cash" ? (a.utr || "-") : (a.reference || "-")).toString().toLowerCase();
+      valB = (b.type === "Payment" && b.method !== "Cash" ? (b.utr || "-") : (b.reference || "-")).toString().toLowerCase();
     } else {
       valA = (valA || "").toString().toLowerCase();
       valB = (valB || "").toString().toLowerCase();
@@ -599,7 +611,7 @@ export default function Ledger() {
           </style>
         </head>
         <body>
-          <h1>Ledger Report</h1>
+          <h1>Complete Ledger Report</h1>
           <div class="summary">
             <div><strong>Total: ${total.toLocaleString("en-IN", {
               style: "currency",
@@ -644,7 +656,7 @@ export default function Ledger() {
                   <td>${entry.personName || "-"}</td>
                   <td>${entry.course || "-"}</td>
                   <td>${entry.description}</td>
-                  <td>${entry.reference}</td>
+                  <td>${entry.type === "Payment" && entry.method !== "Cash" ? (entry.utr || "-") : (entry.reference || "-")}</td>
                   <td>${entry.method}</td>
                   <td>${entry.feeHead || "-"}</td>
                   <td>${entry.remarks || "-"}</td>
@@ -684,14 +696,20 @@ export default function Ledger() {
                 Nagarjuna Institute of Engineering and Technology
               </h1>
               <p className="text-gray-300">
-                Management Information System - Ledger Management
+                Deleted Receipts Audit Trail - Management Information System
               </p>
             </div>
           </div>
         </div>
 
-        <h1 className="text-3xl font-bold mb-6 text-white">Ledger</h1>
+        <h1 className="text-3xl font-bold mb-6 text-white">Complete Ledger</h1>
         <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
+          <div className="mb-4">
+            <p className="text-gray-300 text-sm">
+              Complete ledger showing all payments, expenses, and deleted receipts with full audit trail.
+              UTR numbers are displayed in the Reference column for digital payment methods (Online, Card, UPI, Bank Transfer). Cash payments show the reference number.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-4 mb-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -702,9 +720,10 @@ export default function Ledger() {
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
               >
-                <option value="All">All</option>
-                <option value="Payment">Payment</option>
-                <option value="Expense">Expense</option>
+                <option value="All">All Types</option>
+                <option value="Payment">Payments</option>
+                <option value="Expense">Expenses</option>
+                <option value="Deleted">Deleted Receipts</option>
               </select>
             </div>
             <div>
@@ -832,25 +851,26 @@ export default function Ledger() {
         </div>
         <div className="mb-2 flex flex-wrap gap-4 justify-end font-semibold text-black">
           <div>
-            Total:{" "}
+            Total Amount:{" "}
             {total.toLocaleString("en-IN", {
               style: "currency",
               currency: "INR",
             })}
           </div>
           <div className="text-green-400">
-            Payments:{" "}
-            {totalPayments.toLocaleString("en-IN", {
+            Payments: {totalPayments.toLocaleString("en-IN", {
               style: "currency",
               currency: "INR",
             })}
           </div>
-          <div className="text-red-600">
-            Expenses:{" "}
-            {totalExpenses.toLocaleString("en-IN", {
+          <div className="text-orange-400">
+            Expenses: {totalExpenses.toLocaleString("en-IN", {
               style: "currency",
               currency: "INR",
             })}
+          </div>
+          <div className="text-red-400">
+            Deleted: {filteredEntries.filter(e => e.type === "Deleted").length} entries
           </div>
           <button
             className="ml-4 bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-800 print:hidden"
@@ -973,7 +993,11 @@ export default function Ledger() {
                 {pagedSortedEntries.map((entry, idx) => (
                   <tr
                     key={idx}
-                    className="hover:bg-gray-700"
+                    className={`hover:bg-gray-700 ${
+                      entry.type === "Deleted" ? "bg-red-900 bg-opacity-20" :
+                      entry.type === "Expense" ? "bg-orange-900 bg-opacity-20" :
+                      "bg-green-900 bg-opacity-10"
+                    }`}
                     onClick={() => setModalEntry(entry)}
                     style={{ cursor: "pointer" }}
                   >
@@ -982,8 +1006,14 @@ export default function Ledger() {
                         ? new Date(entry.date).toLocaleDateString()
                         : ""}
                     </td>
-                    <td className="px-4 py-2 border border-gray-600 text-white">
-                      {entry.type}
+                    <td className={`px-4 py-2 border border-gray-600 ${
+                      entry.type === "Deleted" ? "text-red-400 font-bold" :
+                      entry.type === "Expense" ? "text-orange-400" :
+                      "text-green-400"
+                    }`}>
+                      {entry.type === "Deleted" ? "🗑️ DELETED" : 
+                       entry.type === "Expense" ? "💸 EXPENSE" : 
+                       "💰 PAYMENT"}
                     </td>
                     <td className="px-4 py-2 border border-gray-600 text-white">
                       {entry.receiptNumber || "-"}
@@ -998,7 +1028,7 @@ export default function Ledger() {
                       {entry.description}
                     </td>
                     <td className="px-4 py-2 border border-gray-600 text-white">
-                      {entry.reference}
+                      {entry.type === "Payment" && entry.method !== "Cash" ? (entry.utr || "-") : (entry.reference || "-")}
                     </td>
                     <td className="px-4 py-2 border border-gray-600 text-white">
                       {entry.method}
@@ -1052,10 +1082,35 @@ export default function Ledger() {
         {/* Row details modal */}
         {modalEntry && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 print:hidden">
-            <div className="bg-gray-800 rounded shadow-lg p-6 min-w-[300px] max-w-[90vw] border border-gray-600">
+            <div className={`rounded shadow-lg p-6 min-w-[300px] max-w-[90vw] border ${
+              modalEntry.type === "Deleted" 
+                ? "bg-red-900 border-red-600" 
+                : modalEntry.type === "Expense"
+                ? "bg-orange-900 border-orange-600"
+                : "bg-gray-800 border-gray-600"
+            }`}>
               <h2 className="text-xl font-bold mb-2 text-white">
-                Entry Details
+                {modalEntry.type === "Deleted" ? "🗑️ Deleted Entry Details" : 
+                 modalEntry.type === "Expense" ? "💸 Expense Entry Details" :
+                 "💰 Payment Entry Details"}
               </h2>
+              
+              {modalEntry.type === "Deleted" && (
+                <div className="mb-4 p-3 bg-red-800 border border-red-600 rounded">
+                  <div className="text-red-200 font-bold mb-1">⚠️ This entry was deleted</div>
+                  {modalEntry.deletedAt && (
+                    <div className="text-red-300 text-sm">
+                      <b>Deleted At:</b> {new Date(modalEntry.deletedAt).toLocaleString()}
+                    </div>
+                  )}
+                  {modalEntry.deletedBy && (
+                    <div className="text-red-300 text-sm">
+                      <b>Deleted By:</b> {modalEntry.deletedBy}
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div className="mb-2 text-gray-300">
                 <b className="text-white">Date:</b>{" "}
                 {modalEntry.date
@@ -1081,7 +1136,7 @@ export default function Ledger() {
                 {modalEntry.description}
               </div>
               <div className="mb-2 text-gray-300">
-                <b className="text-white">Reference:</b> {modalEntry.reference}
+                <b className="text-white">Reference:</b> {modalEntry.type === "Payment" && modalEntry.method !== "Cash" ? (modalEntry.utr || "-") : (modalEntry.reference || "-")}
               </div>
               <div className="mb-2 text-gray-300">
                 <b className="text-white">Method:</b> {modalEntry.method}
@@ -1105,7 +1160,13 @@ export default function Ledger() {
                   : "-"}
               </div>
               <button
-                className="mt-4 bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800"
+                className={`mt-4 px-4 py-2 rounded ${
+                  modalEntry.type === "Deleted"
+                    ? "bg-red-700 hover:bg-red-800 text-white"
+                    : modalEntry.type === "Expense"
+                    ? "bg-orange-700 hover:bg-orange-800 text-white"
+                    : "bg-blue-700 hover:bg-blue-800 text-white"
+                }`}
                 onClick={() => setModalEntry(null)}
               >
                 Close

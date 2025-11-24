@@ -101,6 +101,7 @@ router.get("/", async (req, res) => {
           casteCategory: payment.studentId?.casteCategory,
           feeHead: payment.feeHead?.title,
           transactionId: payment.transactionId,
+          utr: payment.utr || (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(payment.paymentMethod) ? payment.transactionId : ''),
           remarks: payment.remarks,
           collectedBy: payment.collectedBy,
           semester: payment.semester,

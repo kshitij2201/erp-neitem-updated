@@ -11,6 +11,10 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Student',
     required: true
   },
+  studentName: {
+    type: String,
+    trim: true
+  },
   amount: {
     type: Number,
     required: true,
@@ -46,6 +50,9 @@ const paymentSchema = new mongoose.Schema({
   transactionId: {
     type: String,
     trim: true
+  },
+  utr: {
+    type: String
   },
   remarks: {
     type: String,

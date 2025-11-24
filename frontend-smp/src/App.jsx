@@ -57,6 +57,9 @@ const App = () => {
         {/* Unified login page at root */}
         <Route path="/" element={<UnifiedLogin />} />
 
+        {/* Login route for convenience */}
+        <Route path="/login" element={<UnifiedLogin />} />
+
         {/* Faculty login route */}
         <Route path="/faculty/rolelogin" element={<RoleLogin />} />
 

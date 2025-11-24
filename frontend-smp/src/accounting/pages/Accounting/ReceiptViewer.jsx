@@ -76,7 +76,8 @@ const ReceiptViewer = () => {
       <body>
         <div class="receipt-header">
           <h1>NAGARJUNA INSTITUTE</h1>
-          <h2>Payment Receipt</h2>
+          <h2>
+          Receipt</h2>
           <p>Receipt No: ${receipt.receiptNumber}</p>
         </div>
         

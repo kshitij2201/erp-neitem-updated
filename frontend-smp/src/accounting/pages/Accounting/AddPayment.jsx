@@ -8,6 +8,7 @@ export default function AddPayment() {
     paymentMethod: "Bank Transfer",
     description: "",
     transactionId: "",
+    utr: "",
     collectedBy: "",
     remarks: "",
     feeHead: "",
@@ -55,6 +56,8 @@ export default function AddPayment() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
   const [loadingStudents, setLoadingStudents] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
 
   useEffect(() => {
     fetchStudents();
@@ -361,6 +364,11 @@ export default function AddPayment() {
         academicYear: formData.academicYear,
       };
 
+      // Add UTR for digital payment methods
+      if (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod)) {
+        paymentData.utr = formData.utr || "";
+      }
+
       // Add type-specific data
       if (formData.paymentType === "salary") {
         paymentData.employeeName = formData.employeeName;
@@ -464,6 +472,11 @@ export default function AddPayment() {
           paymentType: formData.paymentType,
           academicYear: formData.academicYear,
         };
+
+        // Add UTR for digital payment methods
+        if (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod)) {
+          receipt.utr = formData.utr;
+        }
 
         if (formData.paymentType === "salary") {
           receipt.employeeName = formData.employeeName;
@@ -663,6 +676,14 @@ export default function AddPayment() {
           }
         }
 
+        // Ensure fee head information is always available for receipt display
+        if (!receipt.multipleFees && !receipt.feeHead) {
+          receipt.feeHead = {
+            title: `${receipt.paymentType.charAt(0).toUpperCase() + receipt.paymentType.slice(1)} Fee Payment`,
+            amount: parseInt(formData.amount),
+          };
+        }
+
         setReceiptData(receipt);
         setShowReceipt(true);
         setSuccess(
@@ -736,6 +757,7 @@ export default function AddPayment() {
       paymentMethod: "Bank Transfer",
       description: "",
       transactionId: "",
+      utr: "",
       collectedBy: "",
       remarks: "",
       feeHead: "",
@@ -780,44 +802,135 @@ export default function AddPayment() {
 
   const selectedStudent = students.find((s) => s._id === formData.studentId);
 
+  const filteredStudents = students.filter((student) => {
+    if (!studentSearchTerm) return true;
+    const searchLower = studentSearchTerm.toLowerCase();
+    return (
+      student.firstName?.toLowerCase().includes(searchLower) ||
+      student.lastName?.toLowerCase().includes(searchLower) ||
+      student.studentId?.toLowerCase().includes(searchLower) ||
+      (typeof student.department === 'object'
+        ? student.department?.name?.toLowerCase().includes(searchLower)
+        : student.department?.toLowerCase().includes(searchLower))
+    );
+  });
+
   // Receipt Modal Component
   const ReceiptModal = () => {
     if (!showReceipt || !receiptData) return null;
 
     const printReceipt = () => {
-      const receiptTemplate = `
+      // Function to generate single receipt with label
+      const generateReceipt = (label) => `
             <div class="receipt-container">
-              <div class="header-border"></div>
-              
-              <div class="institute-header">
-                <div class="logos-row">
-                  <img src="/logo1.png" alt="NIETM Logo" class="logo" />
-                  <div class="institute-info">
-                    <div class="society-name">maitrey education society</div>
-                    <div class="institute-name">NAGARJUNA</div>
-                    <div class="institute-subtitle">Institute of Engineering, Technology & Management</div>
-                    <div class="institute-affiliation">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                    <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                    <div class="institute-contact">📧 maitrey.ngp@gmail.com | 🌐 www.nietm.in | 📞 07118 322211, 12</div>
+              <div class="receipt-header-box">
+                <div class="duplicate-label">${label}</div>
+                <div class="institute-header-simple">
+                  <div class="logo-left">
+                    <img src="/logo1.png" alt="Logo" />
                   </div>
-                  <img src="/logo.png" alt="NIETM Logo" class="logo" />
+                  <div class="header-text">
+                    <div class="society-name-simple">Maitrey Educational Society's</div>
+                    <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+                    <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
+                  </div>
+                  <div class="logo-right">
+                    <img src="/logo.png" alt="Logo" />
+                  </div>
                 </div>
               </div>
               
-              <div class="receipt-title">FEE PAYMENT RECEIPT</div>
+              <div class="receipt-type-label">EAXM (OTHER FEES RECEIPT)</div>
+
+              <div class="receipt-info-header">
+                <div class="receipt-info-left">
+                  <div class="info-item"><span class="label">Rec. No.:</span> <span class="value">${receiptData.receiptNumber}</span></div>
+                  <div class="info-item"><span class="label">Class:</span> <span class="value">${receiptData.student?.program || 'N/A'}</span></div>
+                  <div class="info-item"><span class="label">Category:</span> <span class="value">${receiptData.student?.caste || 'N/A'}</span></div>
+                  <div class="info-item"><span class="label">Name:</span> <span class="value">${receiptData.student?.firstName} ${receiptData.student?.lastName}</span></div>
+                </div>
+                <div class="receipt-info-center">
+                </div>
+                <div class="receipt-info-right">
+                  <div class="info-item"><span class="label">Date:</span> <span class="value">${receiptData.date}</span></div>
+                  <div class="info-item"><span class="label">Adm. No.:</span> <span class="value">${receiptData.student?.admissionNumber || receiptData.student?.studentId}</span></div>
+                  <div class="info-item"><span class="label">Student Id.:</span> <span class="value">${receiptData.student?.studentId}</span></div>
+                  <div class="info-item"><span class="label">Fee Type:</span> <span class="value">${receiptData.paymentType.toUpperCase()}</span></div>
+                </div>
+              </div>
               
-              <div style="text-align: center; margin: 4px 0; padding: 4px; background: #f0f9ff; border: 1px solid #2563eb; border-radius: 4px;">
-                <div style="font-weight: bold; color: #2563eb; font-size: 8px;">
-                  ${
-                    receiptData.paymentType === "specific"
-                      ? "🎯 SPECIFIC FEE PAYMENT"
-                      : receiptData.paymentType === "multiple"
-                      ? "📊 MULTIPLE FEE HEADS PAYMENT"
-                      : receiptData.paymentType === "annual"
-                      ? "📅 ANNUAL FEE PAYMENT"
-                      : receiptData.paymentType === "transport"
-                      ? "🚌 TRANSPORT FEE PAYMENT"
-                      : receiptData.paymentType === "hostel"
+              <div class="received-section">
+                <div class="received-label">Received the following:</div>
+                <div class="amount-label">(₹)Amount</div>
+              </div>
+              
+              <div class="fee-details-table">
+                <table>
+                  <tbody>
+                    ${
+                      receiptData.multipleFees && receiptData.multipleFees.length > 0
+                        ? receiptData.multipleFees
+                            .map(
+                              (fee, index) => `
+                        <tr>
+                          <td class="fee-name">${fee.feeHead}</td>
+                          <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      `
+                            )
+                            .join("")
+                        : `
+                        <tr>
+                          <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
+                          <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      `
+                    }
+                  </tbody>
+                </table>
+              </div>
+              
+              <div class="logo-section">
+                <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+              </div>
+              
+              <div class="total-section">
+                <div class="total-label">Total :</div>
+                <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+              
+              <div class="amount-in-words">
+                <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
+              </div>
+              
+              <div class="payment-details-footer">
+                <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
+                ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' ? `
+                <div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
+                <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>
+                ` : ''}
+                <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
+              </div>
+              
+              <div class="footer-signature">
+                <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
+                <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
+                <div class="signature-label">RECEIVER'S SIGNATURE</div>
+              </div>
+              
+              <div class="page-number">Page 1 of 1</div>
+            </div>
+      `;
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 10mm;
                       ? "🏠 HOSTEL FEE PAYMENT"
                       : receiptData.paymentType === "library"
                       ? "📖 LIBRARY FEE PAYMENT"
@@ -870,6 +983,16 @@ export default function AddPayment() {
                     <div class="info-row">
                       <span class="info-label">Transaction ID:</span>
                       <span>${receiptData.transactionId}</span>
+                    </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      receiptData.utr && ['Online', 'Bank Transfer', 'Card', 'UPI'].includes(receiptData.paymentMethod)
+                        ? `
+                    <div class="info-row">
+                      <span class="info-label">UTR:</span>
+                      <span>${receiptData.utr}</span>
                     </div>
                     `
                         : ""
@@ -1344,256 +1467,262 @@ export default function AddPayment() {
                     <div class="signature-box">Cashier Signature</div>
                   </div>
                 </div>
-              </div>
-              
-              <div class="footer">
-                <p><strong>Note:</strong> This is a computer-generated receipt and is valid without signature.</p>
-                <p>Please retain this receipt for your records. For any queries, contact the accounts department.</p>
-                <p>Generated on ${receiptData.date} at ${
-        receiptData.time
-      } | Document ID: NIETM-FEE-${receiptData.receiptNumber}</p>
-              </div>
-            </div>
-      `;
 
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
           <style>
             @page {
               size: A4 landscape;
+              margin: 5mm;
+            }
+            * {
               margin: 0;
+              padding: 0;
+              box-sizing: border-box;
             }
             body { 
-              font-family: 'Times New Roman', serif; 
+              font-family: Arial, sans-serif; 
               margin: 0; 
-              padding: 8px; 
+              padding: 5px; 
               background: white;
-              line-height: 1.2;
+              line-height: 1.4;
               color: #000;
-              width: 100%;
-              height: 100vh;
-              display: flex;
-              align-items: center;
-              justify-content: center;
+              font-size: 9px;
             }
             .receipts-wrapper {
               display: flex;
-              gap: 15px;
-              justify-content: space-between;
-              align-items: flex-start;
+              flex-direction: row;
+              gap: 8px;
               width: 100%;
-              max-width: 100%;
-              height: auto;
-              margin: 0;
+              justify-content: space-between;
+              height: 100%;
             }
             .receipt-container {
               width: 49%;
-              border: 1.5px solid #000;
+              border: 1px solid #000;
               background: white;
-              flex-shrink: 0;
+              padding: 12px;
+              page-break-inside: avoid;
+              min-height: 800px;
               height: auto;
-              max-height: 95vh;
-              overflow: hidden;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
             }
-            .header-border {
-              height: 2px;
-              background: linear-gradient(90deg, #1e40af, #3b82f6, #1e40af);
+            .receipt-header-box {
+              border: 1px solid #000;
+              padding: 10px;
+              margin-bottom: 12px;
+              position: relative;
             }
-            .institute-header {
-              padding: 8px;
-              text-align: center;
-              border-bottom: 1.5px solid #000;
+            .duplicate-label {
+              position: absolute;
+              top: 3px;
+              right: 8px;
+              font-weight: bold;
+              font-size: 10px;
+              text-transform: uppercase;
+              margin-bottom: 10px;
             }
-            .logos-row {
+            .institute-header-simple {
               display: flex;
               align-items: center;
               justify-content: space-between;
-              margin-bottom: 6px;
+              gap: 5px;
             }
-            .logo {
+            .logo-left, .logo-right {
               width: 35px;
               height: 35px;
+              flex-shrink: 0;
+            }
+            .logo-left img, .logo-right img {
+              width: 100%;
+              height: 100%;
               object-fit: contain;
             }
-            .institute-info {
+            .header-text {
               flex: 1;
               text-align: center;
+              padding: 8px 0;
+            }
+            .society-name-simple {
+              font-size: 8px;
+              margin-bottom: 1px;
+            }
+            .institute-name-simple {
+              font-weight: bold;
+              font-size: 10px;
+              text-transform: uppercase;
+              margin-bottom: 2px;
+            }
+            .institute-address-simple {
+              font-size: 8px;
+            }
+            .receipt-info-header {
+              display: grid;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 12px;
+              border: 1px solid #000;
+              padding: 10px;
+              margin-bottom: 12px;
+              font-size: 8px;
+            }
+            .receipt-info-left,
+            .receipt-info-center,
+            .receipt-info-right {
+              display: flex;
+              flex-direction: column;
+              gap: 3px;
+            }
+            .receipt-info-center {
+              align-items: center;
+              justify-content: center;
+              border-left: 1px solid #000;
+              border-right: 1px solid #000;
               padding: 0 10px;
             }
-            .society-name {
-              font-size: 6px;
-              color: #666;
-              margin-bottom: 2px;
-              text-transform: lowercase;
-            }
-            .institute-name {
-              font-size: 14px;
+            .receipt-type-label {
               font-weight: bold;
-              color: #1e40af;
-              letter-spacing: 1px;
-              margin-bottom: 3px;
-            }
-            .institute-subtitle {
-              font-size: 8px;
-              font-weight: 600;
-              color: #374151;
-              margin-bottom: 2px;
-            }
-            .institute-affiliation {
-              font-size: 6px;
-              color: #6b7280;
-              margin-bottom: 2px;
-              font-style: italic;
-            }
-            .institute-address {
-              font-size: 6px;
-              color: #6b7280;
-              margin-bottom: 2px;
-            }
-            .institute-contact {
-              font-size: 5px;
-              color: #6b7280;
-            }
-            .receipt-title {
-              background: #1e40af;
-              color: white;
-              padding: 6px;
-              margin: 0;
               text-align: center;
-              font-size: 12px;
+              text-transform: uppercase;
+              font-size: 11px;
+              margin-bottom: 10px;
+              padding: 6px;
+              background: #f0f0f0;
+              border: 1px solid #000;
+            }
+            .info-item {
+              display: flex;
+              gap: 5px;
+              margin-bottom: 4px;
+            }
+            .label {
               font-weight: bold;
-              letter-spacing: 1px;
+              min-width: 70px;
             }
-            .receipt-details {
-              padding: 8px;
+            .value {
+              flex: 1;
             }
-            .receipt-info {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px;
-              margin-bottom: 8px;
-              font-size: 7px;
-            }
-            .info-row {
+            .received-section {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 2px;
-              border-bottom: 1px dotted #ddd;
-              padding-bottom: 1px;
-            }
-            .info-label {
+              border: 1px solid #000;
+              border-bottom: none;
+              padding: 8px 10px;
+              background: #f0f0f0;
               font-weight: bold;
-              color: #374151;
+              font-size: 10px;
+              min-height: 35px;
+              align-items: center;
             }
-            .section-title {
-              background: #f3f4f6;
-              padding: 3px 6px;
-              margin: 8px 0 4px 0;
+            .fee-details-table {
+              border: 1px solid #000;
+              margin-bottom: 0;
+            }
+            .fee-details-table table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .fee-details-table td {
+              padding: 8px 10px;
+              border-bottom: 1px solid #ddd;
+              font-size: 9px;
+              line-height: 1.6;
+            }
+            .fee-details-table td.fee-name {
+              text-transform: uppercase;
+            }
+            .fee-details-table td.fee-amount {
+              text-align: right;
               font-weight: bold;
-              color: #1f2937;
-              border-left: 2px solid #1e40af;
-              font-size: 8px;
             }
-            .student-info {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px;
-              margin-bottom: 6px;
-              font-size: 7px;
-            }
-            .payment-summary {
-              background: linear-gradient(135deg, #10b981, #059669);
-              color: black;
-              padding: 8px;
+            .logo-section {
               text-align: center;
-              margin: 8px 0;
-              border-radius: 4px;
-            }
-            .amount-paid {
-              font-size: 16px;
-              font-weight: bold;
-              margin-bottom: 2px;
-            }
-            .amount-label {
-              font-size: 7px;
-              opacity: 0.9;
-            }
-            .footer {
-              background: #f9fafb;
-              padding: 6px;
-              text-align: center;
-              border-top: 1px solid #e5e7eb;
-              font-size: 5px;
-              color: #6b7280;
-            }
-            .signature-section {
+              padding: 20px 0;
+              border-left: 1px solid #000;
+              border-right: 1px solid #000;
               display: flex;
               justify-content: center;
-              margin-top: 10px;
-              padding-top: 8px;
-              border-top: 1px solid #e5e7eb;
-              font-size: 6px;
+              align-items: center;
+              flex-grow: 1;
             }
-            .signature-box {
-              text-align: center;
-              border-top: 1px solid #000;
-              padding-top: 2px;
-              margin-top: 15px;
-              width: 100px;
+            .center-logo {
+              width: 60px;
+              height: 60px;
+              opacity: 0.3;
+              display: block;
+              margin: 0 auto;
             }
-            .watermark {
-              position: fixed;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) rotate(-45deg);
-              font-size: 50px;
-              color: rgba(30, 64, 175, 0.02);
+            .total-section {
+              display: flex;
+              justify-content: space-between;
+              border: 1px solid #000;
+              border-top: 2px solid #000;
+              padding: 6px 8px;
               font-weight: bold;
-              pointer-events: none;
-              z-index: 0;
+              font-size: 10px;
+            }
+            .amount-in-words {
+              border: 1px solid #000;
+              border-top: none;
+              padding: 6px 8px;
+              font-size: 8px;
+            }
+            .words-label {
+              font-weight: bold;
+            }
+            .payment-details-footer {
+              border: 1px solid #000;
+              border-top: none;
+              padding: 8px;
+              font-size: 7px;
+              line-height: 1.6;
+            }
+            .payment-info {
+              margin-bottom: 4px;
+            }
+            .footer-signature {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              border: 1px solid #000;
+              border-top: none;
+              padding: 10px;
+              font-size: 7px;
+              min-height: 50px;
+            }
+            .cashier-info {
+              font-size: 7px;
+            }
+            .cashier-name {
+              font-weight: bold;
+            }
+            .signature-label {
+              font-weight: bold;
+              text-align: right;
+            }
+            .page-number {
+              text-align: right;
+              font-size: 7px;
+              margin-top: 6px;
             }
             @media print {
               @page {
-                size: A4 landscape;
-                margin: 0;
+                size: A4;
+                margin: 10mm;
               }
-              body { 
-                background: white;
-                padding: 0;
-                margin: 0;
-                width: 100%;
-                height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+              body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
               }
-              .receipts-wrapper {
-                gap: 10px;
-                width: 100%;
-                height: auto;
-              }
-              .receipt-container { 
-                border: 1px solid #000;
+              .receipt-container {
                 page-break-inside: avoid;
-                width: 49%;
-                height: auto;
-                max-height: none;
-              }
-              .watermark {
-                font-size: 40px;
-                color: rgba(30, 64, 175, 0.015);
               }
             }
           </style>
         </head>
         <body>
-          <div class="watermark">NIETM</div>
           <div class="receipts-wrapper">
-            ${receiptTemplate}
-            ${receiptTemplate}
+            ${generateReceipt('ORIGINAL')}
+            ${generateReceipt('DUPLICATE')}
           </div>
         </body>
         </html>
@@ -1686,754 +1815,419 @@ export default function AddPayment() {
     };
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
-          <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-900">
-              🧾 Official Payment Receipt
+      <div className="fixed inset-0 bg-gray-100 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-screen overflow-y-auto border-2 border-gray-200">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-t-lg flex justify-between items-center">
+            <h2 className="text-2xl font-bold flex items-center">
+              <span className="mr-3 text-3xl">🧾</span>
+              Official Payment Receipt
             </h2>
             <button
               onClick={() => setShowReceipt(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-white hover:text-gray-200 transition-colors duration-200"
             >
-              <span className="text-2xl">×</span>
+              <span className="text-3xl">×</span>
             </button>
           </div>
 
-          <div className="p-6 space-y-6" id="receipt-content">
-            {/* Professional Receipt Preview */}
-            <div className="border-2 border-gray-300 bg-white">
-              {/* Header Border */}
-              <div className="h-1 bg-gradient-to-r from-blue-800 via-blue-600 to-blue-800"></div>
+          <div className="p-4" id="receipt-content">
+            {/* Professional Receipt Preview - Matching Print Version */}
+            <div 
+              className="bg-white"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  <style>
+                    @page {
+                      size: A4 landscape;
+                      margin: 5mm;
+                    }
+                    * {
+                      margin: 0;
+                      padding: 0;
+                      box-sizing: border-box;
+                    }
+                    body { 
+                      font-family: 'Times New Roman', serif; 
+                      margin: 0; 
+                      padding: 15px; 
+                      background: #f8f9fa;
+                      line-height: 1.5;
+                      color: #2d3748;
+                      font-size: 12px;
+                      font-weight: 400;
+                    }
+                    .receipts-wrapper {
+                      display: flex;
+                      justify-content: center;
+                      width: 100%;
+                      height: 100%;
+                    }
+                    .receipt-container {
+                      width: 90%;
+                      max-width: 650px;
+                      border: 2px solid #2d3748;
+                      background: white;
+                      padding: 20px;
+                      margin: 20px auto;
+                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                      page-break-inside: avoid;
+                      min-height: 745px;
+                      height: auto;
+                    }
+                    .receipt-header-box {
+                      border: 2px solid #2d3748;
+                      padding: 10px;
+                      margin-bottom: 10px;
+                      position: relative;
+                      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                    }
+                    .duplicate-label {
+                      position: absolute;
+                      top: 5px;
+                      right: 10px;
+                      font-weight: bold;
+                      font-size: 12px;
+                      text-transform: uppercase;
+                      color: #dc3545;
+                      margin-bottom: 15px;
+                    }
+                    .institute-header-simple {
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      gap: 8px;
+                    }
+                    .logo-left, .logo-right {
+                      width: 40px;
+                      height: 40px;
+                      flex-shrink: 0;
+                    }
+                    .logo-left img, .logo-right img {
+                      width: 100%;
+                      height: 100%;
+                      object-fit: contain;
+                    }
+                    .header-text {
+                      flex: 1;
+                      text-align: center;
+                      padding: 12px 0;
+                    }
+                    .society-name-simple {
+                      font-size: 11px;
+                      margin-bottom: 2px;
+                      color: #6c757d;
+                    }
+                    .institute-name-simple {
+                      font-weight: bold;
+                      font-size: 14px;
+                      text-transform: uppercase;
+                      margin-bottom: 4px;
+                      color: #1a202c;
+                      letter-spacing: 0.5px;
+                    }
+                    .institute-address-simple {
+                      font-size: 11px;
+                      color: #6c757d;
+                    }
+                    .receipt-type-label {
+                      font-weight: bold;
+                      text-align: center;
+                      text-transform: uppercase;
+                      font-size: 11px;
+                      margin-bottom: 8px;
+                      padding: 3px 8px;
+                      border: 2px solid #000;
+                      border-bottom: 1px solid #000;
+                      color: #000;
+                      background: white;
+                    }
+                    .receipt-info-table {
+                      width: 100%;
+                      border: 2px solid #000;
+                      border-collapse: collapse;
+                      margin-bottom: 10px;
+                      font-size: 10px;
+                      background: white;
+                    }
+                    .receipt-info-table td {
+                      border: 1px solid #000;
+                      padding: 4px 8px;
+                      vertical-align: top;
+                    }
+                    .receipt-info-table .label-cell {
+                      font-weight: bold;
+                      width: 20%;
+                      color: #000;
+                    }
+                    .receipt-info-table .value-cell {
+                      width: 30%;
+                      color: #000;
+                    }
+                    .received-section {
+                      display: flex;
+                      justify-content: space-between;
+                      border: 2px solid #2d3748;
+                      border-bottom: none;
+                      padding: 4px 8px;
+                      background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+                      font-weight: bold;
+                      font-size: 11px;
+                      color: #1a202c;
+                    }
+                    .fee-details-table {
+                      border: 2px solid #000;
+                      margin-bottom: 0;
+                    }
+                    .fee-details-table table {
+                      width: 100%;
+                      border-collapse: collapse;
+                    }
+                    .fee-details-table td {
+                      padding: 6px 10px;
+                      border-bottom: 1px solid #dee2e6;
+                      font-size: 11px;
+                    }
+                    .fee-details-table td.fee-name {
+                      text-transform: uppercase;
+                      font-weight: bold;
+                      color: #000;
+                    }
+                    .fee-details-table td.fee-amount {
+                      text-align: right;
+                      font-weight: bold;
+                      color: #000;
+                    }
+                    .logo-section {
+                      text-align: center;
+                      padding: 12px 0;
+                      border-left: 2px solid #000;
+                      border-right: 2px solid #000;
+                      background: #f8f9fa;
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                    }
+                    .center-logo {
+                      width: 70px;
+                      height: 70px;
+                      opacity: 0.4;
+                      display: block;
+                      margin: 0 auto;
+                    }
+                    .total-section {
+                      display: flex;
+                      justify-content: space-between;
+                      border: 2px solid #2d3748;
+                      border-top: 3px solid #1a202c;
+                      padding: 4px 8px;
+                      font-weight: bold;
+                      font-size: 12px;
+                      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                      color: #1a202c;
+                    }
+                    .amount-in-words {
+                      border: 2px solid #000;
+                      border-top: none;
+                      padding: 5px 8px;
+                      font-size: 10px;
+                      background: #f8f9fa;
+                      color: #000;
+                    }
+                    .words-label {
+                      font-weight: bold;
+                    }
+                    .payment-details-footer {
+                      border: 2px solid #2d3748;
+                      border-top: none;
+                      padding: 10px;
+                      font-size: 10px;
+                      line-height: 1.5;
+                      background: #f7fafc;
+                      color: #2d3748;
+                    }
+                    .payment-info {
+                      margin-bottom: 3px;
+                    }
+                    .footer-signature {
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: flex-end;
+                      border: 2px solid #2d3748;
+                      border-top: none;
+                      padding: 10px;
+                      font-size: 10px;
+                      min-height: 40px;
+                      background: #f7fafc;
+                      color: #2d3748;
+                    }
+                    .cashier-info {
+                      font-size: 9px;
+                    }
+                    .cashier-name {
+                      font-weight: bold;
+                    }
+                    .signature-label {
+                      font-weight: bold;
+                      text-align: right;
+                    }
+                    .page-number {
+                      text-align: right;
+                      font-size: 9px;
+                      margin-top: 5px;
+                      color: #6c757d;
+                    }
+                    @media print {
+                      @page {
+                        size: A4;
+                        margin: 10mm;
+                      }
+                      body {
+                        print-color-adjust: exact;
+                        -webkit-print-color-adjust: exact;
+                      }
+                      .receipt-container {
+                        page-break-inside: avoid;
+                      }
+                    }
+                  </style>
+                  <div class="receipts-wrapper">
+                    ${(() => {
+                      const generateReceipt = (label) => `
+                        <div class="receipt-container">
+                          <div class="receipt-header-box">
+                            <div class="duplicate-label">${label}</div>
+                            <div class="institute-header-simple">
+                              <div class="logo-left">
+                                <img src="/logo1.png" alt="Logo" />
+                              </div>
+                              <div class="header-text">
+                                <div class="society-name-simple">Maitrey Educational Society's</div>
+                                <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+                                <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
+                              </div>
+                              <div class="logo-right">
+                                <img src="/logo.png" alt="Logo" />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div class="receipt-type-label">EXAM (OTHER FEES RECEIPT)</div>
 
-              {/* Institute Header */}
-              <div className="p-6 border-b-2 border-gray-900">
-                <div className="flex items-center justify-between gap-6 mb-4">
-                  <img
-                    src="/logo1.png"
-                    alt="NIETM Logo"
-                    className="w-16 h-16 object-contain"
-                  />
-                  <div className="flex-1 text-center">
-                    <div className="text-xs text-gray-500 mb-1">
-                      maitrey education society
-                    </div>
-                    <h3 className="text-3xl font-bold text-blue-900 mb-1 tracking-widest">
-                      NAGARJUNA
-                    </h3>
-                    <div className="text-lg font-semibold text-gray-700 mb-1">
-                      Institute of Engineering, Technology & Management
-                    </div>
-                    <div className="text-xs text-gray-600 mb-1 italic">
-                      (AICTE, DTE Approved & Affiliated to R.T.M. Nagpur
-                      University, Nagpur)
-                    </div>
-                    <div className="text-xs text-gray-600 mb-1">
-                      Village Satnavri, Amravati Road, Nagpur 440023
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      📧 maitrey.ngp@gmail.com | 🌐 www.nietm.in | 📞 07118
-                      322211, 12
-                    </div>
-                  </div>
-                  <img
-                    src="/logo.png"
-                    alt="NIETM Logo"
-                    className="w-16 h-16 object-contain"
-                  />
-                </div>
-              </div>
-
-              {/* Receipt Title */}
-              <div className="bg-blue-900 text-white py-3 text-center">
-                <h4 className="text-xl font-bold tracking-wider">
-                  FEE PAYMENT RECEIPT
-                </h4>
-              </div>
-
-              {/* Fee Type Banner */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 py-3 text-center">
-                <div className="font-bold text-blue-800 text-lg">
-                  {receiptData.paymentType === "specific"
-                    ? "🎯 SPECIFIC FEE PAYMENT"
-                    : receiptData.paymentType === "multiple"
-                    ? "📊 MULTIPLE FEE HEADS PAYMENT"
-                    : receiptData.paymentType === "annual"
-                    ? "📅 ANNUAL FEE PAYMENT"
-                    : receiptData.paymentType === "transport"
-                    ? "🚌 TRANSPORT FEE PAYMENT"
-                    : receiptData.paymentType === "hostel"
-                    ? "🏠 HOSTEL FEE PAYMENT"
-                    : receiptData.paymentType === "library"
-                    ? "📖 LIBRARY FEE PAYMENT"
-                    : receiptData.paymentType === "lab"
-                    ? "🔬 LABORATORY FEE PAYMENT"
-                    : receiptData.paymentType === "sports"
-                    ? "⚽ SPORTS FEE PAYMENT"
-                    : receiptData.paymentType === "development"
-                    ? "🏗️ DEVELOPMENT FEE PAYMENT"
-                    : receiptData.paymentType === "miscellaneous"
-                    ? "📋 MISCELLANEOUS FEE PAYMENT"
-                    : receiptData.paymentType === "salary"
-                    ? "💰 SALARY PAYMENT"
-                    : "💳 STUDENT FEE PAYMENT"}
-                </div>
-                <div className="text-sm text-gray-600 mt-1">
-                  Payment Type:{" "}
-                  <span className="font-semibold uppercase">
-                    {receiptData.paymentType}
-                  </span>
-                </div>
-              </div>
-
-              {/* Receipt Content */}
-              <div className="p-6">
-                {/* Receipt Details */}
-                <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
-                  <div className="space-y-3">
-                    <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                      <span className="font-semibold text-gray-700">
-                        Receipt No:
-                      </span>
-                      <span className="font-mono">
-                        {receiptData.receiptNumber}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                      <span className="font-semibold text-gray-700">Date:</span>
-                      <span>{receiptData.date}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                      <span className="font-semibold text-gray-700">Time:</span>
-                      <span>{receiptData.time}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                      <span className="font-semibold text-gray-700">
-                        Academic Year:
-                      </span>
-                      <span>{receiptData.academicYear}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                      <span className="font-semibold text-gray-700">
-                        Payment Method:
-                      </span>
-                      <span>{receiptData.paymentMethod}</span>
-                    </div>
-                    {receiptData.transactionId && (
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Transaction ID:
-                        </span>
-                        <span className="font-mono">
-                          {receiptData.transactionId}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Student Information */}
-                <div className="mb-6">
-                  <div className="bg-gray-100 px-4 py-2 border-l-4 border-blue-600 mb-3">
-                    <h5 className="font-bold text-gray-900">
-                      👤 STUDENT INFORMATION
-                    </h5>
-                  </div>
-                  <div className="grid grid-cols-2 gap-8 text-sm">
-                    <div className="space-y-3">
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Student Name:
-                        </span>
-                        <span>
-                          {receiptData.student?.firstName}{" "}
-                          {receiptData.student?.lastName}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Student ID:
-                        </span>
-                        <span className="font-mono">
-                          {receiptData.student?.studentId}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Department:
-                        </span>
-                        <span>
-                          {typeof receiptData.student?.department === "object"
-                            ? receiptData.student?.department?.name || "N/A"
-                            : receiptData.student?.department || "N/A"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Program:
-                        </span>
-                        <span>
-                          {typeof receiptData.student?.program === "object"
-                            ? receiptData.student?.program?.name || "N/A"
-                            : receiptData.student?.program || "N/A"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Fee Head Details */}
-                <div className="mb-6">
-                  <div className="bg-gray-100 px-4 py-2 border-l-4 border-blue-600 mb-3">
-                    <h5 className="font-bold text-gray-900">
-                      💰 FEE HEAD DETAILS
-                    </h5>
-                  </div>
-
-                  {/* Fee Head Breakdown Table */}
-                  <div className="border border-gray-300 rounded-lg overflow-hidden mb-4">
-                    <table className="w-full text-sm">
-                      <thead className="bg-blue-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b">
-                            Fee Head
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700 border-b">
-                            Total Amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {receiptData.multipleFees &&
-                        receiptData.multipleFees.length > 0 ? (
-                          // Show multiple fee heads breakdown
-                          receiptData.multipleFees.map((fee, index) => (
-                            <tr
-                              key={index}
-                              className={
-                                index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                              }
-                            >
-                              <td className="px-4 py-3 border-b border-gray-200 font-medium">
-                                {fee.feeHead}
-                              </td>
-                              <td className="px-4 py-3 border-b border-gray-200 text-right">
-                                ₹{fee.totalAmount.toLocaleString()}
-                              </td>
+                          <table class="receipt-info-table">
+                            <tr>
+                              <td class="label-cell">Rec. No.</td>
+                              <td class="value-cell">: ${receiptData.receiptNumber}</td>
+                              <td class="label-cell">Date</td>
+                              <td class="value-cell">: ${receiptData.date}</td>
                             </tr>
-                          ))
-                        ) : receiptData.feeHead ? (
-                          // Show specific fee head details
-                          <tr className="bg-white">
-                            <td className="px-4 py-3 border-b border-gray-200 font-medium">
-                              {receiptData.feeHead.title}
-                            </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right">
-                              ₹
-                              {receiptData.feeHead.amount
-                                ? receiptData.feeHead.amount.toLocaleString()
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        ) : (
-                          // Show general payment
-                          <tr className="bg-white">
-                            <td className="px-4 py-3 border-b border-gray-200 font-medium">
-                              {receiptData.feeHead.title}
-                            </td>
-                            <td className="px-4 py-3 border-b border-gray-200 text-right">
-                              ₹
-                              {receiptData.feeHead.amount
-                                ? receiptData.feeHead.amount.toLocaleString()
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                      <tfoot className="bg-blue-100">
-                        <tr>
-                          <td className="px-4 py-3 font-bold text-gray-800">
-                            TOTAL PAYMENT
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-800">
-                            -
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                            <tr>
+                              <td class="label-cell">Class</td>
+                              <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
+                              <td class="label-cell">Adm. No.</td>
+                              <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
+                            </tr>
+                            <tr>
+                              <td class="label-cell">Category</td>
+                              <td class="value-cell">: ${receiptData.student?.caste || 'N/A'}</td>
+                              <td class="label-cell">Student Id.</td>
+                              <td class="value-cell">: ${receiptData.student?.studentId}</td>
+                            </tr>
+                            <tr>
+                              <td class="label-cell">Name</td>
+                              <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+                            </tr>
+                            <tr>
+                              <td class="label-cell">Roll No</td>
+                              <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
+                              <td class="label-cell">Section</td>
+                              <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
+                            </tr>
+                          </table>
+                          
+                          <div class="received-section">
+                            <div class="received-label">Received the following:</div>
+                            <div class="amount-label">(₹)Amount</div>
+                          </div>
+                          
+                          <div class="fee-details-table">
+                            <table>
+                              <tbody>
+                                ${
+                                  receiptData.multipleFees && receiptData.multipleFees.length > 0
+                                    ? receiptData.multipleFees
+                                        .map(
+                                          (fee, index) => `
+                                <tr>
+                                  <td class="fee-name">${fee.feeHead}</td>
+                                  <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                </tr>
+                              `
+                                        )
+                                        .join("")
+                                    : `
+                                <tr>
+                                  <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
+                                  <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                </tr>
+                              `
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                          
+                          <div class="logo-section">
+                            <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+                          </div>
+                          
+                          <div class="total-section">
+                            <div class="total-label">Total :</div>
+                            <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          </div>
+                          
+                          <div class="amount-in-words">
+                            <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
+                          </div>
+                          
+                          <div class="payment-details-footer">
+                            <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
+                            ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' ? `
+                            <div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
+                            <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>
+                            ` : ''}
+                            <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
+                          </div>
+                          
+                          <div class="footer-signature">
+                            <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
+                            <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
+                            <div class="signature-label">RECEIVER'S SIGNATURE</div>
+                          </div>
+                          
+                          <div class="page-number">Page 1 of 1</div>
+                        </div>
+                      `;
+                      return generateReceipt('ORIGINAL');
+                    })()}
                   </div>
-                </div>
-
-                {/* Payment Information */}
-                <div className="mb-6">
-                  <div className="bg-gray-100 px-4 py-2 border-l-4 border-blue-600 mb-3">
-                    <h5 className="font-bold text-gray-900">
-                      💳 PAYMENT DETAILS
-                    </h5>
-                  </div>
-                  <div className="grid grid-cols-2 gap-8 text-sm">
-                    <div className="space-y-3">
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Payment Type:
-                        </span>
-                        <span className="capitalize font-bold text-blue-600">
-                          {receiptData.paymentType}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Fee Category:
-                        </span>
-                        <span className="font-bold text-green-600">
-                          {receiptData.paymentType === "specific"
-                            ? "Specific Fee Payment"
-                            : receiptData.paymentType === "multiple"
-                            ? "Multiple Fee Heads Payment"
-                            : receiptData.paymentType === "annual"
-                            ? "Annual Fee Payment"
-                            : receiptData.paymentType === "transport"
-                            ? "Transport Fee Payment"
-                            : receiptData.paymentType === "hostel"
-                            ? "Hostel Fee Payment"
-                            : receiptData.paymentType === "library"
-                            ? "Library Fee Payment"
-                            : receiptData.paymentType === "lab"
-                            ? "Laboratory Fee Payment"
-                            : receiptData.paymentType === "sports"
-                            ? "Sports Fee Payment"
-                            : receiptData.paymentType === "development"
-                            ? "Development Fee Payment"
-                            : receiptData.paymentType === "miscellaneous"
-                            ? "Miscellaneous Fee Payment"
-                            : receiptData.paymentType === "salary"
-                            ? "Salary Payment"
-                            : "Student Fee Payment"}
-                        </span>
-                      </div>
-                      {/* Additional Fee Type Details */}
-                      {receiptData.paymentType === "transport" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Transport Details:
-                          </span>
-                          <span className="text-orange-600">
-                            🚌 Bus/Transport Fees
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "hostel" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Hostel Details:
-                          </span>
-                          <span className="text-indigo-600">
-                            🏠 Accommodation Fees
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "library" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Library Details:
-                          </span>
-                          <span className="text-teal-600">
-                            📖 Library Services
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "lab" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Lab Details:
-                          </span>
-                          <span className="text-pink-600">
-                            🔬 Laboratory Usage
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "sports" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Sports Details:
-                          </span>
-                          <span className="text-emerald-600">
-                            ⚽ Sports Facilities
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "development" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Development Details:
-                          </span>
-                          <span className="text-cyan-600">
-                            🏗️ Infrastructure Development
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "annual" && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Annual Details:
-                          </span>
-                          <span className="text-orange-600">
-                            📅 Yearly Fee Payment
-                          </span>
-                        </div>
-                      )}
-                      {receiptData.paymentType === "multiple" &&
-                        receiptData.multipleFees && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Multiple Fees:
-                            </span>
-                            <span className="text-green-600">
-                              📊 {receiptData.multipleFees.length} Fee Head(s)
-                            </span>
-                          </div>
-                        )}
-                      {receiptData.feeHead && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Primary Fee Head:
-                          </span>
-                          <span>{receiptData.feeHead.title}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                        <span className="font-semibold text-gray-700">
-                          Description:
-                        </span>
-                        <span>{receiptData.description}</span>
-                      </div>
-
-                      {/* Detailed Fee Type Information */}
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.category && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Service Category:
-                            </span>
-                            <span className="font-bold text-blue-600">
-                              {receiptData.feeTypeDetails.category}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.manualFeeHeadName && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Fee Head:
-                            </span>
-                            <span className="text-green-600 font-bold">
-                              💰 {receiptData.feeTypeDetails.manualFeeHeadName}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.manualFeeDescription && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Fee Details:
-                            </span>
-                            <span className="text-gray-700 font-bold">
-                              📝{" "}
-                              {receiptData.feeTypeDetails.manualFeeDescription}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.labType && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Laboratory Type:
-                            </span>
-                            <span className="text-pink-600 font-bold">
-                              🔬{" "}
-                              {receiptData.feeTypeDetails.labType
-                                .charAt(0)
-                                .toUpperCase() +
-                                receiptData.feeTypeDetails.labType.slice(
-                                  1
-                                )}{" "}
-                              Lab
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.route && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Transport Route:
-                            </span>
-                            <span className="text-yellow-600 font-bold">
-                              🚌 {receiptData.feeTypeDetails.route}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.block && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Hostel Details:
-                            </span>
-                            <span className="text-indigo-600 font-bold">
-                              🏠 Block {receiptData.feeTypeDetails.block}
-                              {receiptData.feeTypeDetails.roomNumber
-                                ? ", Room " +
-                                  receiptData.feeTypeDetails.roomNumber
-                                : ""}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.feeType &&
-                        receiptData.paymentType === "library" && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Library Service:
-                            </span>
-                            <span className="text-teal-600 font-bold">
-                              📖{" "}
-                              {receiptData.feeTypeDetails.feeType
-                                .charAt(0)
-                                .toUpperCase() +
-                                receiptData.feeTypeDetails.feeType
-                                  .slice(1)
-                                  .replace("-", " ")}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.activity && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Sports Activity:
-                            </span>
-                            <span className="text-green-600 font-bold">
-                              ⚽{" "}
-                              {receiptData.feeTypeDetails.activity
-                                .charAt(0)
-                                .toUpperCase() +
-                                receiptData.feeTypeDetails.activity.slice(1)}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.purpose &&
-                        receiptData.paymentType === "miscellaneous" && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Payment Purpose:
-                            </span>
-                            <span className="text-gray-600 font-bold">
-                              📋 {receiptData.feeTypeDetails.purpose}
-                            </span>
-                          </div>
-                        )}
-
-                      {receiptData.feeTypeDetails &&
-                        receiptData.feeTypeDetails.duration && (
-                          <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                            <span className="font-semibold text-gray-700">
-                              Duration/Period:
-                            </span>
-                            <span className="text-purple-600 font-bold">
-                              ⏱️{" "}
-                              {receiptData.feeTypeDetails.duration
-                                .charAt(0)
-                                .toUpperCase() +
-                                receiptData.feeTypeDetails.duration
-                                  .slice(1)
-                                  .replace("-", " ")}
-                            </span>
-                          </div>
-                        )}
-                      {receiptData.collectedBy && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Collected By:
-                          </span>
-                          <span>{receiptData.collectedBy}</span>
-                        </div>
-                      )}
-                      {receiptData.remarks && (
-                        <div className="flex justify-between border-b border-dotted border-gray-300 pb-1">
-                          <span className="font-semibold text-gray-700">
-                            Remarks:
-                          </span>
-                          <span>{receiptData.remarks}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Amount Section */}
-                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-lg text-center mb-6">
-                  <div className="text-sm opacity-90 mb-2">
-                    TOTAL AMOUNT PAID
-                  </div>
-                  <div className="text-4xl font-bold mb-2">
-                    ₹{parseInt(receiptData.amount).toLocaleString()}
-                  </div>
-                  <div className="text-sm opacity-90">
-                    Amount in Words:{" "}
-                    {(() => {
-                      const num = parseInt(receiptData.amount);
-                      const ones = [
-                        "",
-                        "One",
-                        "Two",
-                        "Three",
-                        "Four",
-                        "Five",
-                        "Six",
-                        "Seven",
-                        "Eight",
-                        "Nine",
-                      ];
-                      const tens = [
-                        "",
-                        "",
-                        "Twenty",
-                        "Thirty",
-                        "Forty",
-                        "Fifty",
-                        "Sixty",
-                        "Seventy",
-                        "Eighty",
-                        "Ninety",
-                      ];
-                      const teens = [
-                        "Ten",
-                        "Eleven",
-                        "Twelve",
-                        "Thirteen",
-                        "Fourteen",
-                        "Fifteen",
-                        "Sixteen",
-                        "Seventeen",
-                        "Eighteen",
-                        "Nineteen",
-                      ];
-
-                      if (num === 0) return "Zero";
-                      if (num < 0) return "Negative";
-
-                      let result = "";
-                      let tempNum = num;
-
-                      if (tempNum >= 10000000) {
-                        result +=
-                          ones[Math.floor(tempNum / 10000000)] + " Crore ";
-                        tempNum %= 10000000;
-                      }
-
-                      if (tempNum >= 100000) {
-                        const lakhDigit = Math.floor(tempNum / 100000);
-                        if (lakhDigit < 10) {
-                          result += ones[lakhDigit] + " Lakh ";
-                        }
-                        tempNum %= 100000;
-                      }
-
-                      if (tempNum >= 1000) {
-                        const thousandDigit = Math.floor(tempNum / 1000);
-                        if (thousandDigit < 10) {
-                          result += ones[thousandDigit] + " Thousand ";
-                        } else if (thousandDigit < 20) {
-                          result += teens[thousandDigit - 10] + " Thousand ";
-                        } else {
-                          result +=
-                            tens[Math.floor(thousandDigit / 10)] +
-                            " " +
-                            ones[thousandDigit % 10] +
-                            " Thousand ";
-                        }
-                        tempNum %= 1000;
-                      }
-
-                      if (tempNum >= 100) {
-                        result += ones[Math.floor(tempNum / 100)] + " Hundred ";
-                        tempNum %= 100;
-                      }
-
-                      if (tempNum >= 20) {
-                        result += tens[Math.floor(tempNum / 10)] + " ";
-                        tempNum %= 10;
-                      } else if (tempNum >= 10) {
-                        result += teens[tempNum - 10] + " ";
-                        tempNum = 0;
-                      }
-
-                      if (tempNum > 0) {
-                        result += ones[tempNum] + " ";
-                      }
-
-                      return result.trim();
-                    })()}{" "}
-                    Rupees Only
-                  </div>
-                </div>
-
-                {/* Signature Section */}
-                <div className="flex justify-center text-center text-sm border-t border-gray-300 pt-6">
-                  <div className="w-64">
-                    <div className="h-12"></div>
-                    <div className="border-t border-gray-800 pt-2 font-medium">
-                      Cashier Signature
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 text-center text-xs text-gray-600">
-                <p className="font-medium mb-1">
-                  📝 This is a computer-generated receipt and is valid without
-                  signature.
-                </p>
-                <p className="mb-1">
-                  Please retain this receipt for your records. For any queries,
-                  contact the accounts department.
-                </p>
-                <p>
-                  Generated on {receiptData.date} at {receiptData.time} |
-                  Document ID: NIETM-FEE-{receiptData.receiptNumber}
-                </p>
-              </div>
-            </div>
+                `
+              }}
+            />
           </div>
 
           {/* Modal Actions */}
-          <div className="border-t border-gray-200 p-4 flex justify-end space-x-3">
+          <div className=" gap-3 border-t border-gray-200 pt-20 pb-6 px-6 flex justify-end space-x-8 bg-gradient-to-r from-gray-50 to-gray-100">
             <button
               onClick={printReceipt}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+              className="w-32 px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center justify-center font-semibold shadow-lg transition-all duration-300 transform hover:scale-105 text-sm"
             >
-              <span className="mr-2">🖨️</span>
+              <span className="mr-2 text-2xl">🖨️</span>
               Print Receipt
             </button>
             <button
               onClick={() => setShowReceipt(false)}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              className="w-30 px-8 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg hover:from-gray-700 hover:to-gray-800 flex items-center justify-center font-semibold shadow-lg transition-all duration-300 transform hover:scale-105 text-lg"
             >
+              <span className="mr-2 text-2xl">✕</span>
               Close
             </button>
           </div>
@@ -2876,36 +2670,155 @@ export default function AddPayment() {
                           {loadingStudents ? "⟳" : "🔄"}
                         </button>
                       </label>
+
+                      {/* Custom Searchable Select */}
                       <div className="relative">
-                        <select
-                          name="studentId"
-                          value={formData.studentId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={loadingStudents}
-                          className="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-lg font-medium transition-all duration-200 bg-white shadow-sm hover:shadow-md disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        <div
+                          className="w-full pl-12 pr-10 py-4 border-2 border-gray-300 rounded-xl focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:border-blue-500 text-lg font-medium transition-all duration-200 bg-white shadow-sm hover:shadow-md cursor-pointer"
+                          onClick={() => !loadingStudents && setIsDropdownOpen(!isDropdownOpen)}
                         >
-                          <option value="">
-                            {loadingStudents
-                              ? "Loading students..."
-                              : `-- Select Student (${students.length} available) --`
-                            }
-                          </option>
-                          {!loadingStudents && students.map((student) => (
-                            <option key={student._id} value={student._id}>
-                              {student.firstName} {student.lastName} - {student.studentId}
-                              {student.currentSemester && ` (Sem ${student.currentSemester})`}
-                              {typeof student.department === "object"
-                                ? ` - ${student.department?.name}`
-                                : student.department ? ` - ${student.department}` : ''
+                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
+                            <span className="text-xl">🎓</span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className={selectedStudent ? "text-gray-900" : "text-gray-500"}>
+                              {selectedStudent
+                                ? `${selectedStudent.firstName} ${selectedStudent.lastName} - ${selectedStudent.studentId}`
+                                : (loadingStudents
+                                  ? "Loading students..."
+                                  : `-- Select Student (${students.length} available) --`
+                                )
                               }
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
-                          <span className="text-xl">🎓</span>
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-400 text-sm">
+                                {isDropdownOpen ? "🔽" : "🔼"}
+                              </span>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Dropdown */}
+                        {isDropdownOpen && !loadingStudents && (
+                          <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-300 rounded-xl shadow-xl max-h-80 overflow-hidden">
+                            {/* Search Input */}
+                            <div className="p-3 border-b border-gray-200 bg-gray-50">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="🔍 Search students by name, ID, or department..."
+                                  value={studentSearchTerm}
+                                  onChange={(e) => {
+                                    setStudentSearchTerm(e.target.value);
+                                    e.stopPropagation();
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full pl-8 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  autoFocus
+                                />
+                                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                  <span className="text-sm">🔍</span>
+                                </div>
+                                {studentSearchTerm && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      setStudentSearchTerm("");
+                                      e.stopPropagation();
+                                    }}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    title="Clear search"
+                                  >
+                                    <span className="text-sm">✕</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Options List */}
+                            <div className="max-h-64 overflow-y-auto">
+                              {filteredStudents.length > 0 ? (
+                                filteredStudents.map((student) => (
+                                  <div
+                                    key={student._id}
+                                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+                                    onClick={() => {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        studentId: student._id,
+                                      }));
+                                      setIsDropdownOpen(false);
+                                      setStudentSearchTerm("");
+                                      fetchPendingFees(student._id);
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <div className="font-medium text-gray-900">
+                                          {student.firstName} {student.lastName}
+                                        </div>
+                                        <div className="text-sm text-gray-600 flex items-center gap-4">
+                                          <span>🆔 {student.studentId}</span>
+                                          {student.currentSemester && (
+                                            <span>📚 Sem {student.currentSemester}</span>
+                                          )}
+                                          <span>🏛️ {typeof student.department === "object"
+                                            ? student.department?.name || "N/A"
+                                            : student.department || "N/A"
+                                          }</span>
+                                        </div>
+                                      </div>
+                                      {formData.studentId === student._id && (
+                                        <div className="text-blue-600 ml-2">
+                                          <span className="text-lg">✓</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="px-4 py-8 text-center text-gray-500">
+                                  <div className="text-2xl mb-2">🔍</div>
+                                  <div className="font-medium">
+                                    {studentSearchTerm
+                                      ? "No students found matching your search"
+                                      : "No students available"
+                                    }
+                                  </div>
+                                  <div className="text-sm mt-1">
+                                    {studentSearchTerm && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setStudentSearchTerm("")}
+                                        className="text-blue-600 hover:text-blue-800 underline"
+                                      >
+                                        Clear search
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 text-center">
+                              {studentSearchTerm
+                                ? `Found ${filteredStudents.length} student${filteredStudents.length === 1 ? '' : 's'} • Scroll to see all`
+                                : `${students.length} students available • Type to search`
+                              }
+                            </div>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Click outside to close */}
+                      {isDropdownOpen && (
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsDropdownOpen(false)}
+                        />
+                      )}
                     </div>
 
                     {selectedStudent && (
@@ -3009,6 +2922,9 @@ export default function AddPayment() {
                                       ...prev,
                                       feeHead: fee.feeHeadId,
                                       amount: fee.pendingAmount.toString(),
+                                      manualFeeHeadName: fee.feeHead,
+                                      manualFeeAmount: fee.pendingAmount.toString(),
+                                      feeName: fee.feeHead,
                                       paymentType: "specific",
                                     }));
                                   }}
@@ -3724,6 +3640,19 @@ export default function AddPayment() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fee Name
+                    </label>
+                    <input
+                      type="text"
+                      name="feeName"
+                      value={formData.feeName || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter fee name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Amount (₹) *
                     </label>
                     <input
@@ -3751,12 +3680,29 @@ export default function AddPayment() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="Cash">💵 Cash</option>
-                      <option value="Online">� Online</option>
+                      <option value="Online">🖥️ Online</option>
                       <option value="Bank Transfer">🏦 Bank Transfer</option>
-                      <option value="Card">� Card</option>
+                      <option value="Card">💳 Card</option>
                       <option value="UPI">📱 UPI</option>
                     </select>
                   </div>
+
+                  {['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        UTR (Unique Transaction Reference) *
+                      </label>
+                      <input
+                        type="text"
+                        name="utr"
+                        value={formData.utr}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter UTR number"
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
