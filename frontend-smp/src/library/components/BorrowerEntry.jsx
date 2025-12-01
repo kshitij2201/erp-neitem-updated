@@ -95,7 +95,7 @@ const BorrowerEntry = () => {
   const fetchAllFaculties = async () => {
     try {
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/faculty/faculties"
+        "http://localhost:4000/api/faculty/faculties"
       );
       if (!response.ok)
         throw new Error(`Failed to fetch faculties: ${response.status}`);
@@ -123,7 +123,7 @@ const BorrowerEntry = () => {
   const fetchAllStudents = async () => {
     try {
       // Try the main students endpoint first
-      let response = await fetch("https://backenderp.tarstech.in/api/students", {
+      let response = await fetch("http://localhost:4000/api/students", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -134,7 +134,7 @@ const BorrowerEntry = () => {
 
       // If that fails, try the /all endpoint
       if (!response.ok) {
-        response = await fetch("https://backenderp.tarstech.in/api/students/all", {
+        response = await fetch("http://localhost:4000/api/students/all", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -168,7 +168,7 @@ const BorrowerEntry = () => {
     const fetchBooks = async () => {
       setLoadingBooks(true);
       try {
-        const response = await fetch("https://backenderp.tarstech.in/api/books");
+        const response = await fetch("http://localhost:4000/api/books");
         if (!response.ok)
           throw new Error(
             `Failed to fetch books: ${response.status} ${response.statusText}`
@@ -274,7 +274,7 @@ const BorrowerEntry = () => {
   const fetchFacultyDetails = async (id) => {
     try {
       const response = await fetch(
-        `backenderp.tarstech.in/api/faculty/faculties?employeeId=${encodeURIComponent(
+        `localhost:4000/api/faculty/faculties?employeeId=${encodeURIComponent(
           id
         )}`,
         {
@@ -335,7 +335,7 @@ const BorrowerEntry = () => {
   const fetchStudentDetails = async (id) => {
     try {
       const response = await fetch(
-        `backenderp.tarstech.in/api/students/students?studentId=${encodeURIComponent(
+        `localhost:4000/api/students/students?studentId=${encodeURIComponent(
           id
         )}`,
         {
@@ -681,7 +681,7 @@ const BorrowerEntry = () => {
     try {
       // First create the borrower entry
       const res = await axios.post(
-        "https://backenderp.tarstech.in/api/borrower-entry",
+        "http://localhost:4000/api/borrower-entry",
         formData
       );
 
@@ -777,7 +777,7 @@ const BorrowerEntry = () => {
 
           // Create issue record
           const issueResponse = await axios.post(
-            "https://backenderp.tarstech.in/api/issues/issue",
+            "http://localhost:4000/api/issues/issue",
             issuePayload
           );
 
@@ -831,7 +831,7 @@ const BorrowerEntry = () => {
     try {
       setLoadingEmployee(true);
       const response = await axios.get(
-        `backenderp.tarstech.in/api/borrower-entry?id=${id}&type=${type}`
+        `localhost:4000/api/borrower-entry?id=${id}&type=${type}`
       );
 
       if (response.data.success) {

@@ -7,6 +7,7 @@ import AcademicDepartment from '../models/AcademicDepartment.js';
 import Stream from '../models/Stream.js';
 import mongoose from 'mongoose';
 import { protect } from '../middleware/auth.js';
+import { uploadStudentPhoto, uploadToCloudinary } from '../config/cloudinary.js';
 
 // GET all students (protected)
 router.get('/', protect, async (req, res) => {
@@ -517,25 +518,135 @@ router.get('/:id', protect, async (req, res) => {
 });
 
 // POST create new student (protected)
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, uploadStudentPhoto.single('photo'), async (req, res) => {
   try {
-    const student = new Student(req.body);
+    console.log('Creating new student...');
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+
+    // Prepare student data from form fields
+    const studentData = { ...req.body };
+
+    // Handle subjects array (FormData sends arrays as subjects[] fields)
+    if (req.body['subjects[]']) {
+      if (Array.isArray(req.body['subjects[]'])) {
+        studentData.subjects = req.body['subjects[]'].filter(id => id && id.trim());
+      } else {
+        studentData.subjects = [req.body['subjects[]']].filter(id => id && id.trim());
+      }
+    }
+    delete studentData['subjects[]']; // Remove the array notation
+
+    // Handle photo upload to Cloudinary
+    if (req.file) {
+      try {
+        console.log('Uploading photo to Cloudinary...');
+        const result = await uploadToCloudinary(
+          req.file.buffer,
+          'erp/students/photos',
+          'image'
+        );
+        studentData.photo = result.secure_url;
+        console.log('Photo uploaded successfully:', studentData.photo);
+      } catch (uploadError) {
+        console.error('Error uploading photo to Cloudinary:', uploadError);
+        return res.status(500).json({
+          message: 'Error uploading photo',
+          error: uploadError.message
+        });
+      }
+    }
+
+    console.log('Final student data:', studentData);
+
+    // Create and save the student
+    const student = new Student(studentData);
     await student.save();
-    res.status(201).json(student);
+
+    console.log('Student created successfully:', student._id);
+    res.status(201).json({
+      success: true,
+      data: student,
+      message: 'Student created successfully'
+    });
   } catch (err) {
     console.error('Error creating student:', err);
-    res.status(500).json({ message: 'Error creating student' });
+    res.status(500).json({
+      message: 'Error creating student',
+      error: err.message
+    });
   }
 });
 
 // PUT update student (protected)
-router.put('/:id', protect, async (req, res) => {
+router.put('/:id', protect, uploadStudentPhoto.single('photo'), async (req, res) => {
   try {
-    const student = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(student);
+    console.log('Updating student:', req.params.id);
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+
+    // Get existing student to preserve photo if not uploading new one
+    const existingStudent = await Student.findById(req.params.id);
+    if (!existingStudent) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Prepare update data from form fields
+    const updateData = { ...req.body };
+
+    // Handle subjects array (FormData sends arrays as subjects[] fields)
+    if (req.body['subjects[]']) {
+      if (Array.isArray(req.body['subjects[]'])) {
+        updateData.subjects = req.body['subjects[]'].filter(id => id && id.trim());
+      } else {
+        updateData.subjects = [req.body['subjects[]']].filter(id => id && id.trim());
+      }
+    }
+    delete updateData['subjects[]']; // Remove the array notation
+
+    // Handle photo upload to Cloudinary (only if a new photo is provided)
+    if (req.file) {
+      try {
+        console.log('Uploading new photo to Cloudinary...');
+        const result = await uploadToCloudinary(
+          req.file.buffer,
+          'erp/students/photos',
+          'image'
+        );
+        updateData.photo = result.secure_url;
+        console.log('New photo uploaded successfully:', updateData.photo);
+      } catch (uploadError) {
+        console.error('Error uploading photo to Cloudinary:', uploadError);
+        return res.status(500).json({
+          message: 'Error uploading photo',
+          error: uploadError.message
+        });
+      }
+    } else {
+      // Keep existing photo if no new photo uploaded
+      updateData.photo = existingStudent.photo;
+    }
+
+    console.log('Final update data:', updateData);
+
+    // Update the student
+    const student = await Student.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true
+    });
+
+    console.log('Student updated successfully:', student._id);
+    res.json({
+      success: true,
+      data: student,
+      message: 'Student updated successfully'
+    });
   } catch (err) {
     console.error('Error updating student:', err);
-    res.status(500).json({ message: 'Error updating student' });
+    res.status(500).json({
+      message: 'Error updating student',
+      error: err.message
+    });
   }
 });
 

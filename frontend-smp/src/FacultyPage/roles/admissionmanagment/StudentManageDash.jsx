@@ -20,6 +20,7 @@ import StudentList from "./StudentList";
 import AdmissionForm from "./AdmissionForm";
 import SummaryPage from "./SummaryPage";
 import DownloadComponent from "./download";
+import DownloadTc from "./DownloadTc";
 
 const StudentManageDash = () => {
   const [isOpen, setIsOpen] = useState(false); // Start closed on mobile, will be managed by useEffect
@@ -70,6 +71,12 @@ const StudentManageDash = () => {
       icon: <Download size={20} />,
       href: "/dashboard/download",
       description: "Reports & Documents"
+    },
+    {
+      title: "Download TC",
+      icon: <FileText size={20} />,
+      href: "/dashboard/download-tc",
+      description: "Transfer Certificates"
     },
   ];
 
@@ -221,6 +228,7 @@ const StudentManageDash = () => {
               <Route path="admission" element={<AdmissionForm />} />
               <Route path="student-list" element={<StudentList />} />
               <Route path="download" element={<DownloadComponent />} />
+              <Route path="download-tc" element={<DownloadTc />} />
             </Routes>
           </div>
         </div>

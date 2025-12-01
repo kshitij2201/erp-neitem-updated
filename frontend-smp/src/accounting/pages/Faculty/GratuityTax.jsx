@@ -143,7 +143,7 @@ const CalculationsTab = ({ calculations, facultyData }) => {
       };
 
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/gratuity/reports/summary?format=json",
+        "http://localhost:4000/api/gratuity/reports/summary?format=json",
         {
           headers: authHeaders,
         }
@@ -401,16 +401,16 @@ const ReportsTab = ({ facultyData, calculations }) => {
       let endpoint = "";
       switch (reportType) {
         case "summary":
-          endpoint = "https://backenderp.tarstech.in/api/gratuity/reports/summary";
+          endpoint = "http://localhost:4000/api/gratuity/reports/summary";
           break;
         case "detailed":
-          endpoint = "https://backenderp.tarstech.in/api/gratuity/records";
+          endpoint = "http://localhost:4000/api/gratuity/records";
           break;
         case "tax-analysis":
-          endpoint = "https://backenderp.tarstech.in/api/gratuity/analytics";
+          endpoint = "http://localhost:4000/api/gratuity/analytics";
           break;
         default:
-          endpoint = "https://backenderp.tarstech.in/api/gratuity/reports/summary";
+          endpoint = "http://localhost:4000/api/gratuity/reports/summary";
       }
 
       const response = await fetch(`${endpoint}?${params}`, {
@@ -635,7 +635,7 @@ const GratuityCalculatorModal = ({
       // Use API for calculation if available, otherwise use local function
       try {
         const response = await fetch(
-          "https://backenderp.tarstech.in/api/gratuity/calculate",
+          "http://localhost:4000/api/gratuity/calculate",
           {
             method: "POST",
             headers: authHeaders,
@@ -837,7 +837,7 @@ export default function GratuityTax() {
 
       // Fetch faculty data from real API
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/gratuity/faculty?limit=100",
+        "http://localhost:4000/api/gratuity/faculty?limit=100",
         {
           headers: authHeaders,
         }
@@ -903,7 +903,7 @@ export default function GratuityTax() {
 
       // Fetch gratuity records from real API
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/gratuity/records?limit=100",
+        "http://localhost:4000/api/gratuity/records?limit=100",
         {
           headers: authHeaders,
         }
@@ -953,7 +953,7 @@ export default function GratuityTax() {
       };
 
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/gratuity/records",
+        "http://localhost:4000/api/gratuity/records",
         {
           method: "POST",
           headers: authHeaders,
@@ -995,7 +995,7 @@ export default function GratuityTax() {
       };
 
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/gratuity/reports/summary",
+        "http://localhost:4000/api/gratuity/reports/summary",
         {
           headers: authHeaders,
         }
@@ -1084,7 +1084,7 @@ export default function GratuityTax() {
       };
 
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/gratuity/analytics",
+        "http://localhost:4000/api/gratuity/analytics",
         {
           headers: authHeaders,
         }

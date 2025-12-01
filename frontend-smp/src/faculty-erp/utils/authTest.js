@@ -26,7 +26,7 @@ const testAuth = async () => {
     console.log("🚀 Testing API call with authentication...");
 
     const response = await fetch(
-      "https://backenderp.tarstech.in/api/students?limit=5",
+      "http://localhost:4000/api/students?limit=5",
       {
         headers: {
           Authorization: `Bearer ${activeToken}`,
@@ -56,7 +56,7 @@ const testAuth = async () => {
   } catch (error) {
     console.log("❌ Network error:", error.message);
     console.log(
-      "💡 Suggestion: Check if the backend server is running on https://backenderp.tarstech.in"
+      "💡 Suggestion: Check if the backend server is running on http://localhost:4000"
     );
   }
 };

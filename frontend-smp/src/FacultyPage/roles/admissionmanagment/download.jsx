@@ -39,9 +39,11 @@ const Download = () => {
   const [streamFilter, setStreamFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [placeFilter, setPlaceFilter] = useState("all");
+  const [semesterFilter, setSemesterFilter] = useState("all");
   const [streams, setStreams] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [places, setPlaces] = useState([]);
+  const [semesters, setSemesters] = useState([]);
 
   // Authentication helper function
   const getAuthHeaders = () => {
@@ -72,7 +74,7 @@ const Download = () => {
     setLoading(true);
     try {
       const res = await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/superadmin/students",
+        "http://localhost:4000/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }
@@ -89,9 +91,13 @@ const Download = () => {
       const uniquePlaces = [
         ...new Set(data.map((s) => s.placeOfBirth).filter(Boolean)),
       ].sort();
+      const uniqueSemesters = [
+        ...new Set(data.map((s) => s.semester?.number).filter(Boolean)),
+      ].sort((a, b) => a - b);
       setStreams(uniqueStreams);
       setDepartments(uniqueDepartments);
       setPlaces(uniquePlaces);
+      setSemesters(uniqueSemesters);
       setFetchError(null);
     } catch (err) {
       if (err.response?.status === 401) {
@@ -154,11 +160,14 @@ const Download = () => {
       // Place of birth filter
       const placeMatch =
         placeFilter === "all" || student.placeOfBirth === placeFilter;
+      // Semester filter
+      const semesterMatch =
+        semesterFilter === "all" || student.semester?.number == semesterFilter;
 
-      return dateMatch && streamMatch && deptMatch && placeMatch;
+      return dateMatch && streamMatch && deptMatch && placeMatch && semesterMatch;
     });
     setFilteredStudents(filtered);
-  }, [students, dateFilter, streamFilter, departmentFilter, placeFilter]);
+  }, [students, dateFilter, streamFilter, departmentFilter, placeFilter, semesterFilter]);
 
   const handleDownloadExcel = () => {
     // Prepare data for Excel
@@ -203,7 +212,7 @@ const Download = () => {
       type: "array",
     });
     const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-    const fileName = `student_list_${dateFilter}_${streamFilter}_${departmentFilter}_${placeFilter}_${
+    const fileName = `student_list_${dateFilter}_${streamFilter}_${departmentFilter}_${placeFilter}_${semesterFilter}_${
       new Date().toISOString().split("T")[0]
     }.xlsx`;
     saveAs(data, fileName);
@@ -266,7 +275,7 @@ const Download = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8"
       >
         <div
           className={`${currentTheme.cardBg} ${currentTheme.shadow} rounded-2xl p-5`}
@@ -371,6 +380,33 @@ const Download = () => {
             {places.map((place) => (
               <option key={place} value={place}>
                 {place}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div
+          className={`${currentTheme.cardBg} ${currentTheme.shadow} rounded-2xl p-5`}
+        >
+          <label
+            className={`block text-sm font-medium ${currentTheme.textSecondary} mb-2`}
+          >
+            Semester
+          </label>
+          <select
+            value={semesterFilter}
+            onChange={(e) => setSemesterFilter(e.target.value)}
+            className={`w-full p-3 ${currentTheme.inputBg} ${
+              currentTheme.cardBg
+            } rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all ${
+              theme === "dark" ? "text-white" : "text-gray-800"
+            }`}
+            aria-label="Select semester"
+          >
+            <option value="all">All Semesters</option>
+            {semesters.map((semester) => (
+              <option key={semester} value={semester}>
+                Semester {semester}
               </option>
             ))}
           </select>

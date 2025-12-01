@@ -225,6 +225,7 @@ export const rolePermissionsAndRoutes = [
       "files",
       "department_students",
       "academic_calendar",
+      "mark_attendance",
       // "sent_charge_handover",
     ],
     routes: [
@@ -447,6 +448,18 @@ export const rolePermissionsAndRoutes = [
           </ProtectedRoute>
         ),
       },
+      {
+        path: "mark-attendance",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="mark_attendance"
+          >
+            <MarkAttendance userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
   {
@@ -470,6 +483,7 @@ export const rolePermissionsAndRoutes = [
       "files",
       "department_students",
       "academic_calendar",
+      "mark_attendance",
       // "sent_charge_handover",
     ],
     routes: [
@@ -690,6 +704,18 @@ export const rolePermissionsAndRoutes = [
             routeName="student_feedback"
           >
             <StudentFeedback userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "mark-attendance",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="mark_attendance"
+          >
+            <MarkAttendance userData={userData} />
           </ProtectedRoute>
         ),
       },

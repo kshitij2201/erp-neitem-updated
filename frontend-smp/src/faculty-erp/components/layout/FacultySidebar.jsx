@@ -121,6 +121,12 @@ const FacultySidebar = ({ isOpen, handleMenuClick, userData }) => {
         isSection: true,
         sectionTitle: "Academic",
       },
+      {
+        title: "Mark Attendance",
+        icon: <Users size={20} />,
+        href: "/faculty-erp/mark-attendance",
+        routeName: "mark_attendance",
+      },
 
       // Communication Section
       {

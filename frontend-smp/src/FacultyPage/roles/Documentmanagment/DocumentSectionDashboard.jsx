@@ -204,7 +204,7 @@ const DocumentManagementDashboard = () => {
       }
 
       const res = await axios.get(
-        "https://backenderp.tarstech.in/api/superadmin/students",
+        "http://localhost:4000/api/superadmin/students",
         {
           params,
           headers: getAuthHeaders(),
@@ -264,7 +264,7 @@ const DocumentManagementDashboard = () => {
     }
     try {
       const studentRes = await axios.get(
-        `https://backenderp.tarstech.in/api/superadmin/students/${studentData._id}`,
+        `http://localhost:4000/api/superadmin/students/${studentData._id}`,
         {
           headers: getAuthHeaders(),
         }
@@ -343,7 +343,7 @@ const DocumentManagementDashboard = () => {
       // First try to register the certificate with the backend
       try {
         await axios.post(
-          `https://backenderp.tarstech.in/api/superadmin/students/generate-certificate/${studentData._id}`,
+          `http://localhost:4000/api/superadmin/students/generate-certificate/${studentData._id}`,
           {
             type: "BC",
             purpose: "Academic purpose",
@@ -372,8 +372,8 @@ const DocumentManagementDashboard = () => {
         unit: "mm",
         format: "a4",
       });
-      const marginLeft = 20;
-      const marginRight = 20;
+      const marginLeft = 25;
+      const marginRight = 25;
       const pageWidth = doc.internal.pageSize.getWidth();
       const contentWidth = pageWidth - marginLeft - marginRight;
       let y = 10;
@@ -468,20 +468,20 @@ const DocumentManagementDashboard = () => {
       const studentTitle = isFemalePronoun ? "Ku." : "Shri";
 
       // Build the certificate text with proper spacing and formatting
-      const lineHeight = 12;
-      const maxLineWidth = contentWidth - 10; // Leave some margin
+      const lineHeight = 14;
+      const maxLineWidth = contentWidth - 15; // Leave more margin for better justification
 
       // Create text segments with bold formatting
       const textSegments = [
-        { text: "Certified that ", bold: false },
-        { text: `${studentTitle} ${certificateData.studentName}`, bold: true },
+        { text: "Certified that   ", bold: false },
+        { text: `${studentTitle}  ${certificateData.studentName}  `, bold: true },
         {
           text: " is a bonafide student of this college studying in ",
           bold: false,
         },
         { text: certificateData.course, bold: true },
         {
-          text: ` ${certificateData.year} Year in ${certificateData.semesterNumber} Sem in the session `,
+          text: ` ${certificateData.year}   Year in ${certificateData.semesterNumber}   Sem in the session `,
           bold: false,
         },
         { text: certificateData.session, bold: true },
@@ -495,68 +495,111 @@ const DocumentManagementDashboard = () => {
         { text: ".", bold: false },
       ];
 
-      // Function to render text with proper wrapping
-      let currentX = marginLeft;
-      let currentY = y;
+      // Function to render justified text with proper word spacing
+      const renderJustifiedText = () => {
+        // Combine all segments into words with formatting info
+        let allWords = [];
+        
+        textSegments.forEach(segment => {
+          const words = segment.text.trim().split(/\s+/).filter(word => word);
+          words.forEach(word => {
+            allWords.push({ text: word, bold: segment.bold });
+          });
+        });
 
-      for (
-        let segmentIndex = 0;
-        segmentIndex < textSegments.length;
-        segmentIndex++
-      ) {
-        const segment = textSegments[segmentIndex];
-
-        // Set font based on bold property
-        doc.setFont("helvetica", segment.bold ? "bold" : "normal");
-
-        // Calculate space width with current font
-        const spaceWidth = doc.getTextWidth(" ");
-
-        // Split text into words to handle wrapping
-        const words = segment.text.split(" ");
-
-        for (let i = 0; i < words.length; i++) {
-          const word = words[i];
-          const wordWidth = doc.getTextWidth(word);
-
-          // Check if we need to wrap to next line
-          if (
-            currentX + wordWidth > marginLeft + maxLineWidth &&
-            currentX > marginLeft
-          ) {
-            currentY += lineHeight;
-            currentX = marginLeft;
-          }
-
-          // Add the word
-          doc.text(word, currentX, currentY);
-          currentX += wordWidth;
-
-          // Add space after word (except for last word in segment)
-          if (i < words.length - 1) {
-            currentX += spaceWidth;
+        let lines = [];
+        let currentLine = [];
+        let currentLineWidth = 0;
+        
+        // Build lines by fitting words
+        for (let i = 0; i < allWords.length; i++) {
+          const word = allWords[i];
+          
+          // Set font to measure width correctly
+          doc.setFont("helvetica", word.bold ? "bold" : "normal");
+          const wordWidth = doc.getTextWidth(word.text);
+          const spaceWidth = doc.getTextWidth(" ");
+          
+          // Check if word fits on current line
+          const wordWithSpaceWidth = currentLine.length > 0 ? wordWidth + spaceWidth : wordWidth;
+          
+          if (currentLineWidth + wordWithSpaceWidth <= maxLineWidth) {
+            currentLine.push(word);
+            currentLineWidth += wordWithSpaceWidth;
+          } else {
+            // Start new line
+            if (currentLine.length > 0) {
+              lines.push({ words: currentLine, width: currentLineWidth });
+            }
+            currentLine = [word];
+            currentLineWidth = wordWidth;
           }
         }
-
-        // Add space between segments (except for the last segment)
-        if (segmentIndex < textSegments.length - 1) {
-          // Make sure we use consistent space width for between-segment spacing
-          doc.setFont("helvetica", "normal"); // Use normal font for space calculation
-          const betweenSegmentSpaceWidth = doc.getTextWidth(" ");
-          currentX += betweenSegmentSpaceWidth;
+        
+        // Add the last line
+        if (currentLine.length > 0) {
+          lines.push({ words: currentLine, width: currentLineWidth });
         }
-      }
+
+        // Render justified lines
+        let currentY = y;
+        
+        lines.forEach((line, lineIndex) => {
+          const isLastLine = lineIndex === lines.length - 1;
+          let currentX = marginLeft;
+          
+          if (line.words.length === 1 || isLastLine) {
+            // Single word or last line - no justification needed
+            line.words.forEach((word, wordIndex) => {
+              doc.setFont("helvetica", word.bold ? "bold" : "normal");
+              doc.text(word.text, currentX, currentY);
+              currentX += doc.getTextWidth(word.text);
+              
+              if (wordIndex < line.words.length - 1) {
+                currentX += doc.getTextWidth(" ");
+              }
+            });
+          } else {
+            // Justify line by distributing extra space
+            const totalWordWidth = line.words.reduce((sum, word) => {
+              doc.setFont("helvetica", word.bold ? "bold" : "normal");
+              return sum + doc.getTextWidth(word.text);
+            }, 0);
+            
+            const extraSpace = maxLineWidth - totalWordWidth;
+            const spacesBetweenWords = line.words.length - 1;
+            const spaceBetweenWords = spacesBetweenWords > 0 ? extraSpace / spacesBetweenWords : 0;
+            
+            line.words.forEach((word, wordIndex) => {
+              doc.setFont("helvetica", word.bold ? "bold" : "normal");
+              doc.text(word.text, currentX, currentY);
+              currentX += doc.getTextWidth(word.text);
+              
+              if (wordIndex < line.words.length - 1) {
+                currentX += spaceBetweenWords;
+              }
+            });
+          }
+          
+          currentY += lineHeight;
+        });
+        
+        return currentY;
+      };
+      
+      // Render the justified text
+      const finalY = renderJustifiedText();
 
       // Add extra spacing after the main paragraph
-      currentY += lineHeight * 3;
+      const signatureY = finalY + lineHeight * 3;
 
       const currentDate = formatDate(new Date());
-      doc.text(`Date: ${currentDate}`, marginLeft, currentY + 20);
-      doc.text("Checked by", pageWidth / 2 - 10, currentY + 20);
+      doc.text(`Date: ${currentDate}`, marginLeft, signatureY + 20);
+      doc.text("Checked by", pageWidth / 2 - 10, signatureY + 20);
       doc.text(
         "Principal/Vice-Principal",
         pageWidth - marginRight - 2,
-        currentY + 19.8,
+        signatureY + 19.8,
         { align: "right" }
       );
       doc.save(`BC_${studentData._id}_${Date.now()}.pdf`);

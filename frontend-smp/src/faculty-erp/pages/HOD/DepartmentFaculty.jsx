@@ -54,6 +54,10 @@ export default function DepartmentFaculty({ userData }) {
   const [assignSubjectSuccess, setAssignSubjectSuccess] = useState(null); // New state for subject assignment feedback
   const [selectedSubject, setSelectedSubject] = useState(""); // State for selected subject in dropdown
   const [facultyUpdateCounter, setFacultyUpdateCounter] = useState(0); // Counter to force dropdown re-render
+  const [selectedFaculties, setSelectedFaculties] = useState(() => {
+    const saved = localStorage.getItem('selectedFaculties');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const currentAcademicYear = getCurrentAcademicYear();
   const academicYears = [
@@ -77,6 +81,100 @@ export default function DepartmentFaculty({ userData }) {
     { value: "8", label: "8th Semester" },
   ];
   const sections = ["A", "B", "C", "D"];
+
+  // Function to get semester from subject
+  const getSemester = (subject) => {
+    if (!subject) return "N/A";
+
+    // Try legacy 'year' field first (prioritize year over semester)
+    if (subject.year) {
+      if (typeof subject.year === "number") return subject.year;
+      if (typeof subject.year === "string") {
+        // try to extract digits from string
+        const digits = subject.year.match(/(\d+)/);
+        if (digits) return digits[1];
+        // sometimes year is stored as 'Year 2' or 'Sem-2'
+        const semMatch = subject.year.match(/sem(?:ester)?\s*-?\s*(\d+)/i);
+        if (semMatch) return semMatch[1];
+        // if it's a roman numeral string like 'II'
+        const romanMatch = subject.year.match(/^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/i);
+        if (romanMatch) {
+          const roman = subject.year.toUpperCase();
+          const romanToNum = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
+          return romanToNum[roman] || subject.year;
+        }
+        // fallback to using the whole string
+        return subject.year;
+      }
+
+      // If year is an object (populated ref), try common fields
+      if (typeof subject.year === "object") {
+        if (subject.year.number) return subject.year.number;
+        if (subject.year.name) {
+          const digits = String(subject.year.name).match(/(\d+)/);
+          if (digits) return digits[1];
+          const semMatch = String(subject.year.name).match(/sem(?:ester)?\s*-?\s*(\d+)/i);
+          if (semMatch) return semMatch[1];
+        }
+        if (subject.year._id) {
+          // can't infer number from _id, so fallthrough
+        }
+      }
+    }
+
+    // If semester is already a number or simple string like '2'
+    if (typeof subject.semester === "number") return subject.semester;
+    if (typeof subject.semester === "string") {
+      // try to extract digits from string
+      const digits = subject.semester.match(/(\d+)/);
+      if (digits) return digits[1];
+      // sometimes semester is stored as 'Semester 2' or 'Sem-2'
+      const semMatch = subject.semester.match(/sem(?:ester)?\s*-?\s*(\d+)/i);
+      if (semMatch) return semMatch[1];
+      // if it's a roman numeral string like 'II'
+      const romanMatch = subject.semester.match(/^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/i);
+      if (romanMatch) {
+        const roman = subject.semester.toUpperCase();
+        const romanToNum = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
+        return romanToNum[roman] || subject.semester;
+      }
+      // fallback to using the whole string
+      return subject.semester;
+    }
+
+    // If semester is an object (populated ref), try common fields
+    if (typeof subject.semester === "object") {
+      if (subject.semester.number) return subject.semester.number;
+      if (subject.semester.name) {
+        const digits = String(subject.semester.name).match(/(\d+)/);
+        if (digits) return digits[1];
+        const semMatch = String(subject.semester.name).match(/sem(?:ester)?\s*-?\s*(\d+)/i);
+        if (semMatch) return semMatch[1];
+      }
+      if (subject.semester._id) {
+        // can't infer number from _id, so fallthrough
+      }
+    }
+
+    // For minor subjects, extract from name like "Minor-I" or "Minor-II"
+    const name = subject.name || "";
+    const match = name.match(/Minor[-\s]*([IVXLCDM]+)/i);
+    if (match) {
+      const roman = match[1].toUpperCase();
+      const romanToNum = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
+      return romanToNum[roman] || roman;
+    }
+
+    // Try to find roman numerals or trailing I/II patterns in subject name
+    const romanInName = name.match(/(?:\b|\-|\s)(I|II|III|IV|V|VI|VII|VIII)(?:\b|\s|\-|\()/i);
+    if (romanInName) {
+      const r = romanInName[1].toUpperCase();
+      const romanToNum = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
+      return romanToNum[r] || r;
+    }
+
+    return "N/A";
+  };
 
   const normalizeDepartment = (dept) =>
     dept ? dept.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : "";
@@ -109,37 +207,39 @@ export default function DepartmentFaculty({ userData }) {
         setError(null);
 
         console.log(
-          "[DepartmentFaculty] Calling fetchFacultyByDepartment with:",
-          department
+          "[DepartmentFaculty] Calling fetch for all faculties"
         );
-        const result = await fetchFacultyByDepartment(department);
-        console.log(
-          "[DepartmentFaculty] fetchFacultyByDepartment result:",
-          result
+        const response = await fetch(
+          "http://localhost:4000/api/faculty/faculties?limit=1000",
+          {
+            headers: { "Content-Type": "application/json" },
+          }
         );
-
-        if (result.success) {
-          console.log(
-            "[DepartmentFaculty] Successfully fetched",
-            result.count,
-            "faculty members for",
-            result.department
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch faculty data: ${response.status} ${response.statusText}`
           );
-          console.log(
-            "[DepartmentFaculty] Faculty data structure:",
-            result.faculties.slice(0, 2)
-          );
-          setFaculties(result.faculties || []);
-          setUserDepartment(result.department);
-          // Set filter department to user's department to ensure only their department's faculty is shown
-          setFilterDepartment(result.department);
-        } else {
-          console.error(
-            "[DepartmentFaculty] fetchFacultyByDepartment failed:",
-            result.error
-          );
-          throw new Error(result.error || "Failed to fetch faculty data");
         }
+        const data = await response.json();
+        const allFaculties = Array.isArray(data.data.faculties)
+          ? data.data.faculties
+          : [];
+        if (!Array.isArray(allFaculties)) {
+          throw new Error(
+            "Invalid data format: Expected an array of faculties"
+          );
+        }
+        console.log(
+          "[DepartmentFaculty] Successfully fetched",
+          allFaculties.length,
+          "faculty members"
+        );
+        // Filter to include department faculty plus selected faculties
+        const filteredFaculties = allFaculties.filter(f => f.department === department || selectedFaculties.includes(f._id));
+        setFaculties(filteredFaculties);
+        setUserDepartment(department);
+        // Set filter department to user's department to ensure only their department's faculty is shown
+        setFilterDepartment(department);
       } catch (err) {
         console.error("[DepartmentFaculty] Error fetching faculty:", err);
         setError(err.message);
@@ -184,7 +284,7 @@ export default function DepartmentFaculty({ userData }) {
 
     // Skip if we've already fetched for this department or if currently fetching
     if (
-      normalizedCurrentDept === normalizedLastFetched ||
+      normalizedCurrentDept === normalizedLastFetched &&
       fetchingRef.current
     ) {
       if (fetchingRef.current) {
@@ -203,7 +303,7 @@ export default function DepartmentFaculty({ userData }) {
     );
     fetchAllData(currentDepartment);
     setLastFetchedDepartment(normalizedCurrentDept);
-  }, [userData?.department, lastFetchedDepartment, fetchAllData]);
+  }, [userData?.department, lastFetchedDepartment, fetchAllData, selectedFaculties]);
 
   const fetchCCAssignments = async () => {
     try {
@@ -282,6 +382,42 @@ export default function DepartmentFaculty({ userData }) {
     }
   }, [userData?.department]);
 
+  // Function to refresh user data after subject assignment
+  const refreshUserData = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      console.log("[RefreshUserData] Fetching updated user profile...");
+      const response = await fetch(
+        `http://localhost:4000/api/auth/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const updatedUserData = await response.json();
+        console.log("[RefreshUserData] Updated user data:", updatedUserData);
+        
+        // Update localStorage with fresh user data
+        localStorage.setItem("user", JSON.stringify(updatedUserData.user || updatedUserData));
+        
+        // Emit a custom event to notify other components about the user data update
+        window.dispatchEvent(new CustomEvent('userDataUpdated', { 
+          detail: updatedUserData.user || updatedUserData 
+        }));
+        
+        console.log("[RefreshUserData] User data refreshed and event emitted");
+      }
+    } catch (error) {
+      console.error("[RefreshUserData] Error refreshing user data:", error);
+    }
+  };
+
   // Debug: Track subjects state changes
   useEffect(() => {
     console.log("[DepartmentFaculty] Subjects state changed:", {
@@ -357,8 +493,8 @@ export default function DepartmentFaculty({ userData }) {
       email: f.email,
     })),
     subjectsPreview: subjects
-      .slice(0, 3)
-      .map((s) => ({ name: s.name, dept: s.department })),
+      .slice(0, 6)
+      .map((s) => ({ name: s.name, dept: s.department, semester: getSemester(s), rawSemester: s.semester, year: s.year })),
     allFacultyDepartments: [...new Set(faculties.map((f) => f.department))],
     facultiesPreview: faculties
       .slice(0, 3)
@@ -474,7 +610,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/assign-cc`,
         {
           method: "POST",
@@ -550,7 +686,7 @@ export default function DepartmentFaculty({ userData }) {
         try {
           const updatedAssignmentsResponse = await fetch(
             `${
-              import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+              import.meta.env.VITE_API_URL || "http://localhost:4000"
             }/api/faculty/cc-assignments?department=${encodeURIComponent(
               deptName
             )}`,
@@ -584,7 +720,7 @@ export default function DepartmentFaculty({ userData }) {
         console.log("[AssignCC] Refreshing faculty data...");
         const facultyResponse = await fetch(
           `${
-            import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+            import.meta.env.VITE_API_URL || "http://localhost:4000"
           }/api/faculty/department/${encodeURIComponent(
             userDepartment || department
           )}`,
@@ -635,7 +771,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty-subject/assign-faculty-subject`,
         {
           method: "POST",
@@ -678,6 +814,10 @@ export default function DepartmentFaculty({ userData }) {
       }
 
       console.log("[AssignSubject] Success response:", responseData);
+      
+      // Refresh user data to update subject assignments for the current session
+      await refreshUserData();
+      
       setAssignSubjectSuccess(
         `Subject assigned to ${
           targetFaculty.name || targetFaculty.firstName || "Faculty"
@@ -687,7 +827,7 @@ export default function DepartmentFaculty({ userData }) {
       // Optionally, refetch faculties to update subjectsTaught
       const facultyResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/faculties?department=${encodeURIComponent(department)}`,
         {
           headers: {
@@ -739,7 +879,7 @@ export default function DepartmentFaculty({ userData }) {
       const department = userData?.department || assignment.department;
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/delete-cc-assignment`,
         {
           method: "POST",
@@ -782,7 +922,7 @@ export default function DepartmentFaculty({ userData }) {
       // Refresh CC assignments
       const updatedAssignmentsResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/cc-assignments?department=${encodeURIComponent(
           department
         )}`,
@@ -900,7 +1040,9 @@ export default function DepartmentFaculty({ userData }) {
           (subj) => (typeof subj === "string" ? subj : subj._id) === subjectId
         )
     );
-    return assignedFaculties.map(faculty => faculty.name);
+    return assignedFaculties.map(faculty => 
+      faculty.name || `${faculty.firstName || ""} ${faculty.lastName || ""}`.trim() || faculty.email || "Unknown Faculty"
+    );
   };
 
   const isSubjectAssignedToOther = (subjectId, facultyId) => {
@@ -941,8 +1083,14 @@ export default function DepartmentFaculty({ userData }) {
 
   // Helper to check if a subject is assigned to a specific faculty
   const isSubjectAssignedToFaculty = (subjectId, facultyId) => {
-    const faculty = faculties.find(f => f._id === facultyId);
-    return faculty?.subjectsTaught?.some(subject => subject._id === subjectId) || false;
+    const faculty = faculties.find((f) => f._id === facultyId);
+    if (!faculty || !Array.isArray(faculty.subjectsTaught)) return false;
+
+    // subjectsTaught may contain strings (ids) or objects with _id
+    return faculty.subjectsTaught.some((subject) => {
+      const subjId = typeof subject === "string" ? subject : subject._id || subject;
+      return String(subjId) === String(subjectId);
+    });
   };
 
   const handleSubjectAction = async (subjectId, faculty) => {
@@ -957,7 +1105,7 @@ export default function DepartmentFaculty({ userData }) {
 
       try {
         await fetch(
-          `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/faculty-subject/remove-faculty-subject`,
+          `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/faculty-subject/remove-faculty-subject`,
           {
             method: "DELETE",
             headers: {
@@ -972,26 +1120,18 @@ export default function DepartmentFaculty({ userData }) {
         );
 
         // Refetch faculties to update UI
-        const department = userData?.department || faculty.department;
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/faculty/faculties?department=${encodeURIComponent(department)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setFaculties(
-            Array.isArray(data.data?.faculties)
-              ? data.data.faculties
-              : []
-          );
-          setFacultyUpdateCounter(prev => prev + 1);
-        }
+        await fetchAllData(userData?.department);
+        
+        // Refresh user data to update subject assignments for the current session
+        await refreshUserData();
+        
+        // Show success message
+        setAssignSubjectSuccess(`✅ Subject successfully unassigned from ${faculty.name}!`);
+        setTimeout(() => setAssignSubjectSuccess(null), 3000);
       } catch (error) {
         console.error("Error unassigning subject:", error);
+        setAssignSubjectSuccess(`❌ Error unassigning subject: ${error.message}`);
+        setTimeout(() => setAssignSubjectSuccess(null), 5000);
       }
     } else {
       // Assign the subject
@@ -1031,7 +1171,7 @@ export default function DepartmentFaculty({ userData }) {
           <p className="text-slate-600 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
+            className="w-full bg-linear-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
           >
             Retry
           </button>
@@ -1136,7 +1276,7 @@ export default function DepartmentFaculty({ userData }) {
         )}
 
         <div className="glass-effect rounded-3xl shadow-2xl border border-white/30 p-8 mb-8 animate-fade-in">
-          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-4 flex items-center gap-4">
+          <h1 className="text-4xl font-extrabold bg-linear-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-4 flex items-center gap-4">
             <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
               <BookOpen size={28} className="text-white" />
             </div>
@@ -1156,7 +1296,7 @@ export default function DepartmentFaculty({ userData }) {
               <Award size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+              <h2 className="text-2xl font-bold bg-linear-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                 Course Coordinators
               </h2>
               <p className="text-slate-600 text-sm mt-1">
@@ -1165,7 +1305,7 @@ export default function DepartmentFaculty({ userData }) {
             </div>
           </div>
           {ccAssignments.length === 0 ? (
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-8 rounded-2xl text-center border border-indigo-100">
+            <div className="bg-linear-to-r from-indigo-50 to-purple-50 p-8 rounded-2xl text-center border border-indigo-100">
               <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-4">
                 <Award size={32} className="text-white" />
               </div>
@@ -1251,7 +1391,7 @@ export default function DepartmentFaculty({ userData }) {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
               <Search size={20} className="text-white" />
             </div>
-            <h3 className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+            <h3 className="text-xl font-bold bg-linear-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
               Search & Filter Faculty
             </h3>
           </div>
@@ -1319,7 +1459,7 @@ export default function DepartmentFaculty({ userData }) {
           </div>
         ) : (
           <div className="glass-effect shadow-2xl rounded-3xl overflow-hidden animate-fade-in border border-white/30">
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6">
+            <div className="bg-linear-to-r from-indigo-500 to-purple-600 p-6">
               <h3 className="text-xl font-bold text-white flex items-center gap-3">
                 <User size={24} />
                 Faculty Members ({sortedFaculties.length})
@@ -1350,7 +1490,7 @@ export default function DepartmentFaculty({ userData }) {
                               faculty.lastName || ""
                             }`.trim()}
                           {faculty.type === "cc" && (
-                            <span className="text-xs px-2 py-1 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 rounded-full font-semibold">
+                            <span className="text-xs px-2 py-1 bg-linear-to-r from-amber-100 to-yellow-100 text-amber-700 rounded-full font-semibold">
                               CC
                             </span>
                           )}
@@ -1370,17 +1510,17 @@ export default function DepartmentFaculty({ userData }) {
 
                     {/* Department Badge */}
                     <div className="mb-4 flex items-center gap-2">
-                      <span className="inline-flex items-center px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 font-semibold">
+                      <span className="inline-flex items-center px-3 py-1.5 text-xs rounded-full bg-linear-to-r from-indigo-100 to-purple-100 text-indigo-800 font-semibold">
                         📚 {faculty.department}
                       </span>
                       {(faculty.type === "teaching" ||
                         faculty.type === "cc") && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 font-semibold">
+                        <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-linear-to-r from-emerald-100 to-teal-100 text-emerald-700 font-semibold">
                           ✅ CC Eligible
                         </span>
                       )}
                       {faculty.type === "cc" && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 font-semibold">
+                        <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-linear-to-r from-amber-100 to-yellow-100 text-amber-700 font-semibold">
                           👑 Current CC
                         </span>
                       )}
@@ -1396,7 +1536,7 @@ export default function DepartmentFaculty({ userData }) {
                           }
                           className={`flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 shadow-md hover:shadow-lg font-medium text-sm ${
                             faculty.type === "teaching" || faculty.type === "cc"
-                              ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 focus:ring-emerald-500"
+                              ? "bg-linear-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 focus:ring-emerald-500"
                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
                           }`}
                         >
@@ -1440,7 +1580,7 @@ export default function DepartmentFaculty({ userData }) {
                                     key={subject._id}
                                     value={subject._id}
                                   >
-                                    {subject.name}
+                                    {getSemester(subject) !== "N/A" ? `Sem ${getSemester(subject)} - ` : ""}{subject.name}
                                     {assignedFacultyNames.length > 0 ? ` (Assigned to: ${assignedFacultyNames.join(", ")})` : ""}
                                   </option>
                                 );
@@ -1472,7 +1612,7 @@ export default function DepartmentFaculty({ userData }) {
                           disabled={!selectedSubject || isSubjectAssignedToFaculty(selectedSubject, faculty._id)}
                           className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 shadow-md ${
                             selectedSubject && !isSubjectAssignedToFaculty(selectedSubject, faculty._id)
-                              ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 focus:ring-2 focus:ring-emerald-500"
+                              ? "bg-linear-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 focus:ring-2 focus:ring-emerald-500"
                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
                           }`}
                         >
@@ -1494,7 +1634,7 @@ export default function DepartmentFaculty({ userData }) {
                           disabled={!selectedSubject || !isSubjectAssignedToFaculty(selectedSubject, faculty._id)}
                           className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 shadow-md ${
                             selectedSubject && isSubjectAssignedToFaculty(selectedSubject, faculty._id)
-                              ? "bg-gradient-to-r from-rose-500 to-red-600 text-white hover:from-rose-600 hover:to-red-700 focus:ring-2 focus:ring-rose-500"
+                              ? "bg-linear-to-r from-rose-500 to-red-600 text-white hover:from-rose-600 hover:to-red-700 focus:ring-2 focus:ring-rose-500"
                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
                           }`}
                         >
@@ -1587,18 +1727,18 @@ export default function DepartmentFaculty({ userData }) {
                                   subject && subject.name ? (
                                     <div
                                       key={subject._id}
-                                      className="flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 p-2 rounded-lg border border-indigo-200"
+                                      className="flex items-center justify-between bg-linear-to-r from-indigo-50 to-purple-50 p-2 rounded-lg border border-indigo-200"
                                     >
                                       <span className="font-medium text-slate-700 text-sm">
-                                        {subject.name}
+                                        {getSemester(subject) !== "N/A" ? `Sem ${getSemester(subject)} - ` : ""}{subject.name}
                                       </span>
                                       <button
-                                        className="px-2 py-1 text-xs bg-gradient-to-r from-rose-500 to-red-600 text-white rounded hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-sm font-medium"
+                                        className="px-2 py-1 text-xs bg-linear-to-r from-rose-500 to-red-600 text-white rounded hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-sm font-medium"
                                         onClick={async () => {
                                           await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
+                                              "http://localhost:4000"
                                             }/api/faculty-subject/remove-faculty-subject`,
                                             {
                                               method: "DELETE",
@@ -1622,7 +1762,7 @@ export default function DepartmentFaculty({ userData }) {
                                           const response = await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
+                                              "http://localhost:4000"
                                             }/api/faculty/faculties?department=${encodeURIComponent(
                                               department
                                             )}`,
@@ -1677,7 +1817,7 @@ export default function DepartmentFaculty({ userData }) {
                                     (assignment, index) => (
                                       <div
                                         key={`${assignment.academicYear}-${assignment.semester}-${assignment.section}`}
-                                        className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 p-2 rounded-lg border border-amber-200"
+                                        className="flex items-center justify-between bg-linear-to-r from-amber-50 to-orange-50 p-2 rounded-lg border border-amber-200"
                                       >
                                         <span className="font-medium text-slate-700 text-sm">
                                           {assignment.academicYear} - Year{" "}
@@ -1698,7 +1838,7 @@ export default function DepartmentFaculty({ userData }) {
                           <div className="flex justify-center pt-2">
                             <button
                               onClick={() => handleViewDetails(faculty)}
-                              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 shadow-lg hover:shadow-xl font-medium text-sm"
+                              className="inline-flex items-center px-4 py-2 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 shadow-lg hover:shadow-xl font-medium text-sm"
                             >
                               <User size={16} className="mr-2" />
                               View Complete Profile
@@ -1717,7 +1857,7 @@ export default function DepartmentFaculty({ userData }) {
         {showModal && selectedFaculty && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-fade-in">
             <div className="glass-effect rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-white/30">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-8 rounded-t-3xl">
+              <div className="bg-linear-to-r from-indigo-500 to-purple-600 p-8 rounded-t-3xl">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-bold text-white flex items-center gap-3">
                     {modalMode === "details" ? (
@@ -1759,7 +1899,7 @@ export default function DepartmentFaculty({ userData }) {
                 </div>
               </div>
               <div className="p-8">
-                <div className="flex items-center space-x-6 mb-8 p-6 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 rounded-2xl border border-indigo-200/50">
+                <div className="flex items-center space-x-6 mb-8 p-6 bg-linear-to-r from-indigo-50/80 to-purple-50/80 rounded-2xl border border-indigo-200/50">
                   <div className="flex-shrink-0 h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
                     <User className="h-10 w-10 text-white" />
                   </div>
@@ -2030,7 +2170,7 @@ export default function DepartmentFaculty({ userData }) {
                               selectedFaculty._id
                             )}
                           >
-                            {subject.name}
+                            {getSemester(subject) !== "N/A" ? `Sem ${getSemester(subject)} - ` : ""}{subject.name}
                           </option>
                         ))}
                       </select>
@@ -2049,7 +2189,7 @@ export default function DepartmentFaculty({ userData }) {
                   </div>
                 ) : modalMode === "manageSubjects" ? (
                   <div className="space-y-6">
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200">
+                    <div className="bg-linear-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200">
                       <h4 className="font-bold text-slate-800 mb-2">Subject Management</h4>
                       <p className="text-slate-600 text-sm">Assign or unassign subjects for {selectedFaculty?.name}</p>
                     </div>
@@ -2062,163 +2202,190 @@ export default function DepartmentFaculty({ userData }) {
                           <p className="text-sm">No subjects found for this department</p>
                         </div>
                       ) : (
-                        <div className="divide-y divide-slate-100">
-                          {subjects.map((subject) => {
-                            const isAssignedToThisFaculty = selectedFaculty?.subjectsTaught?.some(
-                              (s) => s._id === subject._id
-                            );
-                            const isAssignedToOther = isSubjectAssignedToOther(
-                              subject._id,
-                              selectedFaculty?._id
-                            );
-                            
-                            return (
-                              <div
-                                key={subject._id}
-                                className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors duration-200"
-                              >
-                                <div className="flex-1">
-                                  <span className={`font-medium ${
-                                    isAssignedToThisFaculty
-                                      ? "text-emerald-700"
-                                      : isAssignedToOther
-                                      ? "text-slate-400"
-                                      : "text-slate-700"
-                                  }`}>
-                                    {subject.name}
-                                  </span>
-                                  <div className="flex gap-2 mt-1">
-                                    {isAssignedToThisFaculty && (
-                                      <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded-full font-medium">
-                                        ✅ Assigned
-                                      </span>
-                                    )}
-                                    {isAssignedToOther && (
-                                      <span className="px-2 py-1 text-xs bg-slate-100 text-slate-500 rounded-full font-medium">
-                                        🔒 Assigned to Other
-                                      </span>
-                                    )}
-                                    {!isAssignedToThisFaculty && !isAssignedToOther && (
-                                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
-                                        🆓 Available
-                                      </span>
-                                    )}
+                        <div key={`subjects-list-${facultyUpdateCounter}`} className="divide-y divide-slate-100">
+                          {(() => {
+                            // Group subjects by semester
+                            const groupedSubjects = subjects.reduce((acc, subject) => {
+                              const semester = getSemester(subject);
+                              if (!acc[semester]) {
+                                acc[semester] = [];
+                              }
+                              acc[semester].push(subject);
+                              return acc;
+                            }, {});
+
+                            return Object.entries(groupedSubjects)
+                              .sort(([a], [b]) => {
+                                // Sort semesters numerically, put "N/A" at the end
+                                if (a === "N/A") return 1;
+                                if (b === "N/A") return -1;
+                                return parseInt(a) - parseInt(b);
+                              })
+                              .map(([semester, semesterSubjects]) => (
+                                <div key={semester} className="p-3">
+                                  <h4 className="text-sm font-semibold text-slate-600 mb-2 border-b border-slate-200 pb-1">
+                                    Semester {semester}
+                                  </h4>
+                                  <div className="space-y-1">
+                                    {semesterSubjects.map((subject) => {
+                                      const isAssignedToThisFaculty = selectedFaculty?.subjectsTaught?.some(
+                                        (s) => s._id === subject._id
+                                      );
+                                      const isAssignedToOther = isSubjectAssignedToOther(
+                                        subject._id,
+                                        selectedFaculty?._id
+                                      );
+                                      const assignedFacultyNames = getAllAssignedFacultyNames(subject._id);
+                                      
+                                      return (
+                                        <div
+                                          key={subject._id}
+                                          className="flex items-center justify-between p-3 hover:bg-slate-50 transition-colors duration-200 rounded-lg border border-slate-100"
+                                        >
+                                          <div className="flex-1">
+                                            <span className={`font-medium ${
+                                              isAssignedToThisFaculty
+                                                ? "text-emerald-700"
+                                                : isAssignedToOther
+                                                ? "text-slate-400"
+                                                : "text-slate-700"
+                                            }`}>
+                                              {subject.name}
+                                            </span>
+                                            {assignedFacultyNames.length > 0 && (
+                                              <div className="text-xs text-slate-500 mt-1">
+                                                <span className="font-medium">Assigned to:</span> {assignedFacultyNames.join(", ")}
+                                              </div>
+                                            )}
+                                            <div className="flex gap-2 mt-1">
+                                              {isAssignedToThisFaculty && (
+                                                <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                                                  ✅ Assigned
+                                                </span>
+                                              )}
+                                              {isAssignedToOther && (
+                                                <span className="px-2 py-1 text-xs bg-slate-100 text-slate-500 rounded-full font-medium">
+                                                  🔒 Assigned to Other
+                                                </span>
+                                              )}
+                                              {!isAssignedToThisFaculty && !isAssignedToOther && (
+                                                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
+                                                  🆓 Available
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="flex gap-2 ml-4">
+                                            {isAssignedToThisFaculty ? (
+                                              <button
+                                                className="px-4 py-2 text-sm bg-linear-to-r from-rose-500 to-red-600 text-white rounded-lg hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-sm font-medium"
+                                                onClick={async () => {
+                                                  const confirmUnassign = window.confirm(
+                                                    `Are you sure you want to unassign "${subject.name}" from ${selectedFaculty?.name}?`
+                                                  );
+                                                  if (!confirmUnassign) return;
+
+                                                  try {
+                                                    await fetch(
+                                                      `${
+                                                        import.meta.env.VITE_API_URL ||
+                                                        "http://localhost:4000"
+                                                      }/api/faculty-subject/remove-faculty-subject`,
+                                                      {
+                                                        method: "DELETE",
+                                                        headers: {
+                                                          "Content-Type": "application/json",
+                                                          Authorization: `Bearer ${localStorage.getItem(
+                                                            "authToken"
+                                                          )}`,
+                                                        },
+                                                        body: JSON.stringify({
+                                                          facultyId: selectedFaculty?._id,
+                                                          subjectId: subject._id,
+                                                        }),
+                                                      }
+                                                    );
+                                                    
+                                                    // Refetch faculties to update UI
+                                                    await fetchAllData(userData?.department);
+                                                    
+                                                    // Update selected faculty data
+                                                    const updatedFaculties = faculties.find(f => f._id === selectedFaculty?._id);
+                                                    if (updatedFaculties) {
+                                                      setSelectedFaculty(updatedFaculties);
+                                                    }
+                                                    
+                                                    // Refresh user data
+                                                    await refreshUserData();
+                                                    
+                                                    // Show success message
+                                                    setAssignSubjectSuccess(`✅ Subject successfully unassigned from ${selectedFaculty?.name}!`);
+                                                    setTimeout(() => setAssignSubjectSuccess(null), 3000);
+                                                  } catch (error) {
+                                                    console.error("Error unassigning subject:", error);
+                                                  }
+                                                }}
+                                              >
+                                                🗑️ Unassign
+                                              </button>
+                                            ) : !isAssignedToOther ? (
+                                              <button
+                                                className="px-4 py-2 text-sm bg-linear-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-sm font-medium"
+                                                onClick={async () => {
+                                                  try {
+                                                    await handleAssignSubject(subject._id, selectedFaculty);
+                                                    // Update selected faculty data after assignment
+                                                    const department = userData?.department || selectedFaculty?.department;
+                                                    const response = await fetch(
+                                                      `${
+                                                        import.meta.env.VITE_API_URL ||
+                                                        "http://localhost:4000"
+                                                      }/api/faculty/faculties?department=${encodeURIComponent(
+                                                        department
+                                                      )}`,
+                                                      {
+                                                        headers: {
+                                                          Authorization: `Bearer ${localStorage.getItem(
+                                                            "authToken"
+                                                          )}`,
+                                                        },
+                                                      }
+                                                    );
+                                                    if (response.ok) {
+                                                      const data = await response.json();
+                                                      setFaculties(
+                                                        Array.isArray(data.data?.faculties)
+                                                          ? data.data.faculties
+                                                          : []
+                                                      );
+                                                      // Update selected faculty data
+                                                      const updatedFaculty = data.data?.faculties?.find(f => f._id === selectedFaculty?._id);
+                                                      if (updatedFaculty) {
+                                                        setSelectedFaculty(updatedFaculty);
+                                                      }
+                                                      // Force modal re-render
+                                                      setFacultyUpdateCounter(prev => prev + 1);
+                                                    }
+                                                  } catch (error) {
+                                                    console.error("Error assigning subject:", error);
+                                                  }
+                                                }}
+                                              >
+                                                ➕ Assign
+                                              </button>
+                                            ) : (
+                                              <span className="px-4 py-2 text-sm bg-slate-200 text-slate-500 rounded-lg font-medium cursor-not-allowed">
+                                                🚫 Unavailable
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
-                                <div className="flex gap-2 ml-4">
-                                  {isAssignedToThisFaculty ? (
-                                    <button
-                                      className="px-4 py-2 text-sm bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-lg hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-sm font-medium"
-                                      onClick={async () => {
-                                        const confirmUnassign = window.confirm(
-                                          `Are you sure you want to unassign "${subject.name}" from ${selectedFaculty?.name}?`
-                                        );
-                                        if (!confirmUnassign) return;
-
-                                        try {
-                                          await fetch(
-                                            `${
-                                              import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
-                                            }/api/faculty-subject/remove-faculty-subject`,
-                                            {
-                                              method: "DELETE",
-                                              headers: {
-                                                "Content-Type": "application/json",
-                                                Authorization: `Bearer ${localStorage.getItem(
-                                                  "authToken"
-                                                )}`,
-                                              },
-                                              body: JSON.stringify({
-                                                facultyId: selectedFaculty?._id,
-                                                subjectId: subject._id,
-                                              }),
-                                            }
-                                          );
-                                          
-                                          // Refetch faculties to update UI
-                                          const department = userData?.department || selectedFaculty?.department;
-                                          const response = await fetch(
-                                            `${
-                                              import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
-                                            }/api/faculty/faculties?department=${encodeURIComponent(
-                                              department
-                                            )}`,
-                                            {
-                                              headers: {
-                                                Authorization: `Bearer ${localStorage.getItem(
-                                                  "authToken"
-                                                )}`,
-                                              },
-                                            }
-                                          );
-                                          if (response.ok) {
-                                            const data = await response.json();
-                                            setFaculties(
-                                              Array.isArray(data.data?.faculties)
-                                                ? data.data.faculties
-                                                : []
-                                            );
-                                            // Update selected faculty data
-                                            const updatedFaculty = data.data?.faculties?.find(f => f._id === selectedFaculty?._id);
-                                            if (updatedFaculty) {
-                                              setSelectedFaculty(updatedFaculty);
-                                            }
-                                          }
-                                        } catch (error) {
-                                          console.error("Error unassigning subject:", error);
-                                        }
-                                      }}
-                                    >
-                                      🗑️ Unassign
-                                    </button>
-                                  ) : !isAssignedToOther ? (
-                                    <button
-                                      className="px-4 py-2 text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-sm font-medium"
-                                      onClick={async () => {
-                                        try {
-                                          await handleAssignSubject(subject._id, selectedFaculty);
-                                          // Update selected faculty data after assignment
-                                          const department = userData?.department || selectedFaculty?.department;
-                                          const response = await fetch(
-                                            `${
-                                              import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
-                                            }/api/faculty/faculties?department=${encodeURIComponent(
-                                              department
-                                            )}`,
-                                            {
-                                              headers: {
-                                                Authorization: `Bearer ${localStorage.getItem(
-                                                  "authToken"
-                                                )}`,
-                                              },
-                                            }
-                                          );
-                                          if (response.ok) {
-                                            const data = await response.json();
-                                            const updatedFaculty = data.data?.faculties?.find(f => f._id === selectedFaculty?._id);
-                                            if (updatedFaculty) {
-                                              setSelectedFaculty(updatedFaculty);
-                                            }
-                                          }
-                                        } catch (error) {
-                                          console.error("Error assigning subject:", error);
-                                        }
-                                      }}
-                                    >
-                                      ➕ Assign
-                                    </button>
-                                  ) : (
-                                    <span className="px-4 py-2 text-sm bg-slate-200 text-slate-500 rounded-lg font-medium cursor-not-allowed">
-                                      🚫 Unavailable
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                              ));
+                          })()}
                         </div>
                       )}
                     </div>
@@ -2245,7 +2412,7 @@ export default function DepartmentFaculty({ userData }) {
                         selectedSection,
                         selectedYear
                       ) && (
-                        <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
+                        <div className="p-4 bg-linear-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
                               <Award size={16} className="text-white" />
@@ -2314,7 +2481,7 @@ export default function DepartmentFaculty({ userData }) {
                     </div>
                     <button
                       onClick={handleAssignCC}
-                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold text-lg"
+                      className="w-full bg-linear-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold text-lg"
                     >
                       {isCCAssigned(
                         selectedYearGroup,
@@ -2338,10 +2505,10 @@ export default function DepartmentFaculty({ userData }) {
                   </div>
                 )}
               </div>
-              <div className="px-8 py-6 border-t border-slate-200/50 bg-gradient-to-r from-slate-50/50 to-indigo-50/50 rounded-b-3xl flex justify-end">
+              <div className="px-8 py-6 border-t border-slate-200/50 bg-linear-to-r from-slate-50/50 to-indigo-50/50 rounded-b-3xl flex justify-end">
                 <button
                   onClick={closeModal}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
+                  className="px-6 py-3 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
                 >
                   Close
                 </button>

@@ -122,7 +122,7 @@ const ComposeAnnouncementByPrincipal = () => {
       };
 
       await axios.post(
-        "https://backenderp.tarstech.in/api/announcements",
+        "http://localhost:4000/api/announcements",
         announcementData
       );
       setMessage({
@@ -157,7 +157,7 @@ const ComposeAnnouncementByPrincipal = () => {
   const fetchAnnouncements = async () => {
     try {
       const res = await axios.get(
-        `https://backenderp.tarstech.in/api/announcements/${currentDashboard}`
+        `http://localhost:4000/api/announcements/${currentDashboard}`
       );
       setAnnouncements(res.data);
       setLoading(false);

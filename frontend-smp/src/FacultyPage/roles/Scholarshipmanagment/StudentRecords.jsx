@@ -100,13 +100,13 @@ const StudentRecords = () => {
     setLoading(true);
     try {
       const studentRes = await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/superadmin/students",
+        "http://localhost:4000/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }
       );
       const scholarshipRes = await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/scholarships",
+        "http://localhost:4000/api/scholarships",
         {
           headers: getAuthHeaders(),
         }
@@ -168,7 +168,7 @@ const StudentRecords = () => {
     setSubmittingRemark(remarkKey);
     try {
       await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/scholarships/add-remark",
+        "http://localhost:4000/api/scholarships/add-remark",
         {
           method: "POST",
           headers: getAuthHeaders(),

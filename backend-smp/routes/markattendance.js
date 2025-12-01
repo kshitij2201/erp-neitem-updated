@@ -4,9 +4,64 @@ import Faculty from "../models/faculty.js";
 import Student from "../models/student.js";
 import AdminSubject from "../models/AdminSubject.js";
 import AcademicDepartment from "../models/AcademicDepartment.js";
+import Semester from "../models/Semester.js";
 import Attendance from "../models/attendance.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// GET /api/faculty/markattendance/subjects - Get subjects for the authenticated faculty
+router.get("/subjects", protect, async (req, res) => {
+  try {
+    console.log("[GetFacultySubjects] Getting subjects for faculty:", req.user.employeeId);
+
+    // Find the faculty and populate subjectsTaught
+    const faculty = await Faculty.findById(req.user._id).populate({
+      path: "subjectsTaught",
+      populate: [
+        { path: "department", model: "AcademicDepartment" }
+      ],
+    });
+
+    if (!faculty) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Faculty not found" 
+      });
+    }
+
+    console.log("[GetFacultySubjects] Faculty found:", faculty.firstName, "Subjects:", faculty.subjectsTaught.length);
+
+    // Transform AdminSubject data for frontend compatibility
+    const transformedSubjects = faculty.subjectsTaught.map(subject => {
+      if (subject && subject.name) {
+        return {
+          ...subject.toObject(),
+          // Keep semester field for display but also add year for backward compatibility
+          semester: subject.semester, // AdminSubject stores semester as string
+          year: subject.semester, // Also provide as year for compatibility
+          section: subject.section || "A", // Default section if not available
+        };
+      }
+      return subject;
+    });
+
+    console.log("[GetFacultySubjects] Transformed subjects:", transformedSubjects.length);
+
+    res.json({ 
+      success: true, 
+      data: transformedSubjects || [],
+      message: "Subjects retrieved successfully"
+    });
+  } catch (error) {
+    console.error("[GetFacultySubjects] Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message,
+      error: error.toString()
+    });
+  }
+});
 
 // POST /api/faculty/markattendance
 router.post("/", async (req, res) => {
@@ -128,7 +183,18 @@ router.post("/", async (req, res) => {
 
     // Get department and semester IDs for attendance records
     let departmentId = adminSubject.department?._id || adminSubject.department;
-    let semesterId = adminSubject.semester?._id || adminSubject.semester;
+    let semesterId = null;
+    
+    // Try to find the Semester document for the semester number
+    if (adminSubject.semester) {
+      const semesterNum = parseInt(adminSubject.semester);
+      if (!isNaN(semesterNum)) {
+        const semesterDoc = await Semester.findOne({ number: semesterNum });
+        if (semesterDoc) {
+          semesterId = semesterDoc._id;
+        }
+      }
+    }
     
     // Create default ObjectIds if not available
     if (!departmentId) {
@@ -274,11 +340,51 @@ router.get("/students/:subjectId", async (req, res) => {
 
     console.log("[GetSubjectStudents] Subject details:", {
       name: adminSubject.name,
-      department: adminSubject.department
+      department: adminSubject.department,
+      semester: adminSubject.semester
     });
 
-    // Since AdminSubject doesn't have year/section, we'll get students by department
-    // If you need more specific filtering, you'd need to enhance the AdminSubject schema
+    // Check if subject has semester assigned
+    if (!adminSubject.semester) {
+      console.log("[GetSubjectStudents] Subject not assigned to a semester");
+      return res.json({ 
+        success: true, 
+        data: [],
+        subject: {
+          _id: adminSubject._id,
+          name: adminSubject.name,
+          department: adminSubject.department?.name || adminSubject.department,
+          semester: 'Not Assigned',
+          year: 'Not Specified',
+          section: 'All Sections'
+        },
+        totalStudents: 0,
+        message: "Subject not assigned to a semester. Please assign this subject to a semester in SemesterManager."
+      });
+    }
+
+    // Calculate target year from AdminSubject semester string (fallback approach)
+    let targetYear = null;
+    let targetSemesterId = null;
+    if (adminSubject.semester) {
+      const semesterNum = parseInt(adminSubject.semester);
+      if (!isNaN(semesterNum) && semesterNum >= 1 && semesterNum <= 8) {
+        // Calculate year from semester number
+        targetYear = Math.ceil(semesterNum / 2);
+        console.log(`[GetSubjectStudents] Semester ${semesterNum} maps to year ${targetYear}`);
+        
+        // Try to find Semester document, but don't depend on it
+        const semesterDoc = await Semester.findOne({ number: semesterNum });
+        if (semesterDoc) {
+          targetSemesterId = semesterDoc._id;
+          console.log(`[GetSubjectStudents] Found Semester document with ID: ${targetSemesterId}`);
+        } else {
+          console.log(`[GetSubjectStudents] No Semester document found with number: ${semesterNum}, using year-based filtering`);
+        }
+      }
+    }
+
+    // Get students by department and semester
     let students = [];
     
     // Match by department if available
@@ -312,16 +418,37 @@ router.get("/students/:subjectId", async (req, res) => {
       console.log("[GetSubjectStudents] Department ID:", departmentId);
 
       if (departmentId) {
-        students = await Student.find({ department: departmentId })
-          .select('firstName middleName lastName email studentId enrollmentNumber year section department')
-          .populate('department', 'name')
-          .sort({ firstName: 1, lastName: 1 });
+        // First try semester-based filtering
+        if (targetSemesterId) {
+          students = await Student.find({ department: departmentId, semester: targetSemesterId })
+            .select('firstName middleName lastName email studentId enrollmentNumber year section department semester')
+            .populate('department', 'name')
+            .populate('semester', 'number')
+            .sort({ firstName: 1, lastName: 1 });
+          console.log(`[GetSubjectStudents] Found ${students.length} students by semester filtering`);
+        }
+        
+        // If no students found by semester, try year-based filtering
+        if (students.length === 0 && targetYear) {
+          students = await Student.find({ department: departmentId, year: targetYear })
+            .select('firstName middleName lastName email studentId enrollmentNumber year section department semester')
+            .populate('department', 'name')
+            .populate('semester', 'number')
+            .sort({ firstName: 1, lastName: 1 });
+          console.log(`[GetSubjectStudents] Found ${students.length} students by year filtering`);
+        }
+        
+        // Log student details for debugging
+        if (students.length > 0) {
+          console.log(`[GetSubjectStudents] Sample students:`, students.slice(0, 3).map(s => ({
+            name: `${s.firstName} ${s.lastName}`,
+            year: s.year,
+            semester: s.semester?.number || 'null',
+            department: s.department?.name
+          })));
+        }
       } else {
-        console.log("[GetSubjectStudents] No valid department found, getting all students");
-        students = await Student.find({})
-          .select('firstName middleName lastName email studentId enrollmentNumber year section department')
-          .populate('department', 'name')
-          .sort({ firstName: 1, lastName: 1 });
+        console.log("[GetSubjectStudents] No valid department found");
       }
     } else {
       // If no department info, get all students
@@ -337,20 +464,37 @@ router.get("/students/:subjectId", async (req, res) => {
       name: `${student.firstName} ${student.middleName ? student.middleName + ' ' : ''}${student.lastName}`.trim()
     }));
 
-    console.log("[GetSubjectStudents] Found students:", studentsWithName.length);
+    console.log("[GetSubjectStudents] Final result:", {
+      subjectName: adminSubject.name,
+      semester: adminSubject.semester,
+      targetYear: targetYear,
+      targetSemesterId: targetSemesterId,
+      studentsFound: studentsWithName.length
+    });
+
+    // Create appropriate message based on filtering method used
+    let message = "";
+    if (studentsWithName.length === 0) {
+      message = `No students found for semester ${adminSubject.semester} in ${adminSubject.department?.name || adminSubject.department}. `;
+      message += "Students must be assigned to the correct semester/year in the Student Management system.";
+    } else {
+      const filterType = targetSemesterId ? `semester ${adminSubject.semester}` : `year ${targetYear}`;
+      message = `Found ${studentsWithName.length} students in ${filterType}`;
+    }
 
     res.json({ 
       success: true, 
-      data: studentsWithName, // Use students with computed name field
+      data: studentsWithName,
       subject: {
         _id: adminSubject._id,
         name: adminSubject.name,
         department: adminSubject.department?.name || adminSubject.department,
-        year: 'All Years', // AdminSubject doesn't have year
-        section: 'All Sections', // AdminSubject doesn't have section
-        semester: 'Not Specified' // AdminSubject doesn't have semester
+        semester: adminSubject.semester || 'Not Specified',
+        year: targetYear || 'Not Specified',
+        section: 'All Sections'
       },
-      totalStudents: studentsWithName.length
+      totalStudents: studentsWithName.length,
+      message: message
     });
   } catch (error) {
     console.error("[GetSubjectStudents] Error:", error);

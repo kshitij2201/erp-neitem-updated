@@ -59,12 +59,13 @@ export default function TimetableSimple({ userData }) {
     "Saturday",
   ];
   const DEFAULT_TIME_SLOTS = [
-    "09:00-10:00",
     "10:00-11:00",
-    "11:15-12:15", // Break after 2nd period
-    "12:15-13:15",
-    "14:00-15:00", // Lunch break
-    "15:00-16:00",
+    "11:00-12:00",
+    "12:00-01:00",
+    "01:00-01:30", // Lunch break
+    "01:30-02:30", 
+    "02:30-03:30",
+    "03:30-04:30",
   ];
 
   // Initialize with default time slots
@@ -72,7 +73,7 @@ export default function TimetableSimple({ userData }) {
     setTimeSlots(
       DEFAULT_TIME_SLOTS.map((slot) => ({
         timeSlot: slot,
-        isBreak: slot === "11:15-12:15",
+        isBreak: slot === "01:00-01:30",
       }))
     );
   }, []);
@@ -114,7 +115,7 @@ export default function TimetableSimple({ userData }) {
       }
 
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/cc/my-cc-assignments",
+        "http://localhost:4000/api/cc/my-cc-assignments",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -192,7 +193,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const subjectsRes = await axios.get(
-          `https://backenderp.tarstech.in/api/subjects/department/${encodeURIComponent(
+          `http://localhost:4000/api/subjects/department/${encodeURIComponent(
             department
           )}`,
           { headers }
@@ -208,7 +209,7 @@ export default function TimetableSimple({ userData }) {
           console.log("Subjects API failed, trying alternative approach...");
           // Try alternative API endpoint
           const altSubjectsRes = await axios.get(
-            `https://backenderp.tarstech.in/api/superadmin/subjects`,
+            `http://localhost:4000/api/superadmin/subjects`,
             { headers, params: { department: department } }
           );
 
@@ -231,7 +232,7 @@ export default function TimetableSimple({ userData }) {
         // Fallback: Load subjects from faculty-department-subject mapping
         try {
           const fdsRes = await axios.get(
-            `https://backenderp.tarstech.in/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
+            `http://localhost:4000/api/faculty-dept-subject/department-faculty-subjects/${encodeURIComponent(
               department
             )}`,
             { headers }
@@ -260,7 +261,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "https://backenderp.tarstech.in/api/faculty/faculties",
+          "http://localhost:4000/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
 
@@ -286,7 +287,7 @@ export default function TimetableSimple({ userData }) {
         // Try alternative approach
         try {
           const altFacultiesRes = await axios.get(
-            "https://backenderp.tarstech.in/api/faculty",
+            "http://localhost:4000/api/faculty",
             { headers }
           );
 
@@ -353,7 +354,7 @@ export default function TimetableSimple({ userData }) {
 
       // First, get all AdminSubjects for this department
       const subjectsResponse = await axios.get(
-        `https://backenderp.tarstech.in/api/subjects/department/${encodeURIComponent(
+        `http://localhost:4000/api/subjects/department/${encodeURIComponent(
           department
         )}`,
         { headers }
@@ -377,7 +378,7 @@ export default function TimetableSimple({ userData }) {
             );
 
             const facultiesResponse = await axios.get(
-              `https://backenderp.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
+              `http://localhost:4000/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -451,7 +452,7 @@ export default function TimetableSimple({ userData }) {
 
       try {
         const facultiesRes = await axios.get(
-          "https://backenderp.tarstech.in/api/faculty/faculties",
+          "http://localhost:4000/api/faculty/faculties",
           { params: { department, teachingOnly: "true" }, headers }
         );
         facultyList =
@@ -461,7 +462,7 @@ export default function TimetableSimple({ userData }) {
       } catch (error) {
         console.log("Primary faculty API failed, trying alternative...");
         const altFacultiesRes = await axios.get(
-          "https://backenderp.tarstech.in/api/faculty",
+          "http://localhost:4000/api/faculty",
           { headers }
         );
         const allFaculties =
@@ -600,7 +601,7 @@ export default function TimetableSimple({ userData }) {
 
       // Step 1: Get AdminSubjects for department
       const subjectsResponse = await axios.get(
-        `https://backenderp.tarstech.in/api/subjects/department/${encodeURIComponent(
+        `http://localhost:4000/api/subjects/department/${encodeURIComponent(
           ccAssignment.department
         )}`,
         { headers }
@@ -621,7 +622,7 @@ export default function TimetableSimple({ userData }) {
 
           try {
             const facultiesResponse = await axios.get(
-              `https://backenderp.tarstech.in/api/faculty/faculties/subject/${subject._id}`,
+              `http://localhost:4000/api/faculty/faculties/subject/${subject._id}`,
               { headers }
             );
 
@@ -671,7 +672,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/timetable",
+        "http://localhost:4000/api/timetable",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -1040,7 +1041,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
+        `http://localhost:4000/api/faculty-subject/subject-faculty-by-name/${encodeURIComponent(
           subjectName
         )}`,
         {
@@ -1144,7 +1145,7 @@ export default function TimetableSimple({ userData }) {
       console.log("Saving timetable payload:", payload);
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/timetable",
+        "http://localhost:4000/api/timetable",
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -1198,7 +1199,7 @@ export default function TimetableSimple({ userData }) {
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/timetable",
+        "http://localhost:4000/api/timetable",
         {
           params: {
             department: ccAssignment.department,
@@ -1318,7 +1319,7 @@ export default function TimetableSimple({ userData }) {
       const token = localStorage.getItem("authToken");
 
       const response = await axios.delete(
-        `https://backenderp.tarstech.in/api/timetable/${currentTimetableId}`,
+        `http://localhost:4000/api/timetable/${currentTimetableId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -1550,190 +1551,6 @@ export default function TimetableSimple({ userData }) {
           )}
         </div>
       </div>
-
-      {/* Debug Panel - Show Loading Status and Data */}
-      {ccAssignment && (
-        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-          <h3 className="text-sm font-semibold text-yellow-700 mb-3">
-            🔧 Debug Information
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-            <div className="bg-white p-2 rounded border">
-              <div className="font-medium text-gray-800">CC Assignment</div>
-              <div className="text-gray-600 mt-1">
-                {ccAssignment
-                  ? `${ccAssignment.department} - Sem ${ccAssignment.semester} - Sec ${ccAssignment.section}`
-                  : "Not loaded"}
-              </div>
-            </div>
-            <div className="bg-white p-2 rounded border">
-              <div className="font-medium text-gray-800">
-                Subjects ({subjects.length})
-              </div>
-              <div className="text-gray-600 mt-1">
-                {subjects.length > 0 ? (
-                  subjects
-                    .slice(0, 3)
-                    .map((s) => s.name)
-                    .join(", ") + (subjects.length > 3 ? "..." : "")
-                ) : (
-                  <span className="text-red-600">
-                    No subjects loaded - Click "Reload" button!
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="bg-white p-2 rounded border">
-              <div className="font-medium text-gray-800">
-                Faculties ({faculties.length})
-              </div>
-              <div className="text-gray-600 mt-1">
-                {faculties.length > 0 ? (
-                  faculties
-                    .slice(0, 2)
-                    .map((f) => f.name)
-                    .join(", ") + (faculties.length > 2 ? "..." : "")
-                ) : (
-                  <span className="text-red-600">No faculties loaded</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 bg-white p-2 rounded border">
-            <div className="font-medium text-gray-800">
-              Subject-Faculty Assignments (
-              {Object.keys(subjectFacultyMap).length})
-            </div>
-            <div className="text-gray-600 mt-1">
-              {Object.keys(subjectFacultyMap).length > 0 ? (
-                Object.keys(subjectFacultyMap).slice(0, 3).join(", ") +
-                (Object.keys(subjectFacultyMap).length > 3 ? "..." : "")
-              ) : (
-                <span className="text-red-600">
-                  No subject-faculty assignments loaded - Data may be missing in
-                  database!
-                </span>
-              )}
-            </div>
-          </div>
-          {subjects.length === 0 && (
-            <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <div className="text-orange-800 text-sm font-medium">
-                ⚠️ No subjects found! This could mean:
-              </div>
-              <ul className="text-orange-700 text-xs mt-1 ml-4 list-disc">
-                <li>
-                  Faculty-Department-Subject relationships not set up in
-                  database
-                </li>
-                <li>No subjects assigned to faculties in your department</li>
-                <li>API endpoint not responding correctly</li>
-              </ul>
-              <div className="text-orange-600 text-xs mt-2">
-                💡 Try clicking the "Reload Subjects & Faculties" button above
-                to retry loading.
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Debug Panel - Show Faculty-Subject Mapping */}
-      {ccAssignment &&
-        isEditing &&
-        Object.keys(subjectFacultyMap).length > 0 && (
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              📋 Subject-Faculty Assignments (Debug)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              {Object.entries(subjectFacultyMap).map(([subject, faculties]) => (
-                <div key={subject} className="bg-white p-2 rounded border">
-                  <div className="font-medium text-gray-800">{subject}</div>
-                  <div className="text-gray-600 mt-1">
-                    {faculties.length > 0 ? (
-                      faculties
-                        .map(
-                          (faculty) =>
-                            faculty.name || faculty.firstName || "Unknown"
-                        )
-                        .join(", ")
-                    ) : (
-                      <span className="text-orange-600">
-                        No faculty assigned
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-      {/* ADVANCED: Real-time Faculty Schedule Panel */}
-      {ccAssignment &&
-        isEditing &&
-        Object.keys(facultySchedules).length > 0 && (
-          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
-            <h3 className="text-sm font-semibold text-purple-800 mb-3">
-              🕒 Real-time Faculty Schedules (Cross-Class View)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-              {Object.entries(facultySchedules)
-                .slice(0, 6)
-                .map(([facultyName, schedules]) => (
-                  <div
-                    key={facultyName}
-                    className="bg-white p-3 rounded border border-purple-100 shadow-sm"
-                  >
-                    <div className="font-medium text-purple-800 mb-2">
-                      👩‍🏫 {facultyName}
-                    </div>
-                    <div className="space-y-1">
-                      {schedules
-                        .filter((s) => !s.isCurrentTimetable) // Only show other classes
-                        .slice(0, 3)
-                        .map((schedule, idx) => (
-                          <div key={idx} className="text-xs">
-                            <div className="text-purple-700">
-                              📚 {schedule.subject}
-                            </div>
-                            <div className="text-purple-600">
-                              🕐 {schedule.day} {schedule.timeSlot}
-                            </div>
-                            <div className="text-purple-500 text-xs">
-                              🏫 {schedule.timetableInfo}
-                            </div>
-                            <hr className="my-1 border-purple-100" />
-                          </div>
-                        ))}
-                      {schedules.filter((s) => !s.isCurrentTimetable).length ===
-                        0 && (
-                        <div className="text-green-600 text-xs">
-                          ✅ No other classes assigned
-                        </div>
-                      )}
-                      {schedules.filter((s) => !s.isCurrentTimetable).length >
-                        3 && (
-                        <div className="text-purple-500 text-xs">
-                          ... and{" "}
-                          {schedules.filter((s) => !s.isCurrentTimetable)
-                            .length - 3}{" "}
-                          more classes
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-            {Object.keys(facultySchedules).length > 6 && (
-              <div className="mt-3 text-center text-purple-600 text-xs">
-                Showing 6 of {Object.keys(facultySchedules).length} faculty
-                schedules
-              </div>
-            )}
-          </div>
-        )}
 
       {/* Time Slot Management */}
       {isEditingTimeSlots && (

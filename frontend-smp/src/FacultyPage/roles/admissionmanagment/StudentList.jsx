@@ -429,7 +429,7 @@ function StudentList() {
     completionStatus: "",
     standard: "",
     registerNo: "",
-    serialNo: 1000,
+    serialNo: parseInt(localStorage.getItem("lastCertificateSerialNo")) || 1673,
     error: null,
     isGenerating: false,
     showPreview: false,
@@ -478,7 +478,7 @@ function StudentList() {
       const query = admissionTypeFilter
         ? `?admissionType=${admissionTypeFilter}`
         : "";
-      const res = await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students${query}`, {
+      const res = await fetchWithRetry(`http://localhost:4000/api/superadmin/students${query}`, {
         headers,
       });
 
@@ -510,7 +510,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/semesters", {
+        const res = await fetchWithRetry("http://localhost:4000/api/superadmin/semesters", {
           headers,
         });
 
@@ -536,7 +536,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/streams", {
+        const res = await fetchWithRetry("http://localhost:4000/api/superadmin/streams", {
           headers,
         });
 
@@ -562,7 +562,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/departments", {
+        const res = await fetchWithRetry("http://localhost:4000/api/superadmin/departments", {
           headers,
         });
 
@@ -662,7 +662,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students/${id}`, {
+        await fetchWithRetry(`http://localhost:4000/api/superadmin/students/${id}`, {
           method: "DELETE",
           headers,
         });
@@ -688,7 +688,7 @@ function StudentList() {
       if (!headers) return;
 
       const response = await fetchWithRetry(
-        `https://backenderp.tarstech.in/api/superadmin/students/promote/${id}`,
+        `http://localhost:4000/api/superadmin/students/promote/${id}`,
         {
           method: "PUT",
           headers,
@@ -721,7 +721,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
+        `http://localhost:4000/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -742,7 +742,7 @@ function StudentList() {
         completionStatus: type === "LC" ? "Completed" : "",
         standard: res.data.department?.name || "",
         registerNo: "",
-        serialNo: certificateModal.serialNo + 1,
+        serialNo: certificateModal.serialNo,
         error: null,
         isGenerating: false,
         showPreview: false,
@@ -891,7 +891,7 @@ function StudentList() {
       if (!headers) return;
 
       await fetchWithRetry(
-        `https://backenderp.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
+        `http://localhost:4000/api/superadmin/students/generate-certificate/${studentId}`,
         {
           method: "POST",
           headers: {
@@ -1178,8 +1178,8 @@ function StudentList() {
         marginLeft + 5,
         signatureY
       );
-      doc.text("Clerk", pageWidth / 2, signatureY, { align: "center" });
-      doc.text("Principal", pageWidth - marginRight - 5, signatureY, { align: "right" });
+      doc.text("Clerk", pageWidth / 2, signatureY);
+      doc.text("Principal", pageWidth / 2 + 50, signatureY);
 
       const afterSigY = signatureY + 3;
       if (!isCleared) {
@@ -1195,6 +1195,11 @@ function StudentList() {
         .replace(/\s+/g, "_")
         .toLowerCase();
       doc.save(fileName);
+
+      // Increment and save the serial number
+      const newSerialNo = certificateModal.serialNo + 1;
+      localStorage.setItem("lastCertificateSerialNo", newSerialNo.toString());
+      setCertificateModal((prev) => ({ ...prev, serialNo: newSerialNo }));
 
       alert(`${type} generated and downloaded successfully!`);
       
@@ -1217,7 +1222,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
+        `http://localhost:4000/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -1238,7 +1243,7 @@ function StudentList() {
           if (!headers) return;
 
           const subjectsRes = await fetchWithRetry(
-            `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
+            `http://localhost:4000/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
             { headers }
           );
 
@@ -1307,7 +1312,7 @@ function StudentList() {
         if (!headers) return;
 
         const res = await fetchWithRetry(
-          `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `http://localhost:4000/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           { headers }
         );
 
@@ -1366,7 +1371,7 @@ function StudentList() {
         if (!headers) return;
 
         const response = await fetchWithRetry(
-          `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
+          `http://localhost:4000/api/superadmin/students/${studentId}/add-backlog`,
           {
             method: "POST",
             headers: {
@@ -1400,7 +1405,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
+            `http://localhost:4000/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
             {
               method: "PUT",
               headers: {
@@ -1460,7 +1465,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
+            `http://localhost:4000/api/superadmin/students/${studentId}`,
             {
               method: "PUT",
               headers: {
@@ -2189,26 +2194,26 @@ function StudentList() {
                           value: certificateModal.remarks,
                           options: [
                             { value: "", label: "Select Remark" },
-                            { value: "He has failed", label: "He has failed" },
+                            { value: "He is failed", label: "He is failed" },
                             {
-                              value: "She has failed",
-                              label: "She has failed",
+                              value: "She is failed",
+                              label: "She is failed",
                             },
                             {
-                              value: "He has completed",
-                              label: "He has completed",
+                              value: "He is completed",
+                              label: "He is completed",
                             },
                             {
-                              value: "She has completed",
-                              label: "She has completed",
+                              value: "She is completed",
+                              label: "She is completed",
                             },
                             {
-                              value: "He has not appeared",
-                              label: "He has not appeared",
+                              value: "He is not appeared",
+                              label: "He is not appeared",
                             },
                             {
-                              value: "She has not appeared",
-                              label: "She has not appeared",
+                              value: "She is not appeared",
+                              label: "She is not appeared",
                             },
                           ],
                         },

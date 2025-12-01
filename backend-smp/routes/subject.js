@@ -3,6 +3,7 @@ import Subject from "../models/Subject.js";
 import Department from "../models/Department.js";
 import AdminSubject from "../models/AdminSubject.js";
 import AcademicDepartment from "../models/AcademicDepartment.js";
+import Semester from "../models/Semester.js";
 
 const router = express.Router();
 
@@ -90,13 +91,23 @@ router.get("/by-department", async (req, res) => {
         adminSubjects.length
       );
 
+      console.log(
+        "[SubjectsByDepartment] Admin subjects data:", adminSubjects
+      );
+
       if (adminSubjects.length > 0) {
-        const formattedSubjects = adminSubjects.map((subject) => ({
-          _id: subject._id,
-          name: subject.name,
-          code: subject.code || subject.subjectCode || "",
-          department: subject.department?.name || departmentName,
-          type: "admin",
+        const formattedSubjects = await Promise.all(adminSubjects.map(async (subject) => {
+          // Find the semester this subject belongs to
+          const semesterDoc = await Semester.findOne({ subjects: subject._id });
+          const semester = semesterDoc ? semesterDoc.number : subject.semester || "N/A";
+          return {
+            _id: subject._id,
+            name: subject.name,
+            code: subject.code || subject.subjectCode || "",
+            department: subject.department?.name || departmentName,
+            semester: semester,
+            type: "admin",
+          };
         }));
 
         return res.status(200).json({
@@ -125,24 +136,88 @@ router.get("/by-department", async (req, res) => {
       });
     }
 
-    // Find subjects for this department
+    // Find subjects for this department (populate semester for legacy subjects)
     const subjects = await Subject.find({
       department: department._id,
-    }).populate("department");
+    }).populate("department").populate("semester");
     console.log(
       "[SubjectsByDepartment] Legacy subjects found:",
       subjects.length
     );
 
-    const formattedSubjects = subjects.map((subject) => ({
-      _id: subject._id,
-      name: subject.name,
-      code: subject.subjectCode,
-      department: subject.department?.name || departmentName,
-      year: subject.year,
-      totalLectures: subject.totalLectures,
-      type: "legacy",
-    }));
+    const formattedSubjects = subjects.map((subject) => {
+      // Enhanced semester detection
+      let semester = subject.semester?.number || subject.year;
+      
+      if (!semester || semester === "N/A") {
+        const name = subject.name?.toLowerCase() || "";
+        
+        // First year subjects (Semester 1 & 2)
+        if (name.includes("mathematics – i") || name.includes("applied physics") || 
+            name.includes("engineering graphics") || name.includes("c-programming") ||
+            name.includes("basics of mechanical") || name.includes("communication skill")) {
+          semester = name.includes("lab") || name.includes("(p)") ? 1 : 1;
+        }
+        else if (name.includes("mathematics – ii") || name.includes("applied chemistry") ||
+                 name.includes("engineering mechanics") || name.includes("workshop practices")) {
+          semester = 2;
+        }
+        // Second year subjects (Semester 3 & 4)  
+        else if (name.includes("fluid mechanics") || name.includes("kinematics") ||
+                 name.includes("manufacturing") || name.includes("thermodynamics")) {
+          semester = 3;
+        }
+        else if (name.includes("heat transfer") || name.includes("machine drawing") ||
+                 name.includes("minor-i")) {
+          semester = 4;
+        }
+        // Third year subjects (Semester 5 & 6)
+        else if (name.includes("design of machine") || name.includes("energy conversion i") ||
+                 name.includes("automation") || name.includes("minor-ii")) {
+          semester = 5;
+        }
+        else if (name.includes("dynamics of machines") || name.includes("energy conversion -ii") ||
+                 name.includes("mechanical measurment")) {
+          semester = 6;
+        }
+        // Fourth year subjects (Semester 7 & 8)
+        else if (name.includes("elective") && (name.includes("iii") || name.includes("- iii") ||
+                 name.includes("computer aided") || name.includes("advancements in automobile"))) {
+          semester = 7;
+        }
+        else if (name.includes("project") || name.includes("elective") && 
+                 (name.includes("iv") || name.includes("v") || name.includes("vi"))) {
+          semester = 8;
+        }
+        // Professional skills
+        else if (name.includes("professional skill lab i")) {
+          semester = 1;
+        }
+        else if (name.includes("professional skill lab iv")) {
+          semester = 4;
+        }
+        // Mobile computing, Internet of Things
+        else if (name.includes("mobile computing")) {
+          semester = 5;
+        }
+        else if (name.includes("internet of things")) {
+          semester = 2;
+        }
+        else {
+          semester = "N/A";
+        }
+      }
+      
+      return {
+        _id: subject._id,
+        name: subject.name,
+        code: subject.subjectCode,
+        department: subject.department?.name || departmentName,
+        semester: semester,
+        totalLectures: subject.totalLectures,
+        type: "legacy",
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -193,12 +268,18 @@ router.get("/department/:departmentName", async (req, res) => {
       );
 
       if (adminSubjects.length > 0) {
-        const formattedSubjects = adminSubjects.map((subject) => ({
-          _id: subject._id,
-          name: subject.name,
-          code: subject.code || subject.subjectCode || "",
-          department: subject.department?.name || departmentName,
-          type: "admin",
+        const formattedSubjects = await Promise.all(adminSubjects.map(async (subject) => {
+          // Find the semester this subject belongs to
+          const semesterDoc = await Semester.findOne({ subjects: subject._id });
+          const semester = semesterDoc ? semesterDoc.number : subject.semester || "N/A";
+          return {
+            _id: subject._id,
+            name: subject.name,
+            code: subject.code || subject.subjectCode || "",
+            department: subject.department?.name || departmentName,
+            semester: semester,
+            type: "admin",
+          };
         }));
 
         return res.status(200).json({
@@ -227,24 +308,88 @@ router.get("/department/:departmentName", async (req, res) => {
       });
     }
 
-    // Find subjects for this department
+    // Find subjects for this department (populate semester for legacy subjects)
     const subjects = await Subject.find({
       department: department._id,
-    }).populate("department");
+    }).populate("department").populate("semester");
     console.log(
       "[SubjectsByDepartment] Legacy subjects found:",
       subjects.length
     );
 
-    const formattedSubjects = subjects.map((subject) => ({
-      _id: subject._id,
-      name: subject.name,
-      code: subject.subjectCode,
-      department: subject.department?.name || departmentName,
-      year: subject.year,
-      totalLectures: subject.totalLectures,
-      type: "legacy",
-    }));
+    const formattedSubjects = subjects.map((subject) => {
+      // Enhanced semester detection
+      let semester = subject.semester?.number || subject.year;
+      
+      if (!semester || semester === "N/A") {
+        const name = subject.name?.toLowerCase() || "";
+        
+        // First year subjects (Semester 1 & 2)
+        if (name.includes("mathematics – i") || name.includes("applied physics") || 
+            name.includes("engineering graphics") || name.includes("c-programming") ||
+            name.includes("basics of mechanical") || name.includes("communication skill")) {
+          semester = name.includes("lab") || name.includes("(p)") ? 1 : 1;
+        }
+        else if (name.includes("mathematics – ii") || name.includes("applied chemistry") ||
+                 name.includes("engineering mechanics") || name.includes("workshop practices")) {
+          semester = 2;
+        }
+        // Second year subjects (Semester 3 & 4)  
+        else if (name.includes("fluid mechanics") || name.includes("kinematics") ||
+                 name.includes("manufacturing") || name.includes("thermodynamics")) {
+          semester = 3;
+        }
+        else if (name.includes("heat transfer") || name.includes("machine drawing") ||
+                 name.includes("minor-i")) {
+          semester = 4;
+        }
+        // Third year subjects (Semester 5 & 6)
+        else if (name.includes("design of machine") || name.includes("energy conversion i") ||
+                 name.includes("automation") || name.includes("minor-ii")) {
+          semester = 5;
+        }
+        else if (name.includes("dynamics of machines") || name.includes("energy conversion -ii") ||
+                 name.includes("mechanical measurment")) {
+          semester = 6;
+        }
+        // Fourth year subjects (Semester 7 & 8)
+        else if (name.includes("elective") && (name.includes("iii") || name.includes("- iii") ||
+                 name.includes("computer aided") || name.includes("advancements in automobile"))) {
+          semester = 7;
+        }
+        else if (name.includes("project") || name.includes("elective") && 
+                 (name.includes("iv") || name.includes("v") || name.includes("vi"))) {
+          semester = 8;
+        }
+        // Professional skills
+        else if (name.includes("professional skill lab i")) {
+          semester = 1;
+        }
+        else if (name.includes("professional skill lab iv")) {
+          semester = 4;
+        }
+        // Mobile computing, Internet of Things
+        else if (name.includes("mobile computing")) {
+          semester = 5;
+        }
+        else if (name.includes("internet of things")) {
+          semester = 2;
+        }
+        else {
+          semester = "N/A";
+        }
+      }
+      
+      return {
+        _id: subject._id,
+        name: subject.name,
+        code: subject.subjectCode,
+        department: subject.department?.name || departmentName,
+        semester: semester,
+        totalLectures: subject.totalLectures,
+        type: "legacy",
+      };
+    });
 
     res.status(200).json({
       success: true,

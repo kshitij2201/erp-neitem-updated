@@ -7,7 +7,7 @@ async function testAPI() {
     const department = 'CSE & AIML'; // or try 'Civil', 'Electrical', etc.
     
     const response = await axios.get(
-      `https://backenderp.tarstech.in/api/faculty/students-attendance/department/${encodeURIComponent(department)}`,
+      `http://localhost:4000/api/faculty/students-attendance/department/${encodeURIComponent(department)}`,
       {
         headers: { 
           Authorization: `Bearer ${token}` 

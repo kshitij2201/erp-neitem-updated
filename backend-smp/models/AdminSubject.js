@@ -10,6 +10,10 @@ const adminSubjectSchema = new mongoose.Schema({
     ref: "AcademicDepartment", // Reference AdminDepartment
     required: true,
   },
+  semester: {
+    type: String,
+    required: true,
+  },
 });
 
 export default mongoose.model("AdminSubject", adminSubjectSchema);

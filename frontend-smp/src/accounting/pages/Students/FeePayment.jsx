@@ -18,7 +18,7 @@ export default function FeePayment() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const localRes = await axios.get(
-          "https://backenderp.tarstech.in/api/students",
+          "http://localhost:4000/api/students",
           {
             headers,
           }
@@ -51,7 +51,7 @@ export default function FeePayment() {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
             const feeRes = await axios.get(
-              `https://backenderp.tarstech.in/api/fee-heads/applicable/${student._id}`,
+              `http://localhost:4000/api/fee-heads/applicable/${student._id}`,
               { headers }
             );
             const heads = feeRes.data;

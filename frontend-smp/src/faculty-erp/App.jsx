@@ -49,6 +49,30 @@ const App = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Listen for user data updates from other components
+  useEffect(() => {
+    const handleUserDataUpdate = (event) => {
+      console.log('[App] User data updated, refreshing userData state...', event.detail);
+      const updatedUser = event.detail;
+      const userRole = normalizeRole(updatedUser.role || updatedUser.type);
+      
+      // Update the userData state with the fresh data
+      setUserData({ 
+        ...updatedUser, 
+        role: userRole, 
+        token: localStorage.getItem("authToken") 
+      });
+    };
+
+    // Listen for the custom userDataUpdated event
+    window.addEventListener('userDataUpdated', handleUserDataUpdate);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate);
+    };
+  }, []);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     const savedToken = localStorage.getItem("authToken");

@@ -50,13 +50,22 @@ export default function FacultyDashboard() {
   const [facultyToDelete, setFacultyToDelete] = useState(null);
   const [academicDepartments, setAcademicDepartments] = useState([]);
 
+  const [selectedFaculties, setSelectedFaculties] = useState(() => {
+    const saved = localStorage.getItem('selectedFaculties');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('selectedFaculties', JSON.stringify(selectedFaculties));
+  }, [selectedFaculties]);
+
   useEffect(() => {
     const fetchFaculties = async () => {
       try {
         setLoading(true);
         setError(null);
         const response = await fetch(
-          "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000",
+          "http://localhost:4000/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }
@@ -80,7 +89,7 @@ export default function FacultyDashboard() {
       } catch (err) {
         console.error("Fetch faculties error:", err);
         setError(
-          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at https://backenderp.tarstech.in.`
+          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at http://localhost:4000.`
         );
         setLoading(false);
       }
@@ -93,10 +102,10 @@ export default function FacultyDashboard() {
     const fetchHistory = async () => {
       try {
         const hodResponse = await fetch(
-          "https://backenderp.tarstech.in/api/faculty/hod-history"
+          "http://localhost:4000/api/faculty/hod-history"
         );
         const principalResponse = await fetch(
-          "https://backenderp.tarstech.in/api/faculty/principal-history"
+          "http://localhost:4000/api/faculty/principal-history"
         );
         if (hodResponse.ok) {
           const hodData = await hodResponse.json();
@@ -166,6 +175,19 @@ export default function FacultyDashboard() {
     return matchesSearch && matchesType && matchesDepartment;
   });
 
+  const handleSelectFaculty = (facultyId) => {
+    const isChecked = selectedFaculties.includes(facultyId);
+    const action = isChecked ? 'uncheck' : 'check';
+    const confirmed = window.confirm(`Are you sure you want to ${action} this faculty for showing in all departments?`);
+    if (confirmed) {
+      setSelectedFaculties(prev =>
+        prev.includes(facultyId)
+          ? prev.filter(id => id !== facultyId)
+          : [...prev, facultyId]
+      );
+    }
+  };
+
   const handleExpandFaculty = (id) => {
     if (expandedFaculty === id) {
       setExpandedFaculty(null);
@@ -195,7 +217,7 @@ export default function FacultyDashboard() {
   const handleDeleteFaculty = async (facultyId) => {
     try {
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/delete/${facultyId}`,
+        `http://localhost:4000/api/faculty/delete/${facultyId}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -286,7 +308,7 @@ export default function FacultyDashboard() {
     try {
       setFormLoading(true);
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/assign-${formData.role}`,
+        `http://localhost:4000/api/faculty/assign-${formData.role}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -385,7 +407,7 @@ export default function FacultyDashboard() {
     try {
       // Optionally, you can call a backend endpoint to remove HOD role
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/remove-hod/${facultyId}`,
+        `http://localhost:4000/api/faculty/remove-hod/${facultyId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -420,7 +442,7 @@ export default function FacultyDashboard() {
       if (!confirmRemoval) return;
 
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/remove-principal/${facultyId}`,
+        `http://localhost:4000/api/faculty/remove-principal/${facultyId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -570,7 +592,7 @@ export default function FacultyDashboard() {
                 </span>
               )}
               {faculty.department && (
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1 text-blue-600 font-semibold">
                   <Building className="h-3 w-3" />
                   {faculty.department}
                 </span>
@@ -1217,6 +1239,15 @@ export default function FacultyDashboard() {
                     faculty={faculty}
                     buttons={
                       <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedFaculties.includes(faculty._id)}
+                            onChange={() => handleSelectFaculty(faculty._id)}
+                            className="form-checkbox h-4 w-4 accent-blue-600 bg-white border border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-slate-700">Show all department</span>
+                        </div>
                         <button
                           onClick={() => handleViewDetails(faculty)}
                           className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs w-full"

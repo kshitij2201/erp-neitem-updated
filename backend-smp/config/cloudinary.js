@@ -88,4 +88,20 @@ export const uploadConductorDocuments = multer({
   }
 });
 
+// Multer upload configuration for student photos
+export const uploadStudentPhoto = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit for student photos
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only images
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only image files are allowed for student photos.'), false);
+    }
+  }
+});
+
 export default cloudinary;

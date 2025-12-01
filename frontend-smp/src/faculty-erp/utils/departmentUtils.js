@@ -70,7 +70,7 @@ export const fetchDepartments = async () => {
   try {
     const response = await fetch(
       `${
-        import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+        import.meta.env.VITE_API_URL || "http://localhost:4000"
       }/api/superadmin/departments`
     );
 
@@ -136,7 +136,7 @@ export const fetchFacultyDistribution = async () => {
     // Then get faculty data with authorization
     const response = await fetch(
       `${
-        import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+        import.meta.env.VITE_API_URL || "http://localhost:4000"
       }/api/faculty/faculties?limit=1000`,
       {
         headers: {
@@ -209,7 +209,7 @@ export const fetchStudentDistribution = async () => {
     // Then get student data with authorization
     const response = await fetch(
       `${
-        import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+        import.meta.env.VITE_API_URL || "http://localhost:4000"
       }/api/students?limit=1000`,
       {
         headers: {
@@ -285,7 +285,7 @@ export const fetchFacultyByDepartment = async (department) => {
 
     // Use the specific endpoint for fetching faculties by department - NO CORRECTIONS
     const url = `${
-      import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+      import.meta.env.VITE_API_URL || "http://localhost:4000"
     }/api/faculty/department/${encodeURIComponent(department)}`;
 
     console.log(`[FetchFacultyByDepartment] Fetching from URL: ${url}`);
@@ -365,7 +365,7 @@ export const fetchCCAssignmentsByDepartment = async (department) => {
 
     const response = await fetch(
       `${
-        import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+        import.meta.env.VITE_API_URL || "http://localhost:4000"
       }/api/faculty/cc-assignments?department=${encodeURIComponent(
         department
       )}`,
@@ -412,12 +412,14 @@ export const fetchCCAssignmentsByDepartment = async (department) => {
 export const fetchSubjects = async (department = null) => {
   try {
     let url = `${
-      import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+      import.meta.env.VITE_API_URL || "http://localhost:4000"
     }/api/subjects`;
 
-    // If department is provided, use the exact department name
-    if (department) {
-      url += `/by-department?department=${encodeURIComponent(department)}`;
+    // If department is provided, use the department-specific endpoint
+    if (department) { 
+      url = `${
+        import.meta.env.VITE_API_URL || "http://localhost:4000"
+      }/api/subjects/department/${encodeURIComponent(department)}`;
       console.log(
         "[FetchSubjects] Fetching subjects for exact department:",
         department
@@ -442,6 +444,7 @@ export const fetchSubjects = async (department = null) => {
     const subjectsData = Array.isArray(data.data) ? data.data : [];
 
     console.log("[FetchSubjects] Retrieved subjects:", subjectsData.length);
+    console.log("[FetchSubjects] Sample subject data:", subjectsData.slice(0, 2));
 
     return {
       success: true,

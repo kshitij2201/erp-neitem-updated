@@ -1714,21 +1714,40 @@ const getFacultySubjects = async (req, res) => {
         .status(400)
         .json({ success: false, message: "employeeId is required" });
     }
-    // Find the faculty by employeeId and populate the subjectsTaught field, and populate department inside subject
+    
+    // Find the faculty by employeeId and populate AdminSubject (which is what's currently stored)
     const faculty = await Faculty.findOne({ employeeId }).populate({
       path: "subjectsTaught",
-      populate: { path: "department", model: "Department" },
+      populate: [
+        { path: "department", model: "AcademicDepartment" }
+      ],
     });
+    
     if (!faculty) {
       return res.status(404).json({
         success: false,
         message: "Faculty not found",
       });
     }
+
+    // Transform AdminSubject data for frontend compatibility
+    const transformedSubjects = faculty.subjectsTaught.map(subject => {
+      if (subject && subject.name) {
+        return {
+          ...subject.toObject(),
+          // Keep semester field for display but also add year for backward compatibility
+          semester: subject.semester, // AdminSubject stores semester as string
+          year: subject.semester, // Also provide as year for compatibility
+          section: subject.section || "A", // Default section if not available
+        };
+      }
+      return subject;
+    });
+
     return res.status(200).json({
       success: true,
       message: "Subjects retrieved successfully",
-      data: faculty.subjectsTaught || [],
+      data: transformedSubjects || [],
     });
   } catch (error) {
     console.error("Get Faculty Subjects Error:", error);

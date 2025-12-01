@@ -50,6 +50,12 @@ router.post("/", async (req, res) => {
 
     const semester = new Semester({ number, subjects });
     await semester.save();
+
+    // Sync semester field in AdminSubject
+    if (subjects.length > 0) {
+      await Subject.updateMany({ _id: { $in: subjects } }, { semester: number });
+    }
+
     const populatedSemester = await Semester.findById(semester._id).populate(
       "subjects",
       "name department"
@@ -101,9 +107,21 @@ router.put("/:id", async (req, res) => {
       }
     }
 
+    const oldSubjects = semester.subjects;
     semester.number = number;
     semester.subjects = subjects;
     await semester.save();
+
+    // Sync semester field in AdminSubject
+    const removedSubjects = oldSubjects.filter(id => !subjects.includes(id));
+    const addedSubjects = subjects.filter(id => !oldSubjects.includes(id));
+    if (removedSubjects.length > 0) {
+      await Subject.updateMany({ _id: { $in: removedSubjects } }, { $unset: { semester: 1 } });
+    }
+    if (addedSubjects.length > 0) {
+      await Subject.updateMany({ _id: { $in: addedSubjects } }, { semester: number });
+    }
+
     const populatedSemester = await Semester.findById(semester._id).populate(
       "subjects",
       "name department"
@@ -137,10 +155,38 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
+    // Sync semester field in AdminSubject before deleting
+    await Subject.updateMany({ _id: { $in: semester.subjects } }, { $unset: { semester: 1 } });
+
     await semester.deleteOne();
     res.json({ message: "Semester deleted" });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete semester" });
+  }
+});
+
+// PATCH sync subjects semester
+router.patch("/sync-subjects", async (req, res) => {
+  try {
+    // Clear all semester fields first
+    await Subject.updateMany({}, { $unset: { semester: 1 } });
+
+    // Get all semesters
+    const semesters = await Semester.find().populate("subjects");
+
+    // Update each subject's semester based on current assignments
+    for (const sem of semesters) {
+      if (sem.subjects && sem.subjects.length > 0) {
+        await Subject.updateMany(
+          { _id: { $in: sem.subjects.map(s => s._id) } },
+          { semester: sem.number }
+        );
+      }
+    }
+
+    res.json({ message: "Subjects semester sync completed" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to sync subjects semester" });
   }
 });
 

@@ -78,7 +78,7 @@ export default function Dashboard() {
     };
 
     try {
-      const apiBase = import.meta.env.DEV ? "/api" : "https://backenderp.tarstech.in/api";
+      const apiBase = import.meta.env.DEV ? "/api" : "http://localhost:4000/api";
 
       // Try to read fresh cache
       try {

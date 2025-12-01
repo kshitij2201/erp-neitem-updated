@@ -19,7 +19,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 const api = axios.create({
-  baseURL: "https://backenderp.tarstech.in/api",
+  baseURL: "http://localhost:4000/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -59,6 +59,20 @@ export default function MarkAttendance() {
     };
   }, []);
 
+  // Function to get semester from subject
+  const getSemester = (subject) => {
+    if (subject.semester) return subject.semester;
+    if (subject.year) return subject.year;
+    // For minor subjects, extract from name like "Minor-I"
+    const match = subject.name?.match(/Minor-([IVXLCDM]+)/i);
+    if (match) {
+      const roman = match[1].toUpperCase();
+      const romanToNum = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8 };
+      return romanToNum[roman] || roman;
+    }
+    return "N/A";
+  };
+
   const [subjects, setSubjects] = useState([]);
   const [expandedSubject, setExpandedSubject] = useState("");
   const [students, setStudents] = useState([]);
@@ -71,6 +85,7 @@ export default function MarkAttendance() {
   const [studentNotes, setStudentNotes] = useState({});
   const [subjectDetails, setSubjectDetails] = useState(null);
   const [loadingSubjectDetails, setLoadingSubjectDetails] = useState(false);
+  const [studentMessage, setStudentMessage] = useState("");
 
   // Filter states
   const [queryType, setQueryType] = useState("day");
@@ -248,12 +263,26 @@ export default function MarkAttendance() {
     const userData = JSON.parse(userDataStr);
     const employeeId = userData.employeeId;
 
+    // Get current enrolled students' IDs to filter attendance data
+    // Only proceed if students are loaded
+    if (!students || students.length === 0) {
+      console.log("No students loaded for filtering");
+      setFilteredAttendance([]);
+      setFilteredTotalPages(1);
+      setFilterLoading(false);
+      return;
+    }
+    
+    const currentStudentIds = students.map(student => student._id);
+    console.log("Filtering attendance for students:", currentStudentIds); // Debug log
+
     let params = {
       facultyId: employeeId,
       subjectId: expandedSubject,
       type: queryType,
       page: 1,
       limit: entriesPerPage,
+      studentIds: currentStudentIds.join(','), // Add student IDs filter
     };
     if (queryType === "day") params.date = queryDate;
     if (queryType === "week") params.from = queryFrom;
@@ -272,11 +301,15 @@ export default function MarkAttendance() {
       console.log("Attendance query response:", res.data); // Debug log
 
       if (res.data.success) {
-        setFilteredAttendance(res.data.data || []);
+        // Filter the results on frontend as backup to ensure only current students' data is shown
+        const filteredData = (res.data.data || []).filter(log => 
+          currentStudentIds.includes(log.studentId || log.student?._id)
+        );
+        setFilteredAttendance(filteredData);
         setFilteredTotalPages(res.data.pages || 1);
 
-        if (res.data.data && res.data.data.length === 0) {
-          console.log("No attendance records found for the selected filters.");
+        if (filteredData.length === 0) {
+          console.log("No attendance records found for the current enrolled students with selected filters.");
         }
       } else {
         setFilteredAttendance([]);
@@ -312,12 +345,16 @@ export default function MarkAttendance() {
       const userData = JSON.parse(userDataStr);
       const employeeId = userData.employeeId;
 
+      // Get current enrolled students' IDs to filter attendance data
+      const currentStudentIds = students.map(student => student._id);
+
       let params = {
         facultyId: employeeId,
         subjectId: expandedSubject,
         type: queryType,
         page: filteredPage - 1,
         limit: entriesPerPage,
+        studentIds: currentStudentIds.join(','), // Add student IDs filter
       };
       if (queryType === "day") params.date = queryDate;
       if (queryType === "week") params.from = queryFrom;
@@ -333,7 +370,11 @@ export default function MarkAttendance() {
       try {
         const res = await api.get("/faculty/attendance/query", { params });
         if (res.data.success) {
-          setFilteredAttendance(res.data.data || []);
+          // Filter the results on frontend as backup
+          const filteredData = (res.data.data || []).filter(log => 
+            currentStudentIds.includes(log.studentId || log.student?._id)
+          );
+          setFilteredAttendance(filteredData);
           setFilteredPage(filteredPage - 1);
         }
       } catch (e) {
@@ -353,12 +394,16 @@ export default function MarkAttendance() {
       const userData = JSON.parse(userDataStr);
       const employeeId = userData.employeeId;
 
+      // Get current enrolled students' IDs to filter attendance data
+      const currentStudentIds = students.map(student => student._id);
+
       let params = {
         facultyId: employeeId,
         subjectId: expandedSubject,
         type: queryType,
         page: filteredPage + 1,
         limit: entriesPerPage,
+        studentIds: currentStudentIds.join(','), // Add student IDs filter
       };
       if (queryType === "day") params.date = queryDate;
       if (queryType === "week") params.from = queryFrom;
@@ -374,7 +419,11 @@ export default function MarkAttendance() {
       try {
         const res = await api.get("/faculty/attendance/query", { params });
         if (res.data.success) {
-          setFilteredAttendance(res.data.data || []);
+          // Filter the results on frontend as backup
+          const filteredData = (res.data.data || []).filter(log => 
+            currentStudentIds.includes(log.studentId || log.student?._id)
+          );
+          setFilteredAttendance(filteredData);
           setFilteredPage(filteredPage + 1);
         }
       } catch (e) {
@@ -410,6 +459,11 @@ export default function MarkAttendance() {
       });
 
       if (response.data.success) {
+        console.log("Subjects data received:", response.data.data);
+        // Log first subject to check structure
+        if (response.data.data && response.data.data.length > 0) {
+          console.log("First subject structure:", response.data.data[0]);
+        }
         setSubjects(response.data.data || []);
       } else {
         setError("Failed to load subjects");
@@ -438,11 +492,13 @@ export default function MarkAttendance() {
       if (response.data.success) {
         const studentsData = response.data.data || [];
         setStudents(studentsData);
+        setStudentMessage(response.data.message || "");
 
         // Fetch attendance stats for each student
         fetchAttendanceStats(studentsData, subjectId);
       } else {
         setError("Failed to load students for this subject");
+        setStudentMessage("");
       }
     } catch (err) {
       console.error("Error fetching students:", err);
@@ -627,28 +683,56 @@ export default function MarkAttendance() {
     if (!logsRef.current) return;
 
     try {
-      logsRef.current.classList.add("report-export");
+      // Import xlsx library
+      const XLSX = await import('xlsx');
 
-      const canvas = await html2canvas(logsRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: false,
-        backgroundColor: "#ffffff",
-        windowWidth: logsRef.current.scrollWidth,
-        windowHeight: logsRef.current.scrollHeight,
-      });
+      // Prepare data for Excel
+      const excelData = filteredAttendance.map(log => ({
+        'Student Name': log.student?.firstName && log.student?.lastName
+          ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+          : log.student?.name || log.studentId || "Unknown Student",
+        'Date': log.date ? new Date(log.date).toLocaleDateString() : "N/A",
+        'Time': log.createdAt
+          ? new Date(log.createdAt).toLocaleTimeString()
+          : log.markedAt
+          ? new Date(log.markedAt).toLocaleTimeString()
+          : "N/A",
+        'Status': log.status || "N/A",
+        'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
+        'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
+        'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
+        'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+      }));
 
-      const link = document.createElement("a");
-      link.download = `Attendance_Report_${new Date()
-        .toISOString()
-        .slice(0, 10)}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-      logsRef.current.classList.remove("report-export");
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 25 }, // Student Name
+        { wch: 12 }, // Date
+        { wch: 10 }, // Time
+        { wch: 8 },  // Status
+        { wch: 20 }, // Subject
+        { wch: 15 }, // Department
+        { wch: 10 }, // Semester
+        { wch: 8 }   // Section
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
+
+      // Generate filename with current date
+      const fileName = `Attendance_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      // Write file and trigger download
+      XLSX.writeFile(wb, fileName);
+
     } catch (err) {
-      alert("Image export failed: " + err);
-      logsRef.current.classList.remove("report-export");
+      console.error("Excel export error:", err);
+      alert("Excel export failed: " + (err.message || "Unknown error occurred"));
     }
   };
 
@@ -656,15 +740,67 @@ export default function MarkAttendance() {
     if (!logsRef.current) return;
 
     try {
-      logsRef.current.classList.add("report-export");
+      // Create a clean HTML table for PDF generation
+      const cleanTableHTML = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background: white;">
+          <h2 style="color: #333; margin-bottom: 20px;">Attendance Report</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: #f5f5f5;">
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Student</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Date</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Time</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredAttendance.map(log => `
+                <tr>
+                  <td style="border: 1px solid #ddd; padding: 8px;">
+                    ${log.student?.firstName && log.student?.lastName
+                      ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+                      : log.student?.name || log.studentId || "Unknown Student"}
+                  </td>
+                  <td style="border: 1px solid #ddd; padding: 8px;">
+                    ${log.date ? new Date(log.date).toLocaleDateString() : "N/A"}
+                  </td>
+                  <td style="border: 1px solid #ddd; padding: 8px;">
+                    ${log.createdAt
+                      ? new Date(log.createdAt).toLocaleTimeString()
+                      : log.markedAt
+                      ? new Date(log.markedAt).toLocaleTimeString()
+                      : "N/A"}
+                  </td>
+                  <td style="border: 1px solid #ddd; padding: 8px;">
+                    <span style="padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; ${log.status === "present" ? "background: #dcfce7; color: #166534;" : "background: #fee2e2; color: #991b1b;"}">
+                      ${log.status}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
 
-      const canvas = await html2canvas(logsRef.current, {
+      // Create a temporary container with clean HTML
+      const tempContainer = document.createElement('div');
+      tempContainer.innerHTML = cleanTableHTML;
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '-9999px';
+      document.body.appendChild(tempContainer);
+
+      const canvas = await html2canvas(tempContainer, {
         scale: 1.5,
-        useCORS: true,
-        logging: false,
-        allowTaint: false,
+        useCORS: false,
+        allowTaint: true,
         backgroundColor: "#ffffff",
+        logging: false
       });
+
+      // Remove temporary container
+      document.body.removeChild(tempContainer);
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF();
@@ -687,10 +823,9 @@ export default function MarkAttendance() {
       pdf.save(
         `Attendance_Report_${new Date().toISOString().slice(0, 10)}.pdf`
       );
-      logsRef.current.classList.remove("report-export");
     } catch (err) {
-      alert("PDF export failed: " + err);
-      logsRef.current.classList.remove("report-export");
+      console.error("PDF export error:", err);
+      alert("PDF export failed: " + (err.message || "Unknown error occurred"));
     }
   };
 
@@ -814,6 +949,7 @@ export default function MarkAttendance() {
                       expandedSubject === subject._id ? "" : subject._id
                     );
                     setSelectedStudents([]);
+                    setStudentMessage("");
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -822,8 +958,8 @@ export default function MarkAttendance() {
                         {subject.name}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {subject.department?.name || "Department N/A"} | Year{" "}
-                        {subject.year} | Section {subject.section}
+                        {subject.department?.name || "Department"} | Sem{" "}
+                        {getSemester(subject)} | Section {subject.section || "A"}
                       </p>
                     </div>
                     <div
@@ -864,8 +1000,8 @@ export default function MarkAttendance() {
                   <div className="mt-2 text-sm text-gray-600">
                     <span className="font-medium">Department:</span>{" "}
                     {subjectDetails.department} |
-                    <span className="font-medium"> Year:</span>{" "}
-                    {subjectDetails.year} |
+                    <span className="font-medium"> Semester:</span>{" "}
+                    {getSemester(subjects.find(s => s._id === expandedSubject))} |
                     <span className="font-medium"> Section:</span>{" "}
                     {subjectDetails.section}
                     {subjectDetails.totalStudents > 0 && (
@@ -991,7 +1127,7 @@ export default function MarkAttendance() {
                       Department
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Year/Section
+                      Year/Sem/Section
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Monthly %
@@ -1038,7 +1174,7 @@ export default function MarkAttendance() {
                           {student.department?.name || "N/A"}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
-                          {student.year} / {student.section}
+                          {student.year} / Sem {student.semester?.number || 'N/A'} / {student.section}
                         </td>
                         <td className="px-6 py-4">
                           {stats.monthly ? (
@@ -1198,7 +1334,7 @@ export default function MarkAttendance() {
                   </p>
                 ) : (
                   <p className="text-gray-500">
-                    No students are enrolled in this subject.
+                    {studentMessage || "No students are enrolled in this subject."}
                   </p>
                 )}
               </div>
@@ -1387,6 +1523,8 @@ export default function MarkAttendance() {
                   disabled={
                     filterLoading ||
                     !expandedSubject ||
+                    !students ||
+                    students.length === 0 ||
                     (queryType === "day" && !queryDate) ||
                     (queryType === "week" && !queryFrom) ||
                     (queryType === "month" && (!queryMonth || !queryYear)) ||
@@ -1474,7 +1612,7 @@ export default function MarkAttendance() {
                       </div>
                     ) : (
                       <span>
-                        No attendance has been marked for the selected criteria.
+                        No attendance records found for the currently enrolled students with the selected criteria.
                         Try marking attendance first or adjusting your filters.
                       </span>
                     )}
@@ -1534,7 +1672,7 @@ export default function MarkAttendance() {
                 onClick={handleDownloadReport}
               >
                 <Download className="h-4 w-4" />
-                Download Report
+                Download Excel
               </button>
               <button
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"

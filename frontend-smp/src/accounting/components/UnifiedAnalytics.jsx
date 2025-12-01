@@ -83,7 +83,7 @@ export default function UnifiedAnalytics({ analyticsData = {}, revenueData = {} 
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
-      const apiBase = import.meta.env.DEV ? "/api" : "https://backenderp.tarstech.in/api";
+      const apiBase = import.meta.env.DEV ? "/api" : "http://localhost:4000/api";
       
       const studentsResponse = await fetch(`${apiBase}/students`, { headers }).catch(() => null);
       const studentData = studentsResponse && studentsResponse.ok ? await studentsResponse.json() : [];

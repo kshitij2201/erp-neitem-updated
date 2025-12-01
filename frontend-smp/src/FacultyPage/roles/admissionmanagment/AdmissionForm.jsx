@@ -141,7 +141,7 @@ function AdmissionForm() {
         }
 
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/superadmin/castes",
+          "http://localhost:4000/api/superadmin/castes",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -175,25 +175,25 @@ function AdmissionForm() {
 
         const [streamRes, departmentRes, semesterRes, subjectRes] =
           await Promise.all([
-            axios.get("https://backenderp.tarstech.in/api/superadmin/streams", {
+            axios.get("http://localhost:4000/api/superadmin/streams", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
             axios.get(
-              "https://backenderp.tarstech.in/api/superadmin/departments",
+              "http://localhost:4000/api/superadmin/departments",
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
                 },
               }
             ),
-            axios.get("https://backenderp.tarstech.in/api/superadmin/semesters", {
+            axios.get("http://localhost:4000/api/superadmin/semesters", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
-            axios.get("https://backenderp.tarstech.in/api/superadmin/subjects", {
+            axios.get("http://localhost:4000/api/superadmin/subjects", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -266,7 +266,7 @@ function AdmissionForm() {
           }
 
           const res = await axios.get(
-            `https://backenderp.tarstech.in/api/students/subjects/${formData.semester}/${formData.department}`,
+            `http://localhost:4000/api/superadmin/students/subjects/${formData.semester}/${formData.department}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -488,14 +488,14 @@ function AdmissionForm() {
 
       if (editingId) {
         await axios.put(
-          `https://backenderp.tarstech.in/api/students/${editingId}`,
+          `http://localhost:4000/api/superadmin/students/${editingId}`,
           formPayload,
           { headers }
         );
         alert("Student updated successfully!");
       } else {
         await axios.post(
-          "https://backenderp.tarstech.in/api/students",
+          "http://localhost:4000/api/students",
           formPayload,
           {
             headers,
@@ -694,11 +694,60 @@ function AdmissionForm() {
 
             {/* Subjects Checkbox Group */}
             <div className="mb-4 md:col-span-2 animate-fade-in-up">
-              <label
-                className={`block text-sm font-medium ${currentTheme.textSecondary} mb-1`}
-              >
-                Subjects <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  className={`block text-sm font-medium ${currentTheme.textSecondary}`}
+                >
+                  Subjects <span className="text-red-500">*</span>
+                </label>
+                {formData.stream &&
+                 formData.department &&
+                 formData.semester &&
+                 (
+                   combinedData
+                     .find((s) => s._id === formData.stream)
+                     ?.departments.find((d) => d._id === formData.department)
+                     ?.subjects || []
+                 ).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const availableSubjects = combinedData
+                        .find((s) => s._id === formData.stream)
+                        ?.departments.find((d) => d._id === formData.department)
+                        ?.subjects || [];
+                      const allSelected = availableSubjects.every(sub =>
+                        Array.isArray(formData.subjects) && formData.subjects.includes(sub._id)
+                      );
+                      if (allSelected) {
+                        // Deselect all
+                        setFormData((prev) => ({
+                          ...prev,
+                          subjects: [],
+                        }));
+                      } else {
+                        // Select all
+                        setFormData((prev) => ({
+                          ...prev,
+                          subjects: availableSubjects.map(sub => sub._id),
+                        }));
+                      }
+                    }}
+                    className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                  >
+                    {(() => {
+                      const availableSubjects = combinedData
+                        .find((s) => s._id === formData.stream)
+                        ?.departments.find((d) => d._id === formData.department)
+                        ?.subjects || [];
+                      const allSelected = availableSubjects.every(sub =>
+                        Array.isArray(formData.subjects) && formData.subjects.includes(sub._id)
+                      );
+                      return allSelected ? "Deselect All" : "Select All";
+                    })()}
+                  </button>
+                )}
+              </div>
               <div
                 className={`p-4 ${currentTheme.cardBorder} rounded-xl bg-gray-800 max-h-[12rem] overflow-y-auto transition-all`}
               >

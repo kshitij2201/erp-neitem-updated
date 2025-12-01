@@ -108,7 +108,7 @@ const facultySchema = new mongoose.Schema({
   subjectsTaught: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "AdminSubject",
+      ref: "AdminSubject", // Keep as AdminSubject for backward compatibility
     },
   ],
   technicalSkills: {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_URL = "https://backenderp.tarstech.in";
+const API_URL = "http://localhost:4000";
 
 const Receipts = () => {
   const [receipts, setReceipts] = useState([]);
@@ -1111,7 +1111,7 @@ const Receipts = () => {
 
       try {
         const deletionLogResponse = await fetch(
-          `https://backenderp.tarstech.in/api/ledger/log-deletion`,
+          `http://localhost:4000/api/ledger/log-deletion`,
           {
             method: "POST",
             headers: {

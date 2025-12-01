@@ -31,7 +31,7 @@ const StudentList = () => {
       
       // First try to get just one page to see if total is provided
       const testResponse = await axios.get(
-        "https://backenderp.tarstech.in/api/students",
+        "http://localhost:4000/api/students",
         {
           params: {
             page: 1,
@@ -54,7 +54,7 @@ const StudentList = () => {
         
         // If no total provided, try to estimate by getting a larger sample
         const sampleResponse = await axios.get(
-          "https://backenderp.tarstech.in/api/students",
+          "http://localhost:4000/api/students",
           {
             params: {
               page: 1,
@@ -100,7 +100,7 @@ const StudentList = () => {
 
       // First try the main API with includeRenewed parameter
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+        `http://localhost:4000/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId,
@@ -138,7 +138,7 @@ const StudentList = () => {
         );
         try {
           const altResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+            `http://localhost:4000/api/issues/borrowed-books`,
             {
               params: {
                 [`${borrowerType}Id`]: borrowerId,
@@ -190,7 +190,7 @@ const StudentList = () => {
           );
 
           const historyResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/issues/history`,
+            `http://localhost:4000/api/issues/history`,
             {
               params: historyParams,
             }
@@ -272,7 +272,7 @@ const StudentList = () => {
           // Try alternative history API call
           try {
             const altHistoryResponse = await axios.get(
-              `https://backenderp.tarstech.in/api/issues/history`,
+              `http://localhost:4000/api/issues/history`,
               {
                 params: {
                   [`${borrowerType}Id`]: borrowerId,
@@ -443,7 +443,7 @@ const StudentList = () => {
 
       // First, get ALL students from the API (server doesn't seem to support pagination)
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/students",
+        "http://localhost:4000/api/students",
         {
           params: {
             page: 1,

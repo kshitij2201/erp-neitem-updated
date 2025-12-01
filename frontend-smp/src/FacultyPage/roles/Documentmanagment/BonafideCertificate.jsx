@@ -64,7 +64,7 @@ const BC = ({ studentId, studentData }) => {
 
         {/* Main Content */}
         <div className="mb-12">
-          <p className="text-base text-gray-800 leading-relaxed text-justify">
+          <p className="text-base text-gray-800 leading-relaxed" style={{ textAlign: 'justify', textJustify: 'inter-word' }}>
             Certified that {studentTitle} <span className="font-semibold">{formData.studentName}</span> is a bonafide student of this college studying in{' '}
             <span className="font-semibold">{formData.course}</span> {formData.year} Year in {formData.semesterNumber} Sem in the session{' '}
             <span className="font-semibold">{formData.session}</span>. According to our college record {hisHer} date of birth is{' '}

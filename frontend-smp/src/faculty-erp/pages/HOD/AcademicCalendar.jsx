@@ -33,12 +33,81 @@ const AcademicCalendar = ({ userData }) => {
   });
   const [subjects, setSubjects] = useState([]);
   const [faculty, setFaculty] = useState([]);
+  const [currentUserData, setCurrentUserData] = useState(userData);
 
   useEffect(() => {
     fetchCalendars();
     fetchSubjects();
     fetchFaculty();
   }, [filters]);
+
+  // Keep local user data in sync with prop
+  useEffect(() => {
+    setCurrentUserData(userData);
+  }, [userData]);
+
+  // Function to refresh user data from server
+  const refreshCurrentUserData = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      console.log("[AcademicCalendar] Fetching fresh user profile data...");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/auth/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const freshUserData = await response.json();
+        const userDataToSet = freshUserData.user || freshUserData;
+        console.log("[AcademicCalendar] Fresh user data received:", userDataToSet);
+        
+        // Update local state with fresh data
+        setCurrentUserData(userDataToSet);
+        
+        // Also update localStorage to keep it in sync
+        localStorage.setItem("user", JSON.stringify(userDataToSet));
+        
+        return userDataToSet;
+      }
+    } catch (error) {
+      console.error("[AcademicCalendar] Error fetching fresh user data:", error);
+    }
+  };
+
+  // Listen for user data updates (e.g., after subject assignment)
+  useEffect(() => {
+    const handleUserDataUpdate = (event) => {
+      console.log('[AcademicCalendar] User data updated, refreshing data...', event.detail);
+      
+      // Update local user data state with fresh data
+      const updatedUserData = event.detail;
+      setCurrentUserData(updatedUserData);
+      
+      // Refetch both subjects and calendars to ensure we have the latest data
+      fetchSubjects();
+      fetchCalendars(); // Also refetch calendars to update the view immediately
+    };
+
+    // Listen for the custom userDataUpdated event
+    window.addEventListener('userDataUpdated', handleUserDataUpdate);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate);
+    };
+  }, []);
+
+  // Refresh user data on component mount to ensure fresh subject assignments
+  useEffect(() => {
+    refreshCurrentUserData();
+  }, []);
 
   const fetchCalendars = async () => {
     try {
@@ -51,22 +120,22 @@ const AcademicCalendar = ({ userData }) => {
       });
 
       // Role-based filtering logic
-      if (userData?.role === "hod") {
+      if (currentUserData?.role === "hod") {
         // HOD should see all calendars from their department (CC Portal, Staff Portal, etc.)
-        if (userData.department) {
-          queryParams.append("department", userData.department);
+        if (currentUserData.department) {
+          queryParams.append("department", currentUserData.department);
         }
         // Don't add createdBy filter for HOD - they should see all calendars
-      } else if (userData?.role === "teaching_staff" || userData?.role === "cc" || userData?._id) {
+      } else if (currentUserData?.role === "teaching_staff" || currentUserData?.role === "cc" || currentUserData?._id) {
         // For staff and CC, show only their own created calendars
-        queryParams.append("createdBy", userData._id);
+        queryParams.append("createdBy", currentUserData._id);
       }
 
       // Add timestamp to avoid browser caching
       queryParams.append("t", Date.now());
 
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/academic-calendar?${queryParams}`,
+        `http://localhost:4000/api/academic-calendar?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -89,7 +158,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/subjects/department/${userData.department}`,
+        `http://localhost:4000/api/subjects/department/${userData.department}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -109,7 +178,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/department/${userData.department}`,
+        `http://localhost:4000/api/faculty/department/${userData.department}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -130,7 +199,7 @@ const AcademicCalendar = ({ userData }) => {
       try {
         const token = localStorage.getItem("authToken");
         const response = await fetch(
-          `https://backenderp.tarstech.in/api/academic-calendar/${id}`,
+          `http://localhost:4000/api/academic-calendar/${id}`,
           {
             method: "DELETE",
             headers: {
@@ -152,7 +221,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/academic-calendar/${id}/publish`,
+        `http://localhost:4000/api/academic-calendar/${id}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -184,20 +253,20 @@ const AcademicCalendar = ({ userData }) => {
     // Only the creator can edit their calendar.
     // Handle different shapes: calendar.createdBy may be an id string or an object.
     const creatorId = calendar?.createdBy?._id || calendar?.createdBy || calendar?.createdById;
-    return !!(creatorId && userData?._id && String(creatorId) === String(userData._id));
+    return !!(creatorId && currentUserData?._id && String(creatorId) === String(currentUserData._id));
   };
 
   const canDeleteCalendar = (calendar) => {
     const creatorId = calendar?.createdBy?._id || calendar?.createdBy || calendar?.createdById;
-    return !!(creatorId && userData?._id && String(creatorId) === String(userData._id));
+    return !!(creatorId && currentUserData?._id && String(creatorId) === String(currentUserData._id));
   };
 
   const canPublishCalendar = (calendar) => {
     // HOD (case-insensitive) can publish any calendar in their department.
     // Creator can also publish their own calendar.
-    const isHod = !!(userData?.role && String(userData.role).toLowerCase() === "hod");
+    const isHod = !!(currentUserData?.role && String(currentUserData.role).toLowerCase() === "hod");
     const creatorId = calendar?.createdBy?._id || calendar?.createdBy || calendar?.createdById;
-    const isCreator = !!(creatorId && userData?._id && String(creatorId) === String(userData._id));
+    const isCreator = !!(creatorId && currentUserData?._id && String(creatorId) === String(currentUserData._id));
     return isHod || isCreator;
   };
 
@@ -261,6 +330,59 @@ const AcademicCalendar = ({ userData }) => {
     } catch (e) {
       return calendar.progressPercentage || 0;
     }
+  };
+
+  // Function to check if user should see a teaching plan
+  const isUserAssignedToSubject = (subjectId) => {
+    if (!currentUserData || !subjectId) {
+      console.log('[AcademicCalendar] Missing user data or subject ID:', { currentUserData: !!currentUserData, subjectId });
+      return false;
+    }
+    
+    // HODs can see ALL teaching plans in their department
+    const isHod = String(currentUserData?.role || "").toLowerCase() === "hod";
+    if (isHod) {
+      console.log('[AcademicCalendar] HOD can see all teaching plans');
+      return true;
+    }
+    
+    // For faculty, check if they are assigned to the subject
+    // Try multiple possible fields where subjects might be stored
+    const userSubjects = (
+      currentUserData.subjects || 
+      currentUserData.subjectsTaught || 
+      currentUserData.assignedSubjects ||
+      []
+    );
+    
+    // Handle different data structures - subjects could be objects or IDs
+    const assignedSubjectIds = userSubjects.map(s => {
+      if (typeof s === 'string') return s;
+      if (typeof s === 'object' && s !== null) {
+        return s._id || s.id || s.subjectId || String(s);
+      }
+      return String(s);
+    });
+    
+    const normalizedSubjectId = String(subjectId);
+    const isAssigned = assignedSubjectIds.includes(normalizedSubjectId);
+    
+    console.log('[AcademicCalendar] Faculty subject assignment check:', {
+      subjectId: normalizedSubjectId,
+      userSubjects,
+      assignedSubjectIds,
+      isAssigned,
+      userRole: currentUserData?.role,
+      currentUserData: {
+        id: currentUserData._id,
+        name: currentUserData.name,
+        subjects: currentUserData.subjects?.length || 0,
+        subjectsTaught: currentUserData.subjectsTaught?.length || 0,
+        assignedSubjects: currentUserData.assignedSubjects?.length || 0
+      }
+    });
+    
+    return isAssigned;
   };
 
   if (loading) {
@@ -358,7 +480,9 @@ const AcademicCalendar = ({ userData }) => {
 
       {/* Calendar Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {calendars.map((calendar) => (
+        {calendars
+          .filter(calendar => isUserAssignedToSubject(calendar.subjectId?._id || calendar.subjectId))
+          .map((calendar) => (
           <div
             key={calendar._id}
             className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
@@ -496,7 +620,7 @@ const AcademicCalendar = ({ userData }) => {
         ))}
       </div>
 
-      {calendars.length === 0 && (
+      {calendars.filter(calendar => isUserAssignedToSubject(calendar.subjectId?._id || calendar.subjectId)).length === 0 && (
         <div className="text-center py-12">
           <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -526,7 +650,7 @@ const AcademicCalendar = ({ userData }) => {
           }}
           subjects={subjects}
           faculty={faculty}
-          userData={userData}
+          userData={currentUserData}
         />
       )}
 
@@ -546,7 +670,7 @@ const AcademicCalendar = ({ userData }) => {
           }}
           subjects={subjects}
           faculty={faculty}
-          userData={userData}
+          userData={currentUserData}
         />
       )}
 
@@ -614,7 +738,7 @@ const CreateCalendarModal = ({
       setLoadingFaculties(true);
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/subject/${subjectId}`,
+        `http://localhost:4000/api/faculty/subject/${subjectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -655,7 +779,7 @@ const CreateCalendarModal = ({
       };
 
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/academic-calendar",
+        "http://localhost:4000/api/academic-calendar",
         {
           method: "POST",
           headers: {
@@ -797,11 +921,39 @@ const CreateCalendarModal = ({
                 required
               >
                 <option value="">Select Subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject._id} value={subject._id}>
-                    {subject.name} ({subject.code})
-                  </option>
-                ))}
+                {subjects.map((subject) => {
+                  // Debug: Log userData and subject details
+                  console.log('CreateModal - userData:', userData);
+                  console.log('CreateModal - subject:', subject);
+                  console.log('CreateModal - userData.subjects:', userData?.subjects);
+                  console.log('CreateModal - userData.subjectsTaught:', userData?.subjectsTaught);
+                  
+                  // Role-based subject access:
+                  const isHod = String(userData?.role || "").toLowerCase() === "hod";
+                  
+                  // HODs can see all subjects, faculty only see assigned subjects
+                  const userSubjectsArray = userData?.subjectsTaught || userData?.subjects || [];
+                  const userSubjects = userSubjectsArray.map((s) => String(s._id || s));
+                  const isAssignedToUser = isHod || userSubjects.includes(String(subject._id));
+                  
+                  console.log('CreateModal - isHod:', isHod);
+                  console.log('CreateModal - userSubjectsArray:', userSubjectsArray);
+                  console.log('CreateModal - userSubjects (IDs):', userSubjects);
+                  console.log('CreateModal - current subject ID:', String(subject._id));
+                  console.log('CreateModal - isAssignedToUser:', isAssignedToUser);
+
+                  return (
+                    <option
+                      key={subject._id}
+                      value={subject._id}
+                      disabled={!isAssignedToUser}
+                      className={!isAssignedToUser ? "text-gray-400" : ""}
+                    >
+                      {subject.name} ({subject.code})
+                      {!isAssignedToUser && " - Not assigned to you"}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -1115,7 +1267,7 @@ const EditCalendarModal = ({
       setLoadingFaculties(true);
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/faculty/subject/${subjectId}`,
+        `http://localhost:4000/api/faculty/subject/${subjectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1156,7 +1308,7 @@ const EditCalendarModal = ({
       };
 
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}`,
+        `http://localhost:4000/api/academic-calendar/${calendar._id}`,
         {
           method: "PUT",
           headers: {
@@ -1291,11 +1443,36 @@ const EditCalendarModal = ({
                 required
               >
                 <option value="">Select Subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject._id} value={subject._id}>
-                    {subject.name} ({subject.code})
-                  </option>
-                ))}
+                {subjects.map((subject) => {
+                  // Debug: Log userData and subject details
+                  console.log('EditModal - userData:', userData);
+                  console.log('EditModal - subject:', subject);
+                  console.log('EditModal - userData.subjects:', userData?.subjects);
+                  console.log('EditModal - userData.subjectsTaught:', userData?.subjectsTaught);
+                  
+                  // Role-based subject access:
+                  const isHod = String(userData?.role || "").toLowerCase() === "hod";
+                  
+                  // HODs can see all subjects, faculty only see assigned subjects
+                  const userSubjectsArray = userData?.subjectsTaught || userData?.subjects || [];
+                  const userSubjects = userSubjectsArray.map((s) => String(s._id || s));
+                  const isAssignedToUser = isHod || userSubjects.includes(String(subject._id));
+                  
+                  console.log('EditModal - isHod:', isHod);
+                  console.log('EditModal - userSubjects:', userSubjects, 'isAssignedToUser:', isAssignedToUser);
+
+                  return (
+                    <option
+                      key={subject._id}
+                      value={subject._id}
+                      disabled={!isAssignedToUser}
+                      className={!isAssignedToUser ? "text-gray-400" : ""}
+                    >
+                      {subject.name} ({subject.code})
+                      {!isAssignedToUser && " - Not assigned to you"}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -1524,7 +1701,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}/publish`,
+        `http://localhost:4000/api/academic-calendar/${calendar._id}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -1555,7 +1732,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}/topics`,
+        `http://localhost:4000/api/academic-calendar/${calendar._id}/topics`,
         {
           method: "POST",
           headers: {
@@ -1596,7 +1773,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/academic-calendar/${calendar._id}/topics/${topicId}`,
+        `http://localhost:4000/api/academic-calendar/${calendar._id}/topics/${topicId}`,
         {
           method: "PATCH",
           headers: {
