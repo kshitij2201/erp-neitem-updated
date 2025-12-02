@@ -37,7 +37,7 @@ import {
 } from "recharts";
 import axios from "axios";
 
-const API_URL = "https://erpbackend.tarstech.in/api/books";
+const API_URL = "http://erpbackend.tarstech.in/api/books";
 
 const COLORS = [
   "#6366f1",
@@ -165,7 +165,7 @@ const Analytics = () => {
 
         // Also fetch issued books data
         const issuesResponse = await fetch(
-          "https://erpbackend.tarstech.in/api/issues/borrowed-books/all"
+          "http://erpbackend.tarstech.in/api/issues/borrowed-books/all"
         );
 
         if (response.ok) {
@@ -422,7 +422,7 @@ const Analytics = () => {
       const refreshIssueData = async () => {
         try {
           const response = await fetch(
-            "https://erpbackend.tarstech.in/api/issues/borrowed-books/all"
+            "http://erpbackend.tarstech.in/api/issues/borrowed-books/all"
           );
           if (response.ok) {
             const data = await response.json();
@@ -453,7 +453,7 @@ const Analytics = () => {
       const refreshIssueData = async () => {
         try {
           const response = await fetch(
-            "https://erpbackend.tarstech.in/api/issues/borrowed-books/all"
+            "http://erpbackend.tarstech.in/api/issues/borrowed-books/all"
           );
           if (response.ok) {
             const data = await response.json();

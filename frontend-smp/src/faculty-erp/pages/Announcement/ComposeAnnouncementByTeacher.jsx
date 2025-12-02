@@ -134,7 +134,7 @@ const AnnouncementForm = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "https://erpbackend.tarstech.in/api/auth/profile",
+            "http://erpbackend.tarstech.in/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -225,7 +225,7 @@ const AnnouncementForm = () => {
       console.log('Sending announcement data:', announcementData);
 
       await axios.post(
-        "https://erpbackend.tarstech.in/api/announcements",
+        "http://erpbackend.tarstech.in/api/announcements",
         announcementData
       );
       setMessage({
@@ -268,7 +268,7 @@ const AnnouncementForm = () => {
         `Fetching teacher's own announcements for compose page (department: ${userDepartment || 'none'})`
       );
 
-      const fullUrl = `https://erpbackend.tarstech.in/api/announcements/${currentDashboard}${queryParams}`;
+      const fullUrl = `http://erpbackend.tarstech.in/api/announcements/${currentDashboard}${queryParams}`;
       console.log(`Full URL: ${fullUrl}`);
       const res = await axios.get(fullUrl);
       

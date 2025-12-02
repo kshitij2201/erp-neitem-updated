@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 // API base URL
-const API_BASE_URL = "https://erpbackend.tarstech.in/api";
+const API_BASE_URL = "http://erpbackend.tarstech.in/api";
 
 // Stat Card Component
 const StatCard = ({ title, value, icon, color, trend, loading = false }) => (

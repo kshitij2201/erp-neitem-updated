@@ -141,7 +141,7 @@ function AdmissionForm() {
         }
 
         const res = await axios.get(
-          "https://erpbackend.tarstech.in/api/superadmin/castes",
+          "http://erpbackend.tarstech.in/api/superadmin/castes",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -175,25 +175,25 @@ function AdmissionForm() {
 
         const [streamRes, departmentRes, semesterRes, subjectRes] =
           await Promise.all([
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/streams", {
+            axios.get("http://erpbackend.tarstech.in/api/superadmin/streams", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
             axios.get(
-              "https://erpbackend.tarstech.in/api/superadmin/departments",
+              "http://erpbackend.tarstech.in/api/superadmin/departments",
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
                 },
               }
             ),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/semesters", {
+            axios.get("http://erpbackend.tarstech.in/api/superadmin/semesters", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
-            axios.get("https://erpbackend.tarstech.in/api/superadmin/subjects", {
+            axios.get("http://erpbackend.tarstech.in/api/superadmin/subjects", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -266,7 +266,7 @@ function AdmissionForm() {
           }
 
           const res = await axios.get(
-            `https://erpbackend.tarstech.in/api/superadmin/students/subjects/${formData.semester}/${formData.department}`,
+            `http://erpbackend.tarstech.in/api/superadmin/students/subjects/${formData.semester}/${formData.department}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -488,14 +488,14 @@ function AdmissionForm() {
 
       if (editingId) {
         await axios.put(
-          `https://erpbackend.tarstech.in/api/superadmin/students/${editingId}`,
+          `http://erpbackend.tarstech.in/api/superadmin/students/${editingId}`,
           formPayload,
           { headers }
         );
         alert("Student updated successfully!");
       } else {
         await axios.post(
-          "https://erpbackend.tarstech.in/api/students",
+          "http://erpbackend.tarstech.in/api/students",
           formPayload,
           {
             headers,

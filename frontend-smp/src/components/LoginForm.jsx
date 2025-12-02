@@ -47,7 +47,7 @@ const Login = () => {
 
     try {
       const response = await axios.post(
-        "https://erpbackend.tarstech.in/api/superadmin/login",
+        "http://erpbackend.tarstech.in/api/superadmin/login",
         {
           username,
           password,

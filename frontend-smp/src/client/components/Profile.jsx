@@ -27,7 +27,7 @@ const Profile = () => {
 
   useEffect(() => {
     const API_URL =
-      import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
+      import.meta.env.REACT_APP_API_URL || "http://erpbackend.tarstech.in";
     const token = localStorage.getItem("token");
 
     console.log("Profile component mounting...");
@@ -255,7 +255,7 @@ const Profile = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
+        import.meta.env.REACT_APP_API_URL || "http://erpbackend.tarstech.in";
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
@@ -326,7 +326,7 @@ const Profile = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "https://erpbackend.tarstech.in";
+        import.meta.env.REACT_APP_API_URL || "http://erpbackend.tarstech.in";
       const token = localStorage.getItem("token");
 
       // Create FormData for file upload

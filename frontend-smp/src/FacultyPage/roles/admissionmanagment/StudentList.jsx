@@ -478,7 +478,7 @@ function StudentList() {
       const query = admissionTypeFilter
         ? `?admissionType=${admissionTypeFilter}`
         : "";
-      const res = await fetchWithRetry(`https://erpbackend.tarstech.in/api/superadmin/students${query}`, {
+      const res = await fetchWithRetry(`http://erpbackend.tarstech.in/api/superadmin/students${query}`, {
         headers,
       });
 
@@ -510,7 +510,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("https://erpbackend.tarstech.in/api/superadmin/semesters", {
+        const res = await fetchWithRetry("http://erpbackend.tarstech.in/api/superadmin/semesters", {
           headers,
         });
 
@@ -536,7 +536,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("https://erpbackend.tarstech.in/api/superadmin/streams", {
+        const res = await fetchWithRetry("http://erpbackend.tarstech.in/api/superadmin/streams", {
           headers,
         });
 
@@ -562,7 +562,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("https://erpbackend.tarstech.in/api/superadmin/departments", {
+        const res = await fetchWithRetry("http://erpbackend.tarstech.in/api/superadmin/departments", {
           headers,
         });
 
@@ -662,7 +662,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        await fetchWithRetry(`https://erpbackend.tarstech.in/api/superadmin/students/${id}`, {
+        await fetchWithRetry(`http://erpbackend.tarstech.in/api/superadmin/students/${id}`, {
           method: "DELETE",
           headers,
         });
@@ -688,7 +688,7 @@ function StudentList() {
       if (!headers) return;
 
       const response = await fetchWithRetry(
-        `https://erpbackend.tarstech.in/api/superadmin/students/promote/${id}`,
+        `http://erpbackend.tarstech.in/api/superadmin/students/promote/${id}`,
         {
           method: "PUT",
           headers,
@@ -721,7 +721,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `https://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
+        `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -891,7 +891,7 @@ function StudentList() {
       if (!headers) return;
 
       await fetchWithRetry(
-        `https://erpbackend.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
+        `http://erpbackend.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
         {
           method: "POST",
           headers: {
@@ -1222,7 +1222,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `https://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
+        `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -1243,7 +1243,7 @@ function StudentList() {
           if (!headers) return;
 
           const subjectsRes = await fetchWithRetry(
-            `https://erpbackend.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
+            `http://erpbackend.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
             { headers }
           );
 
@@ -1312,7 +1312,7 @@ function StudentList() {
         if (!headers) return;
 
         const res = await fetchWithRetry(
-          `https://erpbackend.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `http://erpbackend.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           { headers }
         );
 
@@ -1371,7 +1371,7 @@ function StudentList() {
         if (!headers) return;
 
         const response = await fetchWithRetry(
-          `https://erpbackend.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
+          `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
           {
             method: "POST",
             headers: {
@@ -1405,7 +1405,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `https://erpbackend.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
+            `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
             {
               method: "PUT",
               headers: {
@@ -1465,7 +1465,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `https://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
+            `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
             {
               method: "PUT",
               headers: {

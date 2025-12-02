@@ -54,7 +54,7 @@ const AcademicCalendar = ({ userData }) => {
 
       console.log("[AcademicCalendar] Fetching fresh user profile data...");
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://erpbackend.tarstech.in"}/api/auth/profile`,
+        `${import.meta.env.VITE_API_URL || "http://erpbackend.tarstech.in"}/api/auth/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -135,7 +135,7 @@ const AcademicCalendar = ({ userData }) => {
       queryParams.append("t", Date.now());
 
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/academic-calendar?${queryParams}`,
+        `http://erpbackend.tarstech.in/api/academic-calendar?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -158,7 +158,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/subjects/department/${userData.department}`,
+        `http://erpbackend.tarstech.in/api/subjects/department/${userData.department}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -178,7 +178,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/department/${userData.department}`,
+        `http://erpbackend.tarstech.in/api/faculty/department/${userData.department}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -199,7 +199,7 @@ const AcademicCalendar = ({ userData }) => {
       try {
         const token = localStorage.getItem("authToken");
         const response = await fetch(
-          `https://erpbackend.tarstech.in/api/academic-calendar/${id}`,
+          `http://erpbackend.tarstech.in/api/academic-calendar/${id}`,
           {
             method: "DELETE",
             headers: {
@@ -221,7 +221,7 @@ const AcademicCalendar = ({ userData }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/academic-calendar/${id}/publish`,
+        `http://erpbackend.tarstech.in/api/academic-calendar/${id}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -738,7 +738,7 @@ const CreateCalendarModal = ({
       setLoadingFaculties(true);
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/subject/${subjectId}`,
+        `http://erpbackend.tarstech.in/api/faculty/subject/${subjectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -779,7 +779,7 @@ const CreateCalendarModal = ({
       };
 
       const response = await fetch(
-        "https://erpbackend.tarstech.in/api/academic-calendar",
+        "http://erpbackend.tarstech.in/api/academic-calendar",
         {
           method: "POST",
           headers: {
@@ -1267,7 +1267,7 @@ const EditCalendarModal = ({
       setLoadingFaculties(true);
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/faculty/subject/${subjectId}`,
+        `http://erpbackend.tarstech.in/api/faculty/subject/${subjectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1308,7 +1308,7 @@ const EditCalendarModal = ({
       };
 
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}`,
+        `http://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}`,
         {
           method: "PUT",
           headers: {
@@ -1701,7 +1701,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}/publish`,
+        `http://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}/publish`,
         {
           method: "PATCH",
           headers: {
@@ -1732,7 +1732,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}/topics`,
+        `http://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}/topics`,
         {
           method: "POST",
           headers: {
@@ -1773,7 +1773,7 @@ const CalendarDetailModal = ({ calendar, onClose, onUpdate }) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `https://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}/topics/${topicId}`,
+        `http://erpbackend.tarstech.in/api/academic-calendar/${calendar._id}/topics/${topicId}`,
         {
           method: "PATCH",
           headers: {

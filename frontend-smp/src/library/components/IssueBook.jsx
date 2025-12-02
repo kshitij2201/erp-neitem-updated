@@ -22,7 +22,7 @@ const handleIssueBook = async (ACCNO, userId, borrowerType, borrowerData) => {
     };
 
     const response = await fetch(
-      "https://erpbackend.tarstech.in/api/issues/issue",
+      "http://erpbackend.tarstech.in/api/issues/issue",
       {
         method: "POST",
         headers: {

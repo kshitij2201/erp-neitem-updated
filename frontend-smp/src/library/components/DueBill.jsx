@@ -64,7 +64,7 @@ const DueBill = () => {
 
       // Send payment to backend
       const paymentResponse = await axios.post(
-        "https://erpbackend.tarstech.in/api/dues/pay",
+        "http://erpbackend.tarstech.in/api/dues/pay",
         paymentData
       );
       console.log("Payment response:", paymentResponse.data);
@@ -75,7 +75,7 @@ const DueBill = () => {
 
       // Refresh dues from backend
       const duesResponse = await axios.get(
-        "https://erpbackend.tarstech.in/api/dues/due"
+        "http://erpbackend.tarstech.in/api/dues/due"
       );
       setDues(duesResponse.data);
 
@@ -113,7 +113,7 @@ const DueBill = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          "https://erpbackend.tarstech.in/api/dues/due"
+          "http://erpbackend.tarstech.in/api/dues/due"
         );
         console.log("Dues API Response:", response.data);
         setDues(response.data);

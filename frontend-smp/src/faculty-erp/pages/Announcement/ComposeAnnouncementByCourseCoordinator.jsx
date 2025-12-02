@@ -141,7 +141,7 @@ const AnnouncementForm = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "https://erpbackend.tarstech.in/api/auth/profile",
+            "http://erpbackend.tarstech.in/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -235,7 +235,7 @@ const AnnouncementForm = () => {
       console.log('Sending CC announcement data:', announcementData);
 
       await axios.post(
-        "https://erpbackend.tarstech.in/api/announcements",
+        "http://erpbackend.tarstech.in/api/announcements",
         announcementData
       );
       setMessage({
@@ -279,7 +279,7 @@ const AnnouncementForm = () => {
       );
 
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/announcements/${currentDashboard}${queryParams}`
+        `http://erpbackend.tarstech.in/api/announcements/${currentDashboard}${queryParams}`
       );
       
       // Additional filter: Only show announcements created by CC

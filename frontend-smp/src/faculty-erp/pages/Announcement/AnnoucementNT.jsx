@@ -30,7 +30,7 @@ const TeachingAnnouncements = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "https://erpbackend.tarstech.in/api/auth/profile",
+            "http://erpbackend.tarstech.in/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -59,7 +59,7 @@ const TeachingAnnouncements = () => {
         ? `?department=${encodeURIComponent(userDepartment)}`
         : "";
       const res = await axios.get(
-        `https://erpbackend.tarstech.in/api/announcements/non_teaching_staff${queryParams}`
+        `http://erpbackend.tarstech.in/api/announcements/non_teaching_staff${queryParams}`
       );
       setAnnouncements(res.data.reverse()); // latest first
     } catch (err) {

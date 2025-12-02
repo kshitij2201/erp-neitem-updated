@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'https://erpbackend.tarstech.in';
+const API_BASE = 'http://erpbackend.tarstech.in';
 const API = `${API_BASE}/api/fee-heads`;
 const STREAM_API = `${API_BASE}/api/superadmin/streams`;
 

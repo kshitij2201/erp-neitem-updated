@@ -86,10 +86,10 @@ const SummaryPage = () => {
           departmentsResponse,
           streamsResponse,
         ] = await Promise.all([
-          fetch("https://erpbackend.tarstech.in/api/superadmin/students", { headers }),
-          fetch("https://erpbackend.tarstech.in/api/superadmin/castes", { headers }),
-          fetch("https://erpbackend.tarstech.in/api/superadmin/departments", { headers }),
-          fetch("https://erpbackend.tarstech.in/api/superadmin/streams", { headers }),
+          fetch("http://erpbackend.tarstech.in/api/superadmin/students", { headers }),
+          fetch("http://erpbackend.tarstech.in/api/superadmin/castes", { headers }),
+          fetch("http://erpbackend.tarstech.in/api/superadmin/departments", { headers }),
+          fetch("http://erpbackend.tarstech.in/api/superadmin/streams", { headers }),
         ]);
 
         // Check for authentication errors

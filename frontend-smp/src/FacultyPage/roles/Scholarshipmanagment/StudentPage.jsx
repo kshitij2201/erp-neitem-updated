@@ -96,13 +96,13 @@ const StudentPage = () => {
     setLoading(true);
     try {
       const studentRes = await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/superadmin/students",
+        "http://erpbackend.tarstech.in/api/superadmin/students",
         {
           headers: getAuthHeaders(),
         }
       );
       const scholarshipRes = await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/scholarships",
+        "http://erpbackend.tarstech.in/api/scholarships",
         {
           headers: getAuthHeaders(),
         }
@@ -156,7 +156,7 @@ const StudentPage = () => {
       formData.append("year", year);
 
       await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/scholarships/upload-pdf",
+        "http://erpbackend.tarstech.in/api/scholarships/upload-pdf",
         {
           method: "POST",
           headers: {
@@ -188,7 +188,7 @@ const StudentPage = () => {
     setResolvingRemark(remarkKey);
     try {
       await fetchWithRetry(
-        "https://erpbackend.tarstech.in/api/scholarships/add-remark",
+        "http://erpbackend.tarstech.in/api/scholarships/add-remark",
         {
           method: "POST",
           headers: getAuthHeaders(),

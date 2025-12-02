@@ -17,7 +17,7 @@ export default function Audit() {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     const res = await fetch(
-      `https://erpbackend.tarstech.in/api/audit?${params.toString()}`,
+      `http://erpbackend.tarstech.in/api/audit?${params.toString()}`,
       { headers }
     );
     const data = await res.json();
@@ -32,7 +32,7 @@ export default function Audit() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const res = await fetch(
-        "https://erpbackend.tarstech.in/api/audit/stats/overview",
+        "http://erpbackend.tarstech.in/api/audit/stats/overview",
         {
           headers,
         }

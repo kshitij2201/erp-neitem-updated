@@ -22,7 +22,7 @@ export default function SalarySlipPage({ userData }) {
     const fetchRecords = async () => {
       try {
         const response = await axios.get(
-          `https://erpbackend.tarstech.in/api/salary?employeeId=${employeeId}`
+          `http://erpbackend.tarstech.in/api/salary?employeeId=${employeeId}`
         );
 
         const data = Array.isArray(response.data) ? response.data : [];

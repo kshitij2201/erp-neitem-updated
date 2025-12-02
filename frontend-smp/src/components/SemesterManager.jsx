@@ -27,8 +27,8 @@ const SemesterManager = () => {
       setLoading(true);
       try {
         const [semesterRes, subjectRes] = await Promise.all([
-          axios.get("https://erpbackend.tarstech.in/api/superadmin/semesters"),
-          axios.get("https://erpbackend.tarstech.in/api/superadmin/subjects"),
+          axios.get("http://erpbackend.tarstech.in/api/superadmin/semesters"),
+          axios.get("http://erpbackend.tarstech.in/api/superadmin/subjects"),
         ]);
         setSemesters(semesterRes.data);
         setSubjects(subjectRes.data);
@@ -81,7 +81,7 @@ const SemesterManager = () => {
     setLoading(true);
     try {
       const res = await axios.post(
-        "https://erpbackend.tarstech.in/api/superadmin/semesters",
+        "http://erpbackend.tarstech.in/api/superadmin/semesters",
         {
           number: Number(newSemester.number),
           subjectIds: newSemester.subjectIds,
@@ -121,7 +121,7 @@ const SemesterManager = () => {
     setLoading(true);
     try {
       const res = await axios.put(
-        `https://erpbackend.tarstech.in/api/superadmin/semesters/${editingSemester._id}`,
+        `http://erpbackend.tarstech.in/api/superadmin/semesters/${editingSemester._id}`,
         {
           number: Number(editingSemester.number),
           subjectIds: editingSemester.subjectIds,
@@ -147,7 +147,7 @@ const SemesterManager = () => {
     setLoading(true);
     try {
       await axios.delete(
-        `https://erpbackend.tarstech.in/api/superadmin/semesters/${semesterId}`
+        `http://erpbackend.tarstech.in/api/superadmin/semesters/${semesterId}`
       );
       setSemesters(semesters.filter((semester) => semester._id !== semesterId));
       setError("");

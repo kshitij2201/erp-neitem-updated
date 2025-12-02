@@ -172,7 +172,7 @@ const AddBook = ({ initialData }) => {
 
       // Submit each book individually
       for (const bookData of books) {
-        await axios.post("https://erpbackend.tarstech.in/api/books", bookData);
+        await axios.post("http://erpbackend.tarstech.in/api/books", bookData);
       }
 
       setModalType("success");
