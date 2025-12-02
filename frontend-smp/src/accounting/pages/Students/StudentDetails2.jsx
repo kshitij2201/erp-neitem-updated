@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 
-export default function StudentDetails() {
+export default function StudentDetails2() {
   const [students, setStudents] = useState([]);
   const [feeData, setFeeData] = useState({});
   const [insuranceData, setInsuranceData] = useState({});
@@ -37,7 +37,11 @@ export default function StudentDetails() {
             headers,
           }
         );
-        const studentList = res.data;
+        const studentList = res.data.data || res.data;
+        // Ensure studentList is an array
+        if (!Array.isArray(studentList)) {
+          throw new Error("Invalid student data format received from API");
+        }
         setStudents(studentList);
 
         // Fetch related data for the filtered students in parallel
@@ -67,6 +71,10 @@ export default function StudentDetails() {
     };
 
     const fetchFeeHeads = async (studentList) => {
+      if (!Array.isArray(studentList)) {
+        console.error("fetchFeeHeads: studentList is not an array", studentList);
+        return;
+      }
       const feesMap = {};
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -151,6 +159,10 @@ export default function StudentDetails() {
     };
 
     const fetchInsurancePolicies = async (studentList) => {
+      if (!Array.isArray(studentList)) {
+        console.error("fetchInsurancePolicies: studentList is not an array", studentList);
+        return;
+      }
       const insuranceMap = {};
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};

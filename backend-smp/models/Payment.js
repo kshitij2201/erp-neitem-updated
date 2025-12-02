@@ -74,6 +74,32 @@ const paymentSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  // New fields for admission and exam fees
+  admissionType: {
+    type: String,
+    enum: ['Fresh Admission', 'Re-admission', 'Lateral Entry', 'Transfer'],
+    trim: true
+  },
+  admissionCategory: {
+    type: String,
+    enum: ['General', 'SC/ST', 'OBC', 'Management', 'NRI'],
+    trim: true
+  },
+  examType: {
+    type: String,
+    enum: ['Regular', 'Supplementary', 'Revaluation', 'Improvement'],
+    trim: true
+  },
+  examSemester: {
+    type: Number,
+    min: 1,
+    max: 8
+  },
+  examSubjectCount: {
+    type: Number,
+    min: 1,
+    max: 20
+  },
   createdAt: {
     type: Date,
     default: Date.now

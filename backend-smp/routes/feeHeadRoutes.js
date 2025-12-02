@@ -24,21 +24,30 @@ router.get("/", async (req, res) => {
 // GET: applicable fee heads for a student
 router.get("/applicable/:studentId", async (req, res) => {
   try {
+    console.log(`🔍 Getting applicable fee heads for student ID: ${req.params.studentId}`);
+    
     // First try to find student in local database
     let student = await Student.findById(req.params.studentId).populate("stream");
+    console.log(`Student found in local DB: ${!!student}`);
     
     // If student not found locally, create a mock student object based on remote data structure
     if (!student) {
-      // For remote students, we'll use default values for fee calculation
       student = {
         _id: req.params.studentId,
         casteCategory: "Open", // Default caste category
         stream: null,
-        feesPaid: 0
+        feesPaid: 0,
+        currentSemester: req.query.semester ? parseInt(req.query.semester) : null, // Get semester from query params
       };
+      console.log(`Created mock student:`, student);
     }
 
     const allHeads = await FeeHead.find();
+    console.log(`Total fee heads in database: ${allHeads.length}`);
+    
+    if (allHeads.length > 0) {
+      console.log(`Sample fee head:`, allHeads[0]);
+    }
 
     const applicable = allHeads.filter((head) => {
       if (head.applyTo === "all") return true;
@@ -65,9 +74,16 @@ router.get("/applicable/:studentId", async (req, res) => {
         ? head.filters.casteCategory.toLowerCase() === normalizedCaste.toLowerCase()
         : true;
 
-      return matchStream && matchCaste;
+      // Add semester filtering
+      const studentSemester = student.currentSemester || (req.query.semester ? parseInt(req.query.semester) : null);
+      const matchSemester = head.filters?.semester
+        ? head.filters.semester === studentSemester
+        : true; // If no semester filter on fee head, apply to all semesters
+
+      return matchStream && matchCaste && matchSemester;
     });
 
+    console.log(`Applicable fee heads: ${applicable.length}`);
     res.json(applicable);
   } catch (err) {
     console.error("Fee match error:", err);

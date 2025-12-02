@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 const router = express.Router();
 
 import Payment from '../models/Payment.js';
@@ -92,6 +93,12 @@ router.get('/history', async (req, res) => {
           description: payment.feeHead.description,
           applyTo: payment.feeHead.applyTo
         } : null,
+        // New fields for admission and exam fees
+        admissionType: payment.admissionType,
+        admissionCategory: payment.admissionCategory,
+        examType: payment.examType,
+        examSemester: payment.examSemester,
+        examSubjectCount: payment.examSubjectCount,
         receiptNumber: payment.receiptNumber,
         transactionId: payment.transactionId,
         collectedBy: payment.collectedBy,
@@ -357,6 +364,12 @@ router.get('/', async (req, res) => {
         transactionId: payment.transactionId,
         collectedBy: payment.collectedBy,
         remarks: payment.remarks,
+        // New fields for admission and exam fees
+        admissionType: payment.admissionType,
+        admissionCategory: payment.admissionCategory,
+        examType: payment.examType,
+        examSemester: payment.examSemester,
+        examSubjectCount: payment.examSubjectCount,
         student: payment.studentId ? {
           id: payment.studentId._id,
           studentId: payment.studentId.studentId,
@@ -425,6 +438,12 @@ router.get('/student/:studentId', async (req, res) => {
       transactionId: payment.transactionId,
       collectedBy: payment.collectedBy,
       remarks: payment.remarks,
+      // New fields for admission and exam fees
+      admissionType: payment.admissionType,
+      admissionCategory: payment.admissionCategory,
+      examType: payment.examType,
+      examSemester: payment.examSemester,
+      examSubjectCount: payment.examSubjectCount,
       student: {
         id: payment.studentId._id,
         studentId: payment.studentId.studentId,
@@ -466,19 +485,41 @@ router.post('/', async (req, res) => {
       transactionId,
       collectedBy,
       remarks,
-      utr
+      utr,
+      admissionType,
+      admissionCategory,
+      examType,
+      examSemester,
+      examSubjectCount
     } = req.body;
 
     // Validate required fields
-    if (!studentId || !amount || !paymentMethod) {
+    // Allow amount === 0 (zero-fee receipts). Only treat missing when amount is null/undefined.
+    if (!studentId || amount === undefined || amount === null || !paymentMethod) {
       console.log('Missing required fields:', { studentId, amount, paymentMethod });
       return res.status(400).json({ message: 'Student ID, amount, and payment method are required' });
     }
 
+    // Validate input types early to avoid Mongoose CastError -> 500
+    if (typeof amount === 'string' && amount.trim() === '') {
+      return res.status(400).json({ message: 'Amount must be a number' });
+    }
+    const numericAmount = parseFloat(amount);
+    if (Number.isNaN(numericAmount) || numericAmount < 0) {
+      return res.status(400).json({ message: 'Invalid amount provided' });
+    }
+
+    // Validate ObjectId formats to avoid Mongoose CastError
+    if (studentId && !mongoose.Types.ObjectId.isValid(studentId)) {
+      console.log('Invalid studentId format:', studentId);
+      return res.status(400).json({ message: 'Invalid student ID format' });
+    }
+
     // Validate UTR for digital payment methods
     const digitalMethods = ['Online', 'Bank Transfer', 'Card', 'UPI'];
-    if (digitalMethods.includes(paymentMethod) && (!utr || utr.trim() === '')) {
-      console.log('Missing UTR for digital payment:', { paymentMethod, utr });
+    // Require UTR only when a digital method is used and the amount is greater than 0
+    if (parseFloat(amount) > 0 && digitalMethods.includes(paymentMethod) && (!utr || utr.trim() === '')) {
+      console.log('Missing UTR for digital payment:', { paymentMethod, utr, amount });
       return res.status(400).json({ message: `UTR Number is required for ${paymentMethod} payments` });
     }
 
@@ -494,6 +535,10 @@ router.post('/', async (req, res) => {
     // Validate and verify fee head if provided
     let feeHeadDetails = null;
     if (feeHead && feeHead !== '') {
+      if (!mongoose.Types.ObjectId.isValid(feeHead)) {
+        console.log('Invalid feeHead id format:', feeHead);
+        return res.status(400).json({ message: 'Invalid fee head ID format' });
+      }
       feeHeadDetails = await FeeHead.findById(feeHead);
       if (!feeHeadDetails) {
         console.log('Invalid fee head ID:', feeHead);
@@ -513,7 +558,13 @@ router.post('/', async (req, res) => {
       transactionId: transactionId || '',
       utr: (utr && utr !== 'undefined' && utr.trim() !== '') ? utr.trim() : '',
       collectedBy: collectedBy || '',
-      remarks: remarks || (feeHeadDetails ? `Payment for ${feeHeadDetails.title}` : '')
+      remarks: remarks || (feeHeadDetails ? `Payment for ${feeHeadDetails.title}` : ''),
+      // New fields for admission and exam fees
+      admissionType: admissionType || undefined,
+      admissionCategory: admissionCategory || undefined,
+      examType: examType || undefined,
+      examSemester: examSemester ? parseInt(examSemester) : undefined,
+      examSubjectCount: examSubjectCount ? parseInt(examSubjectCount) : undefined
     });
 
     console.log('🔍 UTR Debug - Received from form:', utr);
@@ -637,6 +688,12 @@ router.post('/', async (req, res) => {
         transactionId: payment.transactionId,
         collectedBy: payment.collectedBy,
         remarks: payment.remarks,
+        // New fields for admission and exam fees
+        admissionType: payment.admissionType,
+        admissionCategory: payment.admissionCategory,
+        examType: payment.examType,
+        examSemester: payment.examSemester,
+        examSubjectCount: payment.examSubjectCount,
         student: {
           id: payment.studentId._id,
           studentId: payment.studentId.studentId,
@@ -713,6 +770,12 @@ router.get('/receipt/:receiptNumber', async (req, res) => {
       transactionId: payment.transactionId,
       collectedBy: payment.collectedBy,
       remarks: payment.remarks,
+      // New fields for admission and exam fees
+      admissionType: payment.admissionType,
+      admissionCategory: payment.admissionCategory,
+      examType: payment.examType,
+      examSemester: payment.examSemester,
+      examSubjectCount: payment.examSubjectCount,
       student: {
         id: payment.studentId._id,
         studentId: payment.studentId.studentId,
@@ -1435,6 +1498,12 @@ router.get('/debug/:id', async (req, res) => {
         paymentDate: populatedPayment.paymentDate,
         status: populatedPayment.status,
         description: populatedPayment.description,
+        // New fields for admission and exam fees
+        admissionType: populatedPayment.admissionType,
+        admissionCategory: populatedPayment.admissionCategory,
+        examType: populatedPayment.examType,
+        examSemester: populatedPayment.examSemester,
+        examSubjectCount: populatedPayment.examSubjectCount,
         student: populatedPayment.studentId ? {
           id: populatedPayment.studentId._id,
           studentId: populatedPayment.studentId.studentId,
@@ -1496,6 +1565,12 @@ router.get('/:id', async (req, res) => {
       transactionId: payment.transactionId,
       collectedBy: payment.collectedBy,
       remarks: payment.remarks,
+      // New fields for admission and exam fees
+      admissionType: payment.admissionType,
+      admissionCategory: payment.admissionCategory,
+      examType: payment.examType,
+      examSemester: payment.examSemester,
+      examSubjectCount: payment.examSubjectCount,
       student: {
         id: payment.studentId._id,
         studentId: payment.studentId.studentId,
@@ -1534,7 +1609,7 @@ router.get('/:id', async (req, res) => {
 router.post('/exam-fee/bulk', async (req, res) => {
   try {
     const { semester, amount, paymentMethod, transactionId, collectedBy, utr } = req.body;
-    if (!semester || !amount || !paymentMethod) {
+    if (!semester || amount === undefined || amount === null || !paymentMethod) {
       return res.status(400).json({ message: 'Semester, amount, and payment method are required' });
     }
     // Get all students
@@ -1605,7 +1680,7 @@ router.post('/exam-fee', async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!studentId || !semester || !amount || !paymentMethod) {
+    if (!studentId || !semester || amount === undefined || amount === null || !paymentMethod) {
       return res.status(400).json({ 
         message: 'Student ID, semester, amount, and payment method are required' 
       });

@@ -38,12 +38,16 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/fee-payments - Fetch payments for a student and semester
+// GET /api/fee-payments - Fetch payments for a student and semester (optional)
 router.get('/', async (req, res) => {
   const { student, semester } = req.query;
 
   try {
-    const feePayments = await FeePayment.find({ student, semester }).populate('feeHeader');
+    const query = { student };
+    if (semester) {
+      query.semester = semester;
+    }
+    const feePayments = await FeePayment.find(query).populate('feeHeader');
     res.json(feePayments);
   } catch (err) {
     console.error('Error fetching fee payments:', err);

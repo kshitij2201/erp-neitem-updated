@@ -151,6 +151,8 @@ import facultyDepartmentSubjectRoutes from "./routes/facultyDepartmentSubjectRou
 import duesRoutes from "./routes/duesRoutes.js";
 import academicCalendarRoutes from "./routes/academicCalendar.js";
 import analyticsRoutes from "./routes/analytics.js";
+import feesRoutes from "./routes/fees.js";
+import examFeesRoutes from "./routes/examFees.js";
 
 // Setup __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -412,6 +414,8 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/academic-calendar", academicCalendarRoutes);
 
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/fees", feesRoutes);
+app.use("/api", examFeesRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/subjects", subjectRoutes);

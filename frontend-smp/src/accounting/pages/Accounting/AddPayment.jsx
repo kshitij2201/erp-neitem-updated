@@ -44,12 +44,17 @@ export default function AddPayment() {
     salaryType: "monthly", // 'monthly' or 'annual'
     salaryMonth: "",
     salaryYear: new Date().getFullYear().toString(),
+    // TFWS field
+    tfws: false,
+    // Fee Name and Categories
+    feeName: "",
+    customFeeName: "",
+    selectedFeeCategories: [], // Array of selected fee categories with amounts
   });
 
   const [students, setStudents] = useState([]);
   const [feeHeads, setFeeHeads] = useState([]);
   const [recentPayments, setRecentPayments] = useState([]);
-  const [pendingFees, setPendingFees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -60,6 +65,27 @@ export default function AddPayment() {
   const [studentSearchTerm, setStudentSearchTerm] = useState("");
   const [studentSearchTimeout, setStudentSearchTimeout] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Fee categories data
+  const feeCategories = {
+    admission: [
+      { id: 'tuition_fees', name: 'Tuition fees', amount: 0 },
+      { id: 'caution_money', name: 'Caution money', amount: 0 },
+      { id: 'development_fund', name: 'Development fund', amount: 0 },
+      { id: 'admission_form', name: 'Admission form', amount: 0 },
+      { id: 'hostel_bus_fees', name: 'Hostel fees/Bus fees', amount: 0 },
+      { id: 'misc_other_fees', name: 'Misc. fees/other fees', amount: 0 },
+      { id: 'university_student_fees', name: 'University student fees', amount: 0 }
+    ],
+    exam: [
+      { id: 'exam_fee', name: 'Exam Fee', amount: 0 },
+      { id: 'practical_fee', name: 'Practical Fee', amount: 0 },
+      { id: 'late_fee', name: 'Late Fee', amount: 0 },
+      { id: 'revaluation_fee', name: 'Revaluation Fee', amount: 0 },
+      { id: 'certificate_fee', name: 'Certificate Fee', amount: 0 },
+      { id: 'misc_exam_fee', name: 'Miscellaneous Exam Fee', amount: 0 }
+    ]
+  };
 
   // Handle student search with client-side filtering (no debouncing needed since all data is loaded)
   const handleStudentSearch = (searchTerm) => {
@@ -81,30 +107,75 @@ export default function AddPayment() {
   // Update selectedStudent when studentId changes
   useEffect(() => {
     if (formData.studentId && students.length > 0) {
-      const student = students.find(s => s._id === formData.studentId);
+      const student = students.find((s) => s._id === formData.studentId);
       setSelectedStudent(student || null);
     } else {
       setSelectedStudent(null);
     }
   }, [formData.studentId, students]);
 
-  // Helper function to get month name from month number
-  const getMonthName = (monthNumber) => {
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    return months[parseInt(monthNumber) - 1] || "";
+  // Helper function to get student gender
+  const getStudentGender = (student) => {
+    if (!student) return null;
+    return student.gender || student.sex || null;
+  };
+
+  // Handle fee category selection
+  const handleFeeCategoryChange = (categoryId, isChecked) => {
+    setFormData(prev => {
+      let selectedCategories = [...prev.selectedFeeCategories];
+      
+      if (isChecked) {
+        // Add category if checked
+        const categoryData = feeCategories[prev.feeName]?.find(cat => cat.id === categoryId);
+        if (categoryData) {
+          selectedCategories.push({
+            ...categoryData,
+            amount: categoryData.amount || 0
+          });
+        }
+      } else {
+        // Remove category if unchecked
+        selectedCategories = selectedCategories.filter(cat => cat.id !== categoryId);
+      }
+      
+      // Calculate total amount
+      const totalAmount = selectedCategories.reduce((sum, cat) => sum + (parseFloat(cat.amount) || 0), 0);
+      
+      return {
+        ...prev,
+        selectedFeeCategories: selectedCategories,
+        amount: totalAmount.toString()
+      };
+    });
+  };
+
+  // Handle fee category amount change
+  const handleFeeCategoryAmountChange = (categoryId, amount) => {
+    setFormData(prev => {
+      const selectedCategories = prev.selectedFeeCategories.map(cat => 
+        cat.id === categoryId ? { ...cat, amount: parseFloat(amount) || 0 } : cat
+      );
+      
+      // Calculate total amount
+      const totalAmount = selectedCategories.reduce((sum, cat) => sum + (parseFloat(cat.amount) || 0), 0);
+      
+      return {
+        ...prev,
+        selectedFeeCategories: selectedCategories,
+        amount: totalAmount.toString()
+      };
+    });
+  };
+
+  // Handle student selection from dropdown
+  const handleStudentSelect = (student) => {
+    setFormData((prev) => ({
+      ...prev,
+      studentId: student._id,
+    }));
+    setIsDropdownOpen(false);
+    setStudentSearchTerm("");
   };
 
   // Generate academic years for selection
@@ -144,7 +215,7 @@ export default function AddPayment() {
       });
 
       if (searchTerm && searchTerm.trim()) {
-        params.append('search', searchTerm.trim());
+        params.append("search", searchTerm.trim());
       }
 
       // Fetch students with search and pagination
@@ -168,12 +239,18 @@ export default function AddPayment() {
         totalCount = response.data.total || response.data.students.length;
       }
 
-      console.log(`Fetched ${studentData.length} students (page ${page}, search: "${searchTerm}")`);
+      console.log(
+        `Fetched ${studentData.length} students (page ${page}, search: "${searchTerm}")`
+      );
 
       // Sort students by name in ascending order
       const sortedStudents = studentData.sort((a, b) => {
-        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase().trim();
-        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase().trim();
+        const nameA = `${a.firstName || ""} ${a.lastName || ""}`
+          .toLowerCase()
+          .trim();
+        const nameB = `${b.firstName || ""} ${b.lastName || ""}`
+          .toLowerCase()
+          .trim();
         return nameA.localeCompare(nameB);
       });
 
@@ -183,44 +260,47 @@ export default function AddPayment() {
         setStudents(sortedStudents);
       } else {
         // For pagination, append to existing list
-        setStudents(prev => [...prev, ...sortedStudents]);
+        setStudents((prev) => [...prev, ...sortedStudents]);
       }
 
       // Store total count for pagination
-      setStudents(prev => prev.map(student => ({ ...student, totalCount })));
+      setStudents((prev) =>
+        prev.map((student) => ({ ...student, totalCount }))
+      );
 
       setLoadingStudents(false);
-      console.log('Students loaded successfully:', sortedStudents.length);
+      console.log("Students loaded successfully:", sortedStudents.length);
     } catch (err) {
       console.error("Error fetching students:", err);
       setStudents([]);
       setLoadingStudents(false);
-      
+
       // Provide more detailed error messages
-      let errorMessage = 'Failed to load students. ';
-      
+      let errorMessage = "Failed to load students. ";
+
       if (err.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         if (err.response.status === 500) {
-          errorMessage += 'The server encountered an error. Please contact the system administrator or try again later.';
+          errorMessage +=
+            "The server encountered an error. Please contact the system administrator or try again later.";
         } else if (err.response.status === 404) {
-          errorMessage += 'Student data endpoint not found. Please check the backend configuration.';
+          errorMessage += "Student data endpoint not found. Please check the backend configuration.";
         } else if (err.response.status === 401 || err.response.status === 403) {
-          errorMessage += 'You do not have permission to access student data. Please log in again.';
+          errorMessage += "You do not have permission to access student data. Please log in again.";
         } else {
           errorMessage += `Server error (${err.response.status}): ${err.response.data?.message || err.message}`;
         }
       } else if (err.request) {
         // The request was made but no response was received
-        errorMessage += 'Cannot connect to the server. Please check your internet connection and ensure the backend server is running.';
+        errorMessage += "Cannot connect to the server. Please check your internet connection and ensure the backend server is running.";
       } else {
         // Something happened in setting up the request that triggered an Error
         errorMessage += `Error: ${err.message}`;
       }
-      
+
       setError(errorMessage);
-      
+
       // Optional: Show a user-friendly toast/notification instead of just console error
       // You can add a toast library if needed
     }
@@ -237,17 +317,18 @@ export default function AddPayment() {
           headers,
         }
       );
-      // Remove duplicates based on title and sort in ascending order
       const feeHeadsData = Array.isArray(response.data) ? response.data : [];
+      console.log("Fetched fee heads:", feeHeadsData);
+      // Remove duplicates based on title and sort in ascending order
       const uniqueFeeHeads = feeHeadsData.filter(
         (head, index, self) =>
           index ===
           self.findIndex(
-            (h) => h.title.toLowerCase() === head.title.toLowerCase()
+            (h) => h.head?.toLowerCase() === head.head?.toLowerCase()
           )
       );
       const sortedFeeHeads = uniqueFeeHeads.sort((a, b) =>
-        a.title.toLowerCase().localeCompare(b.title.toLowerCase())
+        a.head.toLowerCase().localeCompare(b.head.toLowerCase())
       );
       setFeeHeads(sortedFeeHeads);
     } catch (err) {
@@ -277,70 +358,6 @@ export default function AddPayment() {
     }
   };
 
-  const fetchPendingFees = async (studentId) => {
-    if (!studentId) {
-      setPendingFees([]);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const response = await axios.get(
-        `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
-        { headers }
-      );
-      setPendingFees(response.data || []);
-    } catch (err) {
-      console.error("Error fetching pending fees:", err);
-      // Calculate pending fees manually without API dependency
-      calculatePendingFees(studentId);
-    }
-  };
-
-  const calculatePendingFees = async (studentId) => {
-    try {
-      // Get student's payment history
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const paymentsResponse = await axios.get(
-        `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
-        { headers }
-      );
-      const payments = paymentsResponse.data || [];
-
-      // Calculate pending fees based on fee heads and payments
-      const pendingFeesCalc = feeHeads
-        .map((feeHead) => {
-          const totalPaid = payments
-            .filter((payment) => payment.feeHead === feeHead._id)
-            .reduce((sum, payment) => sum + payment.amount, 0);
-
-          const pendingAmount = feeHead.amount - totalPaid;
-
-          if (pendingAmount > 0) {
-            return {
-              feeHead: feeHead.title,
-              feeHeadId: feeHead._id,
-              totalAmount: feeHead.amount,
-              paidAmount: totalPaid,
-              pendingAmount: pendingAmount,
-              dueDate: feeHead.dueDate || null,
-            };
-          }
-          return null;
-        })
-        .filter((fee) => fee !== null);
-
-      setPendingFees(pendingFeesCalc);
-    } catch (err) {
-      console.error("Error calculating pending fees:", err);
-      setPendingFees([]);
-    }
-  };
-
   const checkForDuplicatePayment = () => {
     const currentTime = new Date();
     const fiveMinutesAgo = new Date(currentTime.getTime() - 5 * 60 * 1000);
@@ -365,13 +382,15 @@ export default function AddPayment() {
       [name]: value,
       // Clear selected fee heads when changing payment type
       ...(name === "paymentType" && { selectedFeeHeads: [] }),
+      // Clear selected fee categories when changing fee name
+      ...(name === "feeName" && { selectedFeeCategories: [], amount: "" }),
     }));
 
     // Fetch pending fees when student is selected
     if (name === "studentId" && value) {
-      fetchPendingFees(value);
+      // fetchPendingFees(value); // Removed fee calculation logic
     } else if (name === "studentId" && !value) {
-      setPendingFees([]);
+      // setPendingFees([]); // Removed fee calculation logic
     }
   };
 
@@ -436,18 +455,22 @@ export default function AddPayment() {
       };
 
       // Add UTR for digital payment methods
-      if (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod)) {
-        console.log('🔍 UTR Debug - Payment Method:', formData.paymentMethod);
-        console.log('🔍 UTR Debug - formData.utr value:', formData.utr);
-        console.log('🔍 UTR Debug - formData.utr type:', typeof formData.utr);
-        
+      if (
+        ["Online", "Bank Transfer", "Card", "UPI"].includes(formData.paymentMethod)
+      ) {
+        console.log("🔍 UTR Debug - Payment Method:", formData.paymentMethod);
+        console.log("🔍 UTR Debug - formData.utr value:", formData.utr);
+        console.log("🔍 UTR Debug - formData.utr type:", typeof formData.utr);
+
         if (!formData.utr || formData.utr.trim() === "") {
-          setError("UTR number is required for digital payment methods (Online, Bank Transfer, Card, UPI)");
+          setError(
+            "UTR number is required for digital payment methods (Online, Bank Transfer, Card, UPI)"
+          );
           setLoading(false);
           return;
         }
         paymentData.utr = formData.utr.trim();
-        console.log('🔍 UTR Debug - paymentData.utr (to be sent):', paymentData.utr);
+        console.log("🔍 UTR Debug - paymentData.utr (to be sent):", paymentData.utr);
       }
 
       // Add type-specific data
@@ -476,15 +499,15 @@ export default function AddPayment() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      console.log('📤 Sending payment data to API:', JSON.stringify(paymentData, null, 2));
-      
+      console.log("📤 Sending payment data to API:", JSON.stringify(paymentData, null, 2));
+
       const response = await axios.post(
         "https://backenderp.tarstech.in/api/payments",
         paymentData,
         { headers }
       );
-      
-      console.log('📥 API Response:', response.data);
+
+      console.log("📥 API Response:", response.data);
 
       if (response.data) {
         let paymentTypeText = "";
@@ -526,40 +549,18 @@ export default function AddPayment() {
           paymentMethod: formData.paymentMethod,
           description:
             formData.description ||
-            `${
-              formData.paymentType === "semester"
-                ? "Semester"
-                : formData.paymentType === "salary"
-                ? "Salary"
-                : formData.paymentType === "multiple"
-                ? "Multiple Fee"
-                : formData.paymentType === "annual"
-                ? "Annual Fee"
-                : formData.paymentType === "transport"
-                ? "Transport Fee"
-                : formData.paymentType === "hostel"
-                ? "Hostel Fee"
-                : formData.paymentType === "library"
-                ? "Library Fee"
-                : formData.paymentType === "lab"
-                ? "Lab Fee"
-                : formData.paymentType === "sports"
-                ? "Sports Fee"
-                : formData.paymentType === "development"
-                ? "Development Fee"
-                : formData.paymentType === "miscellaneous"
-                ? "Miscellaneous Fee"
-                : "Fee"
-            } Payment`,
+            `${formData.feeName === "admission" ? "Admission" : formData.feeName === "exam" ? "Exam" : "Fee"} Payment`,
           transactionId: formData.transactionId,
           collectedBy: formData.collectedBy,
           remarks: formData.remarks,
           paymentType: formData.paymentType,
           academicYear: formData.academicYear,
+          feeName: formData.feeName,
+          selectedFeeCategories: formData.selectedFeeCategories,
         };
 
         // Add UTR for digital payment methods
-        if (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod)) {
+        if (["Online", "Bank Transfer", "Card", "UPI"].includes(formData.paymentMethod)) {
           receipt.utr = formData.utr;
         }
 
@@ -698,16 +699,15 @@ export default function AddPayment() {
             // For multiple fee payment, add the selected fee heads data
             const selectedFeesData = formData.selectedFeeHeads
               .map((feeHeadId) => {
-                const pendingFee = pendingFees.find(
-                  (f) => f.feeHeadId === feeHeadId
-                );
-                if (pendingFee) {
+                // Removed pending fees logic - using fee heads directly
+                const feeHead = feeHeads.find((head) => head._id === feeHeadId);
+                if (feeHead) {
                   return {
-                    feeHead: pendingFee.feeHead,
-                    feeHeadId: pendingFee.feeHeadId,
-                    totalAmount: pendingFee.totalAmount,
-                    paidAmount: pendingFee.paidAmount,
-                    currentPayment: pendingFee.pendingAmount,
+                    feeHead: feeHead.name,
+                    feeHeadId: feeHead._id,
+                    totalAmount: 0, // Will be set by user input
+                    paidAmount: 0,
+                    currentPayment: 0, // Will be set by user input
                     balance: 0,
                   };
                 }
@@ -717,47 +717,10 @@ export default function AddPayment() {
             receipt.multipleFees = selectedFeesData;
           } else if (
             formData.paymentType === "specific" &&
-            pendingFees.length > 0
+            false // Disabled pending fees logic
           ) {
-            // For specific payment, check if multiple pending fees could be covered
-            const totalAmount = parseInt(formData.amount);
-            let remainingAmount = totalAmount;
-            const paidFees = [];
-
-            // Sort pending fees by amount (smallest first for better allocation)
-            const sortedPendingFees = [...pendingFees].sort(
-              (a, b) => a.pendingAmount - b.pendingAmount
-            );
-
-            for (const fee of sortedPendingFees) {
-              if (remainingAmount >= fee.pendingAmount) {
-                paidFees.push({
-                  feeHead: fee.feeHead,
-                  feeHeadId: fee.feeHeadId,
-                  totalAmount: fee.totalAmount,
-                  paidAmount: fee.paidAmount,
-                  currentPayment: fee.pendingAmount,
-                  balance: 0,
-                });
-                remainingAmount -= fee.pendingAmount;
-              } else if (remainingAmount > 0) {
-                paidFees.push({
-                  feeHead: fee.feeHead,
-                  feeHeadId: fee.feeHeadId,
-                  totalAmount: fee.totalAmount,
-                  paidAmount: fee.paidAmount,
-                  currentPayment: remainingAmount,
-                  balance: fee.pendingAmount - remainingAmount,
-                });
-                remainingAmount = 0;
-                break;
-              }
-            }
-
-            // If there are multiple fees or partial payment, use this breakdown
-            if (paidFees.length > 0) {
-              receipt.multipleFees = paidFees;
-            }
+            // Removed pending fees allocation logic
+            // For specific payment, use the entered amount directly
           }
         }
 
@@ -777,9 +740,9 @@ export default function AddPayment() {
 
         // Refresh data
         fetchRecentPayments();
-        if (formData.studentId) {
-          fetchPendingFees(formData.studentId);
-        }
+        // if (formData.studentId) {
+        //   fetchPendingFees(formData.studentId); // Removed fee calculation logic
+        // }
 
         // Reset form
         setFormData({
@@ -825,7 +788,7 @@ export default function AddPayment() {
           salaryMonth: "",
           salaryYear: new Date().getFullYear().toString(),
         });
-        setPendingFees([]);
+        // setPendingFees([]); // Removed fee calculation logic
       }
     } catch (err) {
       console.error("Payment error:", err);
@@ -839,7 +802,7 @@ export default function AddPayment() {
     setFormData({
       studentId: "",
       amount: "",
-      paymentMethod: "Bank Transfer",
+      paymentMethod: "Bank Transfer", // Always set a default payment method
       description: "",
       transactionId: "",
       utr: "",
@@ -879,10 +842,16 @@ export default function AddPayment() {
       salaryType: "monthly",
       salaryMonth: "",
       salaryYear: new Date().getFullYear().toString(),
+      // TFWS field
+      tfws: false,
+      // Fee Name and Categories
+      feeName: "",
+      customFeeName: "",
+      selectedFeeCategories: [],
     });
     setError("");
     setSuccess("");
-    setPendingFees([]);
+    // setPendingFees([]); // Removed fee calculation logic
     setSelectedStudent(null);
   };
 
@@ -893,7 +862,7 @@ export default function AddPayment() {
       student.firstName?.toLowerCase().includes(searchLower) ||
       student.lastName?.toLowerCase().includes(searchLower) ||
       student.studentId?.toLowerCase().includes(searchLower) ||
-      (typeof student.department === 'object'
+      (typeof student.department === "object"
         ? student.department?.name?.toLowerCase().includes(searchLower)
         : student.department?.toLowerCase().includes(searchLower))
     );
@@ -923,8 +892,6 @@ export default function AddPayment() {
                   </div>
                 </div>
               </div>
-              
-              <div class="receipt-type-label">EAXM (OTHER FEES RECEIPT)</div>
 
               <div class="receipt-info-header">
                 <div class="receipt-info-left">
@@ -952,7 +919,18 @@ export default function AddPayment() {
                 <table>
                   <tbody>
                     ${
-                      receiptData.multipleFees && receiptData.multipleFees.length > 0
+                      receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.length > 0
+                        ? receiptData.selectedFeeCategories
+                            .map(
+                              (category, index) => `
+                        <tr>
+                          <td class="fee-name">${category.name}</td>
+                          <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      `
+                            )
+                            .join("")
+                        : receiptData.multipleFees && receiptData.multipleFees.length > 0
                         ? receiptData.multipleFees
                             .map(
                               (fee, index) => `
@@ -1013,549 +991,8 @@ export default function AddPayment() {
           <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
           <style>
             @page {
-              size: A4;
-              margin: 10mm;
-                      ? "🏠 HOSTEL FEE PAYMENT"
-                      : receiptData.paymentType === "library"
-                      ? "📖 LIBRARY FEE PAYMENT"
-                      : receiptData.paymentType === "lab"
-                      ? "🔬 LABORATORY FEE PAYMENT"
-                      : receiptData.paymentType === "sports"
-                      ? "⚽ SPORTS FEE PAYMENT"
-                      : receiptData.paymentType === "development"
-                      ? "🏗️ DEVELOPMENT FEE PAYMENT"
-                      : receiptData.paymentType === "miscellaneous"
-                      ? "📋 MISCELLANEOUS FEE PAYMENT"
-                      : receiptData.paymentType === "salary"
-                      ? "💰 SALARY PAYMENT"
-                      : "💳 STUDENT FEE PAYMENT"
-                  }
-                </div>
-                <div style="font-size: 6px; color: #374151; margin-top: 2px;">
-                  Payment Type: ${receiptData.paymentType.toUpperCase()}
-                </div>
-              </div>
-              
-              <div class="receipt-details">
-                <div class="receipt-info">
-                  <div>
-                    <div class="info-row">
-                      <span class="info-label">Receipt No:</span>
-                      <span>${receiptData.receiptNumber}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Date:</span>
-                      <span>${receiptData.date}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Time:</span>
-                      <span>${receiptData.time}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="info-row">
-                      <span class="info-label">Academic Year:</span>
-                      <span>${receiptData.academicYear}</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Payment Method:</span>
-                      <span>${receiptData.paymentMethod}</span>
-                    </div>
-                    ${
-                      receiptData.transactionId
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Transaction ID:</span>
-                      <span>${receiptData.transactionId}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.utr && ['Online', 'Bank Transfer', 'Card', 'UPI'].includes(receiptData.paymentMethod)
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">UTR:</span>
-                      <span>${receiptData.utr}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                  </div>
-                </div>
-                
-                <div class="section-title">👤 STUDENT INFORMATION</div>
-                <div class="student-info">
-                  <div>
-                    <div class="info-row">
-                      <span class="info-label">Student Name:</span>
-                      <span>${receiptData.student?.firstName} ${
-        receiptData.student?.lastName
-      }</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Student ID:</span>
-                      <span>${receiptData.student?.studentId}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="info-row">
-                      <span class="info-label">Department:</span>
-                      <span>${
-                        typeof receiptData.student?.department === "object"
-                          ? receiptData.student?.department?.name || "N/A"
-                          : receiptData.student?.department || "N/A"
-                      }</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Program:</span>
-                      <span>${
-                        typeof receiptData.student?.program === "object"
-                          ? receiptData.student?.program?.name || "N/A"
-                          : receiptData.student?.program || "N/A"
-                      }</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="section-title">💰 FEE HEAD DETAILS</div>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 6px;">
-                  <thead>
-                    <tr style="background: #f3f4f6;">
-                      <th style="padding: 3px; text-align: left; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Fee Head</th>
-                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Total</th>
-                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Prev Paid</th>
-                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Current</th>
-                      <th style="padding: 3px; text-align: right; border: 1px solid #d1d5db; font-weight: bold; font-size: 6px;">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${
-                      receiptData.multipleFees &&
-                      receiptData.multipleFees.length > 0
-                        ? receiptData.multipleFees
-                            .map(
-                              (fee, index) => `
-                      <tr style="background: ${
-                        index % 2 === 0 ? "white" : "#f9fafb"
-                      };">
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; font-size: 6px;">${
-                          fee.feeHead
-                        }</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">₹${fee.totalAmount.toLocaleString()}</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #059669; font-size: 6px;">₹${fee.paidAmount.toLocaleString()}</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold; font-size: 6px;">₹${fee.currentPayment.toLocaleString()}</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #dc2626; font-size: 6px;">₹${fee.balance.toLocaleString()}</td>
-                      </tr>
-                    `
-                            )
-                            .join("")
-                        : receiptData.feeHead
-                        ? `
-                      <tr style="background: white;">
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; font-size: 6px;">${
-                          receiptData.feeHead.title
-                        }</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">₹${
-                          receiptData.feeHead.amount
-                            ? receiptData.feeHead.amount.toLocaleString()
-                            : "N/A"
-                        }</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #059669; font-size: 6px;">₹${(receiptData
-                          .feeHead.amount
-                          ? receiptData.feeHead.amount -
-                            parseInt(receiptData.amount)
-                          : 0
-                        ).toLocaleString()}</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold; font-size: 6px;">₹${parseInt(
-                          receiptData.amount
-                        ).toLocaleString()}</td>
-                        <td style="padding: 2px 3px; border: 1px solid #d1d5db; text-align: right; color: #dc2626; font-size: 6px;">₹${(receiptData
-                          .feeHead.amount
-                          ? Math.max(
-                              0,
-                              receiptData.feeHead.amount -
-                                parseInt(receiptData.amount)
-                            )
-                          : 0
-                        ).toLocaleString()}</td>
-                      </tr>
-                    `
-                        : `
-                      <tr style="background: white;">
-                        <td style="padding: 4px 6px; border: 1px solid #d1d5db;">${
-                          receiptData.feeHead.title
-                        }</td>
-                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right;">₹${
-                          receiptData.feeHead.amount
-                            ? receiptData.feeHead.amount.toLocaleString()
-                            : "N/A"
-                        }</td>
-                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right; color: #059669;">₹${(receiptData
-                          .feeHead.amount
-                          ? Math.max(
-                              0,
-                              receiptData.feeHead.amount -
-                                parseInt(receiptData.amount)
-                            )
-                          : 0
-                        ).toLocaleString()}</td>
-                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right; color: #2563eb; font-weight: bold;">₹${parseInt(
-                          receiptData.amount
-                        ).toLocaleString()}</td>
-                        <td style="padding: 4px 6px; border: 1px solid #d1d5db; text-align: right; color: #dc2626;">₹${(receiptData
-                          .feeHead.amount
-                          ? Math.max(
-                              0,
-                              receiptData.feeHead.amount -
-                                parseInt(receiptData.amount)
-                            )
-                          : 0
-                        ).toLocaleString()}</td>
-                      </tr>
-                    `
-                    }
-                  </tbody>
-                  <tfoot>
-                    <tr style="background: #dbeafe; font-weight: bold;">
-                      <td style="padding: 3px; border: 1px solid #d1d5db; font-size: 6px;">TOTAL PAYMENT</td>
-                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">-</td>
-                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">-</td>
-                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; color: #1e40af; font-size: 8px; font-weight: bold;">₹${parseInt(
-                        receiptData.amount
-                      ).toLocaleString()}</td>
-                      <td style="padding: 3px; border: 1px solid #d1d5db; text-align: right; font-size: 6px;">-</td>
-                    </tr>
-                  </tfoot>
-                </table>
-                
-                <div class="section-title">💳 PAYMENT DETAILS</div>
-                <div class="student-info">
-                  <div>
-                    <div class="info-row">
-                      <span class="info-label">Payment Type:</span>
-                      <span style="text-transform: capitalize; font-weight: bold; color: #2563eb;">${
-                        receiptData.paymentType
-                      }</span>
-                    </div>
-                    <div class="info-row">
-                      <span class="info-label">Fee Category:</span>
-                      <span style="font-weight: bold; color: #059669;">
-                        ${
-                          receiptData.paymentType === "specific"
-                            ? "Specific Fee Payment"
-                            : receiptData.paymentType === "multiple"
-                            ? "Multiple Fee Heads Payment"
-                            : receiptData.paymentType === "annual"
-                            ? "Annual Fee Payment"
-                            : receiptData.paymentType === "transport"
-                            ? "Transport Fee Payment"
-                            : receiptData.paymentType === "hostel"
-                            ? "Hostel Fee Payment"
-                            : receiptData.paymentType === "library"
-                            ? "Library Fee Payment"
-                            : receiptData.paymentType === "lab"
-                            ? "Laboratory Fee Payment"
-                            : receiptData.paymentType === "sports"
-                            ? "Sports Fee Payment"
-                            : receiptData.paymentType === "development"
-                            ? "Development Fee Payment"
-                            : receiptData.paymentType === "miscellaneous"
-                            ? "Miscellaneous Fee Payment"
-                            : receiptData.paymentType === "salary"
-                            ? "Salary Payment"
-                            : "Student Fee Payment"
-                        }
-                      </span>
-                    </div>
-                    ${
-                      receiptData.paymentType === "transport"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Transport Details:</span>
-                      <span style="color: #f59e0b;">🚌 Bus/Transport Fees</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "hostel"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Hostel Details:</span>
-                      <span style="color: #6366f1;">🏠 Accommodation Fees</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "library"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Library Details:</span>
-                      <span style="color: #14b8a6;">📖 Library Services</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "lab"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Lab Details:</span>
-                      <span style="color: #ec4899;">🔬 Laboratory Usage</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "sports"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Sports Details:</span>
-                      <span style="color: #10b981;">⚽ Sports Facilities</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "development"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Development Details:</span>
-                      <span style="color: #06b6d4;">🏗️ Infrastructure Development</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "annual"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Annual Details:</span>
-                      <span style="color: #f59e0b;">📅 Yearly Fee Payment</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.paymentType === "multiple" &&
-                      receiptData.multipleFees
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Multiple Fees:</span>
-                      <span style="color: #059669;">📊 ${receiptData.multipleFees.length} Fee Head(s)</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.category
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Service Category:</span>
-                      <span style="font-weight: bold; color: #1e40af;">${receiptData.feeTypeDetails.category}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.manualFeeHeadName
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Fee Head:</span>
-                      <span style="color: #059669; font-weight: bold;">💰 ${receiptData.feeTypeDetails.manualFeeHeadName}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.manualFeeDescription
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Fee Details:</span>
-                      <span style="color: #374151; font-weight: bold;">📝 ${receiptData.feeTypeDetails.manualFeeDescription}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.labType
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Laboratory Type:</span>
-                      <span style="color: #ec4899; font-weight: bold;">🔬 ${
-                        receiptData.feeTypeDetails.labType
-                          .charAt(0)
-                          .toUpperCase() +
-                        receiptData.feeTypeDetails.labType.slice(1)
-                      } Lab</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.route
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Transport Route:</span>
-                      <span style="color: #f59e0b; font-weight: bold;">🚌 ${receiptData.feeTypeDetails.route}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.block
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Hostel Details:</span>
-                      <span style="color: #6366f1; font-weight: bold;">🏠 Block ${
-                        receiptData.feeTypeDetails.block
-                      }${
-                            receiptData.feeTypeDetails.roomNumber
-                              ? ", Room " +
-                                receiptData.feeTypeDetails.roomNumber
-                              : ""
-                          }</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.feeType &&
-                      receiptData.paymentType === "library"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Library Service:</span>
-                      <span style="color: #14b8a6; font-weight: bold;">📖 ${
-                        receiptData.feeTypeDetails.feeType
-                          .charAt(0)
-                          .toUpperCase() +
-                        receiptData.feeTypeDetails.feeType
-                          .slice(1)
-                          .replace("-", " ")
-                      }</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.activity
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Sports Activity:</span>
-                      <span style="color: #10b981; font-weight: bold;">⚽ ${
-                        receiptData.feeTypeDetails.activity
-                          .charAt(0)
-                          .toUpperCase() +
-                        receiptData.feeTypeDetails.activity.slice(1)
-                      }</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.purpose &&
-                      receiptData.paymentType === "miscellaneous"
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Payment Purpose:</span>
-                      <span style="color: #6b7280; font-weight: bold;">📋 ${receiptData.feeTypeDetails.purpose}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    ${
-                      receiptData.feeTypeDetails &&
-                      receiptData.feeTypeDetails.duration
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Duration/Period:</span>
-                      <span style="color: #8b5cf6; font-weight: bold;">⏱️ ${
-                        receiptData.feeTypeDetails.duration
-                          .charAt(0)
-                          .toUpperCase() +
-                        receiptData.feeTypeDetails.duration
-                          .slice(1)
-                          .replace("-", " ")
-                      }</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    
-                    <div class="info-row">
-                      <span class="info-label">Description:</span>
-                      <span>${receiptData.description}</span>
-                    </div>
-                  </div>
-                  <div>
-                    ${
-                      receiptData.collectedBy
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Collected By:</span>
-                      <span>${receiptData.collectedBy}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    ${
-                      receiptData.remarks
-                        ? `
-                    <div class="info-row">
-                      <span class="info-label">Remarks:</span>
-                      <span>${receiptData.remarks}</span>
-                    </div>
-                    `
-                        : ""
-                    }
-                    <div class="info-row">
-                      <span class="info-label">Payment Status:</span>
-                      <span style="color: #059669; font-weight: bold;">PAID</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="payment-summary">
-                  <div class="amount-label">TOTAL AMOUNT PAID</div>
-                  <div class="amount-paid">₹${parseInt(
-                    receiptData.amount
-                  ).toLocaleString()}</div>
-                  <div class="amount-label">Amount in Words: ${numberToWords(
-                    parseInt(receiptData.amount)
-                  )} Rupees Only</div>
-                </div>
-                
-                <div class="signature-section">
-                  <div style="text-align: center;">
-                    <div class="signature-box">Cashier Signature</div>
-                  </div>
-                </div>
-
-          <style>
-            @page {
               size: A4 landscape;
-              margin: 5mm;
+              margin: 10mm;
             }
             * {
               margin: 0;
@@ -1585,7 +1022,7 @@ export default function AddPayment() {
               background: white;
               padding: 12px;
               page-break-inside: avoid;
-              min-height: 800px;
+              min-height: 650px;
               height: auto;
               display: flex;
               flex-direction: column;
@@ -1639,29 +1076,6 @@ export default function AddPayment() {
             }
             .institute-address-simple {
               font-size: 8px;
-            }
-            .receipt-info-header {
-              display: grid;
-              grid-template-columns: 1fr 1fr 1fr;
-              gap: 12px;
-              border: 1px solid #000;
-              padding: 10px;
-              margin-bottom: 12px;
-              font-size: 8px;
-            }
-            .receipt-info-left,
-            .receipt-info-center,
-            .receipt-info-right {
-              display: flex;
-              flex-direction: column;
-              gap: 3px;
-            }
-            .receipt-info-center {
-              align-items: center;
-              justify-content: center;
-              border-left: 1px solid #000;
-              border-right: 1px solid #000;
-              padding: 0 10px;
             }
             .receipt-type-label {
               font-weight: bold;
@@ -1720,7 +1134,7 @@ export default function AddPayment() {
             }
             .logo-section {
               text-align: center;
-              padding: 20px 0;
+              padding: 40px 0;
               border-left: 1px solid #000;
               border-right: 1px solid #000;
               display: flex;
@@ -1738,7 +1152,7 @@ export default function AddPayment() {
             .total-section {
               display: flex;
               justify-content: space-between;
-              border: 1px solid #000;
+              border: 2px solid #000;
               border-top: 2px solid #000;
               padding: 6px 8px;
               font-weight: bold;
@@ -1769,9 +1183,9 @@ export default function AddPayment() {
               align-items: flex-end;
               border: 1px solid #000;
               border-top: none;
-              padding: 10px;
+              padding: 15px;
               font-size: 7px;
-              min-height: 50px;
+              min-height: 80px;
             }
             .cashier-info {
               font-size: 7px;
@@ -1790,7 +1204,7 @@ export default function AddPayment() {
             }
             @media print {
               @page {
-                size: A4;
+                size: A4 landscape;
                 margin: 10mm;
               }
               body {
@@ -1805,8 +1219,8 @@ export default function AddPayment() {
         </head>
         <body>
           <div class="receipts-wrapper">
-            ${generateReceipt('ORIGINAL')}
-            ${generateReceipt('DUPLICATE')}
+            ${generateReceipt("ORIGINAL")}
+            ${generateReceipt("DUPLICATE")}
           </div>
         </body>
         </html>
@@ -1916,7 +1330,7 @@ export default function AddPayment() {
 
           <div className="p-4" id="receipt-content">
             {/* Professional Receipt Preview - Matching Print Version */}
-            <div 
+            <div
               className="bg-white"
               dangerouslySetInnerHTML={{
                 __html: `
@@ -1947,15 +1361,15 @@ export default function AddPayment() {
                       height: 100%;
                     }
                     .receipt-container {
-                      width: 90%;
-                      max-width: 650px;
+                      width: 95%;
+                      max-width: 900px;
                       border: 2px solid #2d3748;
                       background: white;
                       padding: 20px;
                       margin: 20px auto;
                       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                       page-break-inside: avoid;
-                      min-height: 745px;
+                      min-height: 600px;
                       height: auto;
                     }
                     .receipt-header-box {
@@ -2083,7 +1497,7 @@ export default function AddPayment() {
                     }
                     .logo-section {
                       text-align: center;
-                      padding: 12px 0;
+                      padding: 30px 0;
                       border-left: 2px solid #000;
                       border-right: 2px solid #000;
                       background: #f8f9fa;
@@ -2138,9 +1552,9 @@ export default function AddPayment() {
                       align-items: flex-end;
                       border: 2px solid #2d3748;
                       border-top: none;
-                      padding: 10px;
+                      padding: 15px;
                       font-size: 10px;
-                      min-height: 40px;
+                      min-height: 60px;
                       background: #f7fafc;
                       color: #2d3748;
                     }
@@ -2162,7 +1576,7 @@ export default function AddPayment() {
                     }
                     @media print {
                       @page {
-                        size: A4;
+                        size: A4 landscape;
                         margin: 10mm;
                       }
                       body {
@@ -2194,8 +1608,6 @@ export default function AddPayment() {
                               </div>
                             </div>
                           </div>
-                          
-                          <div class="receipt-type-label">EXAM (OTHER FEES RECEIPT)</div>
 
                           <table class="receipt-info-table">
                             <tr>
@@ -2212,7 +1624,7 @@ export default function AddPayment() {
                             </tr>
                             <tr>
                               <td class="label-cell">Category</td>
-                              <td class="value-cell">: ${receiptData.student?.caste || 'N/A'}</td>
+                              <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
                               <td class="label-cell">Student Id.</td>
                               <td class="value-cell">: ${receiptData.student?.studentId}</td>
                             </tr>
@@ -2237,7 +1649,18 @@ export default function AddPayment() {
                             <table>
                               <tbody>
                                 ${
-                                  receiptData.multipleFees && receiptData.multipleFees.length > 0
+                                  receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.length > 0
+                                    ? receiptData.selectedFeeCategories
+                                        .map(
+                                          (category, index) => `
+                                <tr>
+                                  <td class="fee-name">${category.name}</td>
+                                  <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                </tr>
+                              `
+                                        )
+                                        .join("")
+                                    : receiptData.multipleFees && receiptData.multipleFees.length > 0
                                     ? receiptData.multipleFees
                                         .map(
                                           (fee, index) => `
@@ -2257,7 +1680,7 @@ export default function AddPayment() {
                                 }
                               </tbody>
                             </table>
-                          </div>
+                                                   </div>
                           
                           <div class="logo-section">
                             <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
@@ -2290,10 +1713,10 @@ export default function AddPayment() {
                           <div class="page-number">Page 1 of 1</div>
                         </div>
                       `;
-                      return generateReceipt('ORIGINAL');
+                      return generateReceipt("ORIGINAL");
                     })()}
                   </div>
-                `
+                `,
               }}
             />
           </div>
@@ -2734,244 +2157,435 @@ export default function AddPayment() {
                 formData.paymentType === "sports" ||
                 formData.paymentType === "development" ||
                 formData.paymentType === "miscellaneous") && (
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <span className="text-xl mr-2">👤</span>
+                <div className="border-b border-gray-200 pb-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span className="text-2xl mr-3">👤</span>
                     Student Information
+                    <div className="ml-auto flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm text-gray-600 font-medium">
+                        {students.length} students loaded
+                      </span>
+                    </div>
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="relative">
-                      <label className="text-sm font-bold text-gray-800 mb-3 flex items-center">
-                        <span className="mr-2">👤</span>
-                        Select Student *
-                        <button
-                          type="button"
-                          onClick={fetchStudents}
-                          disabled={loadingStudents}
-                          className="ml-2 text-blue-600 hover:text-blue-800 disabled:text-gray-400"
-                          title="Refresh student list"
-                        >
-                          {loadingStudents ? "⟳" : "🔄"}
-                        </button>
-                      </label>
-
-                      {/* Custom Searchable Select */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
                       <div className="relative">
-                        <div
-                          className="w-full pl-12 pr-10 py-4 border-2 border-gray-300 rounded-xl focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:border-blue-500 text-lg font-medium transition-all duration-200 bg-white shadow-sm hover:shadow-md cursor-pointer"
-                          onClick={() => !loadingStudents && setIsDropdownOpen(!isDropdownOpen)}
-                        >
-                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">
-                            <span className="text-xl">🎓</span>
-                          </div>
+                        <label className="block text-sm font-bold text-gray-800 mb-4 flex items-center">
+                          <span className="mr-2 text-lg">🎓</span>
+                          Select Student *
+                          <button
+                            type="button"
+                            onClick={fetchStudents}
+                            disabled={loadingStudents}
+                            className="ml-3 px-3 py-1 text-blue-600 hover:text-blue-800 disabled:text-gray-400 bg-blue-50 hover:bg-blue-100 rounded-full transition-all duration-200 flex items-center text-sm font-medium"
+                            title="Refresh student list"
+                          >
+                            {loadingStudents ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent mr-2"></div>
+                            ) : (
+                              <span className="mr-2">🔄</span>
+                            )}
+                            Refresh
+                          </button>
+                        </label>
 
-                          <div className="flex items-center justify-between">
-                            <span className={selectedStudent ? "text-gray-900" : "text-gray-500"}>
-                              {selectedStudent
-                                ? `${selectedStudent.firstName} ${selectedStudent.lastName} - ${selectedStudent.studentId}`
-                                : (loadingStudents
-                                  ? "Loading students..."
-                                  : `-- Select Student (${students.length} available) --`
-                                )
-                              }
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-400 text-sm">
-                                {isDropdownOpen ? "🔽" : "🔼"}
-                              </span>
+                        {/* Enhanced Custom Searchable Select */}
+                        <div className="relative group">
+                          <div
+                            className={`w-full pl-14 pr-12 py-5 border-2 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-[1.01] shadow-lg hover:shadow-xl ${
+                              isDropdownOpen
+                                ? "border-blue-500 bg-blue-50 ring-4 ring-blue-500/20"
+                                : "border-gray-300 hover:border-blue-400 bg-white"
+                            }`}
+                            onClick={() => !loadingStudents && setIsDropdownOpen(!isDropdownOpen)}
+                          >
+                            <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-500">
+                              <span className="text-2xl">🎓</span>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* Dropdown */}
-                        {isDropdownOpen && !loadingStudents && (
-                          <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-300 rounded-xl shadow-xl max-h-80 overflow-hidden">
-                            {/* Search Input */}
-                            <div className="p-3 border-b border-gray-200 bg-gray-50">
-                              <div className="relative">
-                                <input
-                                  type="text"
-                                  placeholder="🔍 Search students by name, ID, or department..."
-                                  value={studentSearchTerm}
-                                  onChange={(e) => {
-                                    setStudentSearchTerm(e.target.value);
-                                    handleStudentSearch(e.target.value);
-                                    e.stopPropagation();
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-full pl-8 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                  autoFocus
-                                />
-                                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                                  <span className="text-sm">🔍</span>
-                                </div>
-                                {studentSearchTerm && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      setStudentSearchTerm("");
-                                      e.stopPropagation();
-                                    }}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    title="Clear search"
-                                  >
-                                    <span className="text-sm">✕</span>
-                                  </button>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-lg font-medium ${selectedStudent ? "text-gray-900" : "text-gray-500"}`}>
+                                {selectedStudent
+                                  ? `${selectedStudent.firstName} ${selectedStudent.lastName}`
+                                  : (loadingStudents
+                                    ? "Loading students..."
+                                    : "Click to select a student"
+                                  )
+                                }
+                              </span>
+                              <div className="flex items-center space-x-2">
+                                {selectedStudent && (
+                                  <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
+                                    ✓ Selected
+                                  </span>
                                 )}
+                                <div className={`transform transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}>
+                                  <span className="text-xl text-gray-500">▼</span>
+                                </div>
                               </div>
                             </div>
 
-                            {/* Options List */}
-                            <div className="max-h-64 overflow-y-auto">
-                              {filteredStudents.length > 0 ? (
-                                filteredStudents.map((student) => (
-                                  <div
-                                    key={student._id}
-                                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
-                                    onClick={() => {
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        studentId: student._id,
-                                      }));
-                                      setIsDropdownOpen(false);
-                                      setStudentSearchTerm("");
-                                      fetchPendingFees(student._id);
+                            {selectedStudent && (
+                              <div className="mt-2 text-sm text-gray-600 flex items-center space-x-4">
+                                <span className="flex items-center">
+                                  <span className="mr-1">🆔</span>
+                                  {selectedStudent.studentId}
+                                </span>
+                                <span className="flex items-center">
+                                  <span className="mr-1">📚</span>
+                                  Sem {selectedStudent.currentSemester}
+                                </span>
+                                <span className="flex items-center">
+                                  <span className="mr-1">🏛️</span>
+                                  {typeof selectedStudent.department === "object"
+                                    ? selectedStudent.department?.name || "N/A"
+                                    : selectedStudent.department || "N/A"
+                                  }
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Enhanced Dropdown */}
+                          {isDropdownOpen && !loadingStudents && (
+                            <div className="absolute z-50 w-full mt-3 bg-white border-2 border-gray-300 rounded-2xl shadow-2xl max-h-96 overflow-hidden animate-fadeIn">
+                              {/* Enhanced Search Input */}
+                              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    placeholder="🔍 Search by name, ID, department, or semester..."
+                                    value={studentSearchTerm}
+                                    onChange={(e) => {
+                                      setStudentSearchTerm(e.target.value);
+                                      handleStudentSearch(e.target.value);
+                                      e.stopPropagation();
                                     }}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1">
-                                        <div className="font-medium text-gray-900">
-                                          {student.firstName} {student.lastName}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full pl-12 pr-12 py-3 border-2 border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-base font-medium transition-all duration-200 bg-white shadow-sm"
+                                    autoFocus
+                                  />
+                                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                    <span className="text-lg">🔍</span>
+                                  </div>
+                                  {studentSearchTerm && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        setStudentSearchTerm("");
+                                        e.stopPropagation();
+                                      }}
+                                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+                                      title="Clear search"
+                                    >
+                                      <span className="text-lg">✕</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Enhanced Options List */}
+                              <div className="max-h-72 overflow-y-auto">
+                                {filteredStudents.length > 0 ? (
+                                  filteredStudents.map((student, index) => (
+                                    <div
+                                      key={student._id}
+                                      className={`px-5 py-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all duration-200 transform hover:scale-[1.01] ${
+                                        formData.studentId === student._id ? "bg-green-50 border-green-200" : ""
+                                      }`}
+                                      onClick={() => handleStudentSelect(student)}
+                                      style={{ animationDelay: `${index * 50}ms` }}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center space-x-3 mb-2">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                              {student.firstName.charAt(0)}{student.lastName.charAt(0)}
+                                            </div>
+                                            <div>
+                                              <div className="font-bold text-gray-900 text-base">
+                                                {student.firstName} {student.lastName}
+                                              </div>
+                                              <div className="text-sm text-gray-600">
+                                                🆔 {student.studentId}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                            <span className="flex items-center bg-blue-100 px-2 py-1 rounded-full">
+                                              <span className="mr-1">📚</span>
+                                              Sem {student.currentSemester}
+                                            </span>
+                                            <span className="flex items-center bg-green-100 px-2 py-1 rounded-full">
+                                              <span className="mr-1">🏛️</span>
+                                              {typeof student.department === "object"
+                                                ? student.department?.name || "N/A"
+                                                : student.department || "N/A"
+                                              }
+                                            </span>
+                                            <span className="flex items-center bg-purple-100 px-2 py-1 rounded-full text-xs">
+                                              {student.caste || student.casteCategory || 'N/A'}
+                                            </span>
+                                          </div>
                                         </div>
-                                        <div className="text-sm text-gray-600 flex items-center gap-4">
-                                          <span>🆔 {student.studentId}</span>
-                                          {student.currentSemester && (
-                                            <span>📚 Sem {student.currentSemester}</span>
-                                          )}
-                                          <span>🏛️ {typeof student.department === "object"
-                                            ? student.department?.name || "N/A"
-                                            : student.department || "N/A"
-                                          }</span>
-                                        </div>
+                                        {formData.studentId === student._id && (
+                                          <div className="text-green-600 ml-4">
+                                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                              <span className="text-white text-sm font-bold">✓</span>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
-                                      {formData.studentId === student._id && (
-                                        <div className="text-blue-600 ml-2">
-                                          <span className="text-lg">✓</span>
-                                        </div>
-                                      )}
                                     </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="px-4 py-8 text-center text-gray-500">
-                                  <div className="text-2xl mb-2">🔍</div>
-                                  <div className="font-medium">
-                                    {studentSearchTerm
-                                      ? "No students found matching your search"
-                                      : "No students available"
-                                    }
-                                  </div>
-                                  <div className="text-sm mt-1">
+                                  ))
+                                ) : (
+                                  <div className="px-6 py-12 text-center text-gray-500">
+                                    <div className="text-4xl mb-4">🔍</div>
+                                    <div className="font-bold text-lg mb-2">
+                                      {studentSearchTerm
+                                        ? "No students found"
+                                        : "No students available"
+                                      }
+                                    </div>
+                                    <div className="text-sm mb-4">
+                                      {studentSearchTerm
+                                        ? "Try adjusting your search terms"
+                                        : "Please refresh the student list"
+                                      }
+                                    </div>
                                     {studentSearchTerm && (
                                       <button
                                         type="button"
                                         onClick={() => setStudentSearchTerm("")}
-                                        className="text-blue-600 hover:text-blue-800 underline"
+                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 font-medium"
                                       >
-                                        Clear search
+                                        Clear Search
                                       </button>
                                     )}
                                   </div>
+                                )}
+                              </div>
+
+                              {/* Enhanced Footer */}
+                              <div className="px-5 py-3 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200 text-sm text-gray-600 text-center">
+                                <div className="flex items-center justify-center space-x-4">
+                                  <span className="flex items-center">
+                                    <span className="mr-1">📊</span>
+                                    {studentSearchTerm
+                                      ? `Found ${filteredStudents.length} student${filteredStudents.length === 1 ? '' : 's'}`
+                                      : `${students.length} students loaded`
+                                    }
+                                  </span>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="flex items-center text-blue-600 font-medium">
+                                    <span className="mr-1">⚡</span>
+                                    Instant search active
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 text-center">
-                              {studentSearchTerm
-                                ? `Found ${filteredStudents.length} student${filteredStudents.length === 1 ? '' : 's'} • Instant filtering active`
-                                : `${students.length} students loaded • Start typing to filter instantly`
-                              }
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Click outside to close */}
-                      {isDropdownOpen && (
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setIsDropdownOpen(false)}
-                        />
-                      )}
-                    </div>
-
-                    {selectedStudent && (
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-200 animate-fadeIn shadow-md">
-                        <h4 className="font-bold text-blue-900 mb-4 text-lg flex items-center">
-                          <span className="mr-2">📋</span>
-                          Student Profile
-                        </h4>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex items-center bg-white rounded-lg p-3 shadow-sm">
-                            <span className="mr-3 text-blue-600">🏛️</span>
-                            <span className="font-medium text-gray-700 min-w-[80px]">
-                              Department:
-                            </span>
-                            <span className="text-blue-800 font-semibold">
-                              {typeof selectedStudent.department === "object"
-                                ? selectedStudent.department?.name || "N/A"
-                                : selectedStudent.department || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center bg-white rounded-lg p-3 shadow-sm">
-                            <span className="mr-3 text-green-600">📚</span>
-                            <span className="font-medium text-gray-700 min-w-[80px]">
-                              Program:
-                            </span>
-                            <span className="text-green-800 font-semibold">
-                              {typeof selectedStudent.program === "object"
-                                ? selectedStudent.program?.name || "N/A"
-                                : selectedStudent.program || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex items-center bg-white rounded-lg p-3 shadow-sm">
-                            <span className="mr-3 text-purple-600">📈</span>
-                            <span className="font-medium text-gray-700 min-w-[80px]">
-                              Semester:
-                            </span>
-                            <span className="text-purple-800 font-semibold">
-                              {selectedStudent.currentSemester}
-                            </span>
-                          </div>
-                          {selectedStudent.email && (
-                            <div className="flex items-center bg-white rounded-lg p-3 shadow-sm">
-                              <span className="mr-3 text-red-600">📧</span>
-                              <span className="font-medium text-gray-700 min-w-[80px]">
-                                Email:
-                              </span>
-                              <span className="text-red-800 font-semibold">
-                                {selectedStudent.email}
-                              </span>
+                              </div>
                             </div>
                           )}
                         </div>
+
+                        {/* Click outside to close */}
+                        {isDropdownOpen && (
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setIsDropdownOpen(false)}
+                          />
+                        )}
                       </div>
-                    )}
+
+                      {/* Enhanced Caste Category and TFWS */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-bold text-gray-800 mb-3 flex items-center">
+                            <span className="mr-2">🏛️</span>
+                            Caste Category
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              name="caste"
+                              value={formData.caste || ""}
+                              onChange={handleInputChange}
+                              list="caste-suggestions"
+                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-base font-medium transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                              placeholder="Select or enter caste category"
+                            />
+                            <datalist id="caste-suggestions" style={{background:"white"}}>
+                              <option value="Open" />
+                              <option value="OBC" />
+                              <option value="SC" />
+                              <option value="ST" />
+                              <option value="SBC" />
+                              <option value="VJNT" />
+                              <option value="NT" />
+                              <option value="Other" />
+                            </datalist>
+                          </div>
+                        </div>
+
+                        <div className="flex items-end">
+                          <label className="flex items-center space-x-3 cursor-pointer group">
+                            <div className={`relative w-6 h-6 border-2 rounded-lg transition-all duration-200 ${
+                              formData.tfws
+                                ? "border-green-500 bg-green-500"
+                                : "border-gray-300 group-hover:border-blue-400"
+                            }`}>
+                              <input
+                                type="checkbox"
+                                name="tfws"
+                                checked={formData.tfws || false}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    tfws: checked,
+                                  }));
+                                }}
+                                className="sr-only"
+                              />
+                              {formData.tfws && (
+                                <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold">✓</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-gray-800">
+                                <span className="mr-2">🎓</span>
+                                Tuition Fee Waiver Scheme (TFWS)
+                              </span>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Check if eligible for TFWS
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Student Profile Card */}
+                    <div className="lg:col-span-1">
+                      {selectedStudent && (
+                        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 rounded-2xl border-2 border-blue-200 shadow-xl animate-fadeIn">
+                          <div className="text-center mb-6">
+                            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4 shadow-lg">
+                              {selectedStudent.firstName.charAt(0)}{selectedStudent.lastName.charAt(0)}
+                            </div>
+                            <h4 className="font-bold text-blue-900 text-xl mb-2">
+                              {selectedStudent.firstName} {selectedStudent.lastName}
+                            </h4>
+                            <div className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm font-bold rounded-full">
+                              <span className="mr-1">🆔</span>
+                              {selectedStudent.studentId}
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="bg-white p-4 rounded-xl border border-blue-300 shadow-sm hover:shadow-md transition-all duration-200">
+                              <div className="flex items-center">
+                                <span className="mr-3 text-blue-600 text-lg">🏛️</span>
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Department</div>
+                                  <div className="font-bold text-blue-800 text-base">
+                                    {typeof selectedStudent.department === "object"
+                                      ? selectedStudent.department?.name || "N/A"
+                                      : selectedStudent.department || "N/A"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-xl border border-green-300 shadow-sm hover:shadow-md transition-all duration-200">
+                              <div className="flex items-center">
+                                <span className="mr-3 text-green-600 text-lg">📚</span>
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Program</div>
+                                  <div className="font-bold text-green-800 text-base">
+                                    {typeof selectedStudent.program === "object"
+                                      ? selectedStudent.program?.name || "N/A"
+                                      : selectedStudent.program || "N/A"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-xl border border-purple-300 shadow-sm hover:shadow-md transition-all duration-200">
+                              <div className="flex items-center">
+                                <span className="mr-3 text-purple-600 text-lg">📈</span>
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Semester</div>
+                                  <div className="font-bold text-purple-800 text-base">
+                                    Semester {selectedStudent.currentSemester}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-xl border border-pink-300 shadow-sm hover:shadow-md transition-all duration-200">
+                              <div className="flex items-center">
+                                <span className="mr-3 text-pink-600 text-lg">🚻</span>
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Gender</div>
+                                  <div className="font-bold text-pink-800 text-base">
+                                    {getStudentGender(selectedStudent)
+                                      ? getStudentGender(selectedStudent).charAt(0).toUpperCase() + getStudentGender(selectedStudent).slice(1)
+                                      : (selectedStudent?.gender || selectedStudent?.sex || 'N/A')}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-xl border border-yellow-300 shadow-sm hover:shadow-md transition-all duration-200">
+                              <div className="flex items-center">
+                                <span className="mr-3 text-yellow-600 text-lg">🧾</span>
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Caste</div>
+                                  <div className="font-bold text-yellow-800 text-base">
+                                    {selectedStudent?.caste || selectedStudent?.casteCategory || formData.caste || 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {selectedStudent.email && (
+                              <div className="bg-white p-4 rounded-xl border border-red-300 shadow-sm hover:shadow-md transition-all duration-200">
+                                <div className="flex items-center">
+                                  <span className="mr-3 text-red-600 text-lg">📧</span>
+                                  <div className="flex-1">
+                                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Email</div>
+                                    <div className="font-bold text-red-800 text-base break-all">
+                                      {selectedStudent.email}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+
+                    </div>
                   </div>
 
                   {/* Pending Fees Section - Only for Specific Payment */}
                   {selectedStudent &&
                     formData.paymentType === "specific" &&
-                    pendingFees.length > 0 && (
+                    false && ( // Disabled pending fees section
                       <div className="mt-6">
                         <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                           <span className="text-xl mr-2">⏰</span>
                           Pending Fees
                         </h4>
+
+                        {console.log('Pending Fees:', selectedStudent.department.name, feeHeads)}
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {pendingFees.map((fee, index) => (
+                            {[]
+                            .filter(fee => feeHeads.some(head => head._id === fee.feeHeadId))
+                            .map((fee, index) => (
                               <div
                                 key={index}
                                 className="bg-white p-3 rounded-lg border border-yellow-300"
@@ -3030,17 +2644,17 @@ export default function AddPayment() {
                     )}
 
                   {/* Multiple Fee Heads Selection - Only for Multiple Payment */}
-                  {selectedStudent && formData.paymentType === "multiple" && (
+                  {selectedStudent && formData.paymentType === "multiple" && false && ( // Disabled multiple fee heads section
                     <div className="mt-6">
                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                         <span className="text-xl mr-2">📊</span>
                         Select Multiple Fee Heads
                       </h4>
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        {pendingFees.length > 0 ? (
+                        {false ? (
                           <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                              {pendingFees.map((fee, index) => (
+                              {[].map((fee, index) => (
                                 <label key={index} className="relative">
                                   <input
                                     type="checkbox"
@@ -3076,7 +2690,7 @@ export default function AddPayment() {
                                       // Auto-calculate total and adjust payment type
                                       const totalAmount =
                                         updatedFeeHeads.reduce((sum, id) => {
-                                          const pendingFee = pendingFees.find(
+                                          const pendingFee = [].find(
                                             (f) => f.feeHeadId === id
                                           );
                                           return (
@@ -3103,7 +2717,7 @@ export default function AddPayment() {
                                     className="sr-only"
                                   />
                                   <div
-                                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.02] ${
+                                    className={`p-4 border-2 rounded-xl cursor-pointer text-center transition-all duration-300 transform hover:scale-[1.02] ${
                                       formData.selectedFeeHeads.includes(
                                         fee.feeHeadId
                                       )
@@ -3197,7 +2811,7 @@ export default function AddPayment() {
                                 <div className="space-y-3 mb-4">
                                   {formData.selectedFeeHeads.map(
                                     (feeHeadId, index) => {
-                                      const fee = pendingFees.find(
+                                      const fee = [].find(
                                         (f) => f.feeHeadId === feeHeadId
                                       );
                                       return fee ? (
@@ -3216,7 +2830,7 @@ export default function AddPayment() {
                                               {fee.feeHead}
                                             </span>
                                           </div>
-                                          <span className="font-bold text-green-700 text-lg">
+                                          <span className="font-bold text-green-900 text-lg">
                                             ₹
                                             {fee.pendingAmount.toLocaleString()}
                                           </span>
@@ -3235,7 +2849,7 @@ export default function AddPayment() {
                                       ₹
                                       {formData.selectedFeeHeads
                                         .reduce((total, feeHeadId) => {
-                                          const fee = pendingFees.find(
+                                          const fee = [].find(
                                             (f) => f.feeHeadId === feeHeadId
                                           );
                                           return (
@@ -3253,7 +2867,7 @@ export default function AddPayment() {
                                     onClick={() => {
                                       setFormData((prev) => ({
                                         ...prev,
-                                        selectedFeeHeads: pendingFees.map(
+                                        selectedFeeHeads: [].map(
                                           (f) => f.feeHeadId
                                         ),
                                       }));
@@ -3265,24 +2879,19 @@ export default function AddPayment() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const totalAmount =
-                                        formData.selectedFeeHeads.reduce(
-                                          (total, feeHeadId) => {
-                                            const fee = pendingFees.find(
-                                              (f) => f.feeHeadId === feeHeadId
-                                            );
-                                            return (
-                                              total +
-                                              (fee ? fee.pendingAmount : 0)
-                                            );
-                                          },
-                                          0
-                                        );
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        amount: totalAmount.toString(),
-                                        description: `Multiple Fee Payment - ${formData.selectedFeeHeads.length} fee heads`,
-                                      }));
+                                      const fee = [].find(
+                                        (f) => f.feeHeadId === formData.selectedFeeHeads[0]
+                                      );
+                                      if (fee) {
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          amount: fee.pendingAmount.toString(),
+                                          feeHead: fee.feeHeadId,
+                                          manualFeeHeadName: fee.feeHead,
+                                          manualFeeAmount: fee.pendingAmount.toString(),
+                                          paymentType: "specific",
+                                        }));
+                                      }
                                     }}
                                     className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
                                   >
@@ -3326,7 +2935,7 @@ export default function AddPayment() {
                   {/* No Pending Fees Message - Only for Specific Payment */}
                   {selectedStudent &&
                     formData.paymentType === "specific" &&
-                    pendingFees.length === 0 && (
+                    false && ( // Disabled no pending fees message
                       <div className="mt-6">
                         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                           <div className="flex items-center text-green-700">
@@ -3669,7 +3278,7 @@ export default function AddPayment() {
               )}
 
               {/* Fee Information - Only for Specific Payment */}
-              {formData.paymentType === "specific" && (
+              {/* {formData.paymentType === "specific" && (
                 <div className="border-b border-gray-200 pb-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <span className="text-xl mr-2">💰</span>
@@ -3714,7 +3323,7 @@ export default function AddPayment() {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Payment Details */}
               <div className="border-b border-gray-200 pb-6">
@@ -3727,15 +3336,81 @@ export default function AddPayment() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Fee Name
                     </label>
-                    <input
-                      type="text"
+                    <select
                       name="feeName"
                       value={formData.feeName || ""}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter fee name"
-                    />
+                    >
+                      <option value="">Select Fee Name</option>
+                      <option value="admission">Admission</option>
+                      <option value="exam">Exam</option>
+                      <option value="other">Other</option>
+                    </select>
+                    {formData.feeName === "other" && (
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          name="customFeeName"
+                          value={formData.customFeeName || ""}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter custom fee name"
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {/* Fee Categories Section */}
+                  {(formData.feeName === "admission" || formData.feeName === "exam") && (
+                    <div className="md:col-span-2 mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Select Fee Categories
+                      </label>
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {feeCategories[formData.feeName]?.map((category) => (
+                            <div key={category.id} className="flex items-center space-x-3">
+                              <input
+                                type="checkbox"
+                                id={category.id}
+                                checked={formData.selectedFeeCategories.some(cat => cat.id === category.id)}
+                                onChange={(e) => handleFeeCategoryChange(category.id, e.target.checked)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <label htmlFor={category.id} className="text-sm font-medium text-gray-700 flex-1">
+                                {category.name}
+                              </label>
+                              {formData.selectedFeeCategories.some(cat => cat.id === category.id) && (
+                                <input
+                                  type="number"
+                                  value={formData.selectedFeeCategories.find(cat => cat.id === category.id)?.amount || 0}
+                                  onChange={(e) => handleFeeCategoryAmountChange(category.id, e.target.value)}
+                                  className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Amount"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {formData.selectedFeeCategories.length > 0 && (
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-blue-800">
+                                Total Selected Categories: {formData.selectedFeeCategories.length}
+                              </span>
+                              <span className="text-sm font-bold text-blue-900">
+                                Total Amount: ₹{formData.selectedFeeCategories.reduce((sum, cat) => sum + (parseFloat(cat.amount) || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Amount (₹) *
@@ -3746,8 +3421,6 @@ export default function AddPayment() {
                       value={formData.amount}
                       onChange={handleInputChange}
                       required
-                      // min="0"
-                      // step="0.01"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter amount"
                     />
@@ -3772,6 +3445,7 @@ export default function AddPayment() {
                     </select>
                   </div>
 
+                  {/* UTR - Show if payment method requires it */}
                   {['Online', 'Bank Transfer', 'Card', 'UPI'].includes(formData.paymentMethod) && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -3802,6 +3476,8 @@ export default function AddPayment() {
                       placeholder="Cashier name"
                     />
                   </div>
+
+
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -3960,6 +3636,14 @@ export default function AddPayment() {
           </div>
         </div>
       </div>
+
+      {/* Receipt Modal */}
+      {showReceipt && (
+        <ReceiptModal
+          receiptData={receiptData}
+          onClose={() => setShowReceipt(false)}
+        />
+      )}
     </>
   );
 }

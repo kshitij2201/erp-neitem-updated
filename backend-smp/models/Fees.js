@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const feeHeadSchema = new mongoose.Schema(
+const feesSchema = new mongoose.Schema(
   {
     stream: { type: String, required: true },
     branch: { type: String, required: true },
@@ -12,6 +12,6 @@ const feeHeadSchema = new mongoose.Schema(
 );
 
 // Compound index to ensure unique combination
-feeHeadSchema.index({ stream: 1, branch: 1, batch: 1, head: 1 }, { unique: true });
+feesSchema.index({ stream: 1, branch: 1, batch: 1, head: 1 }, { unique: true });
 
-export default mongoose.model("FeeHead", feeHeadSchema);
+export default mongoose.model("Fees", feesSchema);

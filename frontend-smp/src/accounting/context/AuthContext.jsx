@@ -25,24 +25,36 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  const checkAuthStatus = () => {
+  const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem("token");
       const storedFaculty = localStorage.getItem("faculty");
       const storedUser = localStorage.getItem("user");
 
       if (token && storedFaculty) {
-        const facultyData = JSON.parse(storedFaculty);
-        setFaculty(facultyData);
-        setIsAuthenticated(true);
+        // Validate token by making a test API call
+        try {
+          await axios.get("https://backenderp.tarstech.in/api/dashboard/stats", {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000
+          });
 
-        // If user data exists (for bus management), set it
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          const facultyData = JSON.parse(storedFaculty);
+          setFaculty(facultyData);
+          setIsAuthenticated(true);
+
+          // If user data exists (for bus management), set it
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+
+          // Set axios default header
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        } catch (error) {
+          console.warn("Token validation failed, clearing auth data:", error.message);
+          // Token is invalid, clear it
+          logout();
         }
-
-        // Set axios default header
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       }
     } catch (error) {
       console.error("Error checking auth status:", error);

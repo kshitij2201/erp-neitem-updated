@@ -39,13 +39,28 @@ router.get("/all", async (req, res) => {
   }
 });
 
-// Get all departments (optionally by stream)
-router.get("/", async (req, res) => {
+// Get departments by stream name
+router.get("/by-stream/:streamName", async (req, res) => {
   try {
-    const { streamId } = req.query;
-    const filter = streamId ? { stream: streamId } : {};
-    const departments = await Department.find(filter).populate("stream");
-    res.json(departments);
+    const { streamName } = req.params;
+    
+    // First find the stream by name
+    const Stream = (await import("../models/Stream.js")).default;
+    const stream = await Stream.findOne({ name: streamName });
+    
+    if (!stream) {
+      return res.status(404).json({ error: "Stream not found" });
+    }
+    
+    // Get departments for this stream
+    const departments = await Department.find({ stream: stream._id }).select('name');
+    const departmentNames = departments.map(dept => dept.name);
+    
+    res.json({ 
+      stream: streamName,
+      departments: departmentNames,
+      count: departmentNames.length
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

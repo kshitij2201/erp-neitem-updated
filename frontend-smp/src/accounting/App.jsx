@@ -28,6 +28,7 @@ import AddPayment from "./pages/Accounting/AddPayment";
 import Ledger from "./pages/Accounting/Ledger";
 import RoleLogin from "./pages/Auth/RoleLogin";
 import AccountSectionManagement from "./pages/Faculty/AccountSectionManagement";
+import StudentDetails2 from "./pages/Students/StudentDetails2";
 
 // Main App component with authentication awareness
 const AppContent = () => {
@@ -57,7 +58,7 @@ const AppContent = () => {
           <Route path="/" element={<Dashboard />} />
           
           {/* Student Routes */}
-          <Route path="students/overview/*" element={<StudentDetails />} />
+          {/* <Route path="students/overview/*" element={<StudentDetails2 />} /> */}
           <Route path="students/details/*" element={<StudentDetails />} />
           <Route path="students/insurance/*" element={<Insurance />} />
           <Route path="students/scholarship/*" element={<Scholarship />} />
