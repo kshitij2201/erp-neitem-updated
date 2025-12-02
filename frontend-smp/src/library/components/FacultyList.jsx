@@ -24,7 +24,7 @@ const FacultyList = () => {
       
       // Try different approaches to get total count
       const countResponse = await axios.get(
-        "https://backenderp.tarstech.in/api/faculty/faculties",
+        "https://erpbackend.tarstech.in/api/faculty/faculties",
         {
           params: {
             page: 1,
@@ -74,7 +74,7 @@ const FacultyList = () => {
       
       // Now fetch the paginated data
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/faculty/faculties",
+        "https://erpbackend.tarstech.in/api/faculty/faculties",
         {
           params: {
             page: page,
@@ -287,7 +287,7 @@ const FacultyList = () => {
       
       // Set error message for API failure
       console.log("❌ API failed, no fallback data");
-      setError(`API Connection Failed: ${error.message}. Please check if the backend server is running on https://backenderp.tarstech.in`);
+      setError(`API Connection Failed: ${error.message}. Please check if the backend server is running on https://erpbackend.tarstech.in`);
       setFaculties([]);
       
       setLoading(false);
@@ -318,7 +318,7 @@ const FacultyList = () => {
 
           try {
             const borrowedResponse = await axios.get(
-              `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+              `https://erpbackend.tarstech.in/api/issues/borrowed-books`,
               {
                 params: {
                   borrowerId: borrowerId,
@@ -346,7 +346,7 @@ const FacultyList = () => {
           // Also check history for additional/more recent transactions
           try {
             const historyResponse = await axios.get(
-              `https://backenderp.tarstech.in/api/issues/history`,
+              `https://erpbackend.tarstech.in/api/issues/history`,
               {
                 params: {
                   employeeId: borrowerId,

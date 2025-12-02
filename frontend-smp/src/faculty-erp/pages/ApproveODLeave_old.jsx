@@ -40,10 +40,10 @@ export default function ApproveOnDutyLeave({ userData }) {
 
         const endpoint =
           role === "hod"
-            ? `https://backenderp.tarstech.in/api/leave/hod/${encodeURIComponent(
+            ? `https://erpbackend.tarstech.in/api/leave/hod/${encodeURIComponent(
                 department
               )}`
-            : `https://backenderp.tarstech.in/api/leave/principal/${encodeURIComponent(
+            : `https://erpbackend.tarstech.in/api/leave/principal/${encodeURIComponent(
                 department
               )}`;
 
@@ -117,8 +117,8 @@ export default function ApproveOnDutyLeave({ userData }) {
 
       const endpoint =
         role === "hod"
-          ? `https://backenderp.tarstech.in/api/leave/hod/${leaveId}`
-          : `https://backenderp.tarstech.in/api/leave/principal/${leaveId}`;
+          ? `https://erpbackend.tarstech.in/api/leave/hod/${leaveId}`
+          : `https://erpbackend.tarstech.in/api/leave/principal/${leaveId}`;
 
       await axios.put(
         endpoint,
@@ -134,10 +134,10 @@ export default function ApproveOnDutyLeave({ userData }) {
       // Refresh leaves
       const refreshEndpoint =
         role === "hod"
-          ? `https://backenderp.tarstech.in/api/leave/hod/${encodeURIComponent(
+          ? `https://erpbackend.tarstech.in/api/leave/hod/${encodeURIComponent(
               department
             )}`
-          : `https://backenderp.tarstech.in/api/leave/principal/${encodeURIComponent(
+          : `https://erpbackend.tarstech.in/api/leave/principal/${encodeURIComponent(
               department
             )}`;
       const response = await axios.get(refreshEndpoint, {

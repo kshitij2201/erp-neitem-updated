@@ -59,7 +59,7 @@ const DepartmentManagement = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/purchase/departments"
+        "https://erpbackend.tarstech.in/api/purchase/departments"
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -79,7 +79,7 @@ const DepartmentManagement = () => {
   const fetchFaculty = async () => {
     try {
       const response = await fetch(
-        "https://backenderp.tarstech.in/api/purchase/faculty"
+        "https://erpbackend.tarstech.in/api/purchase/faculty"
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -148,8 +148,8 @@ const DepartmentManagement = () => {
 
     try {
       const url = editingDepartment
-        ? `https://backenderp.tarstech.in/api/purchase/departments/${editingDepartment._id}`
-        : "https://backenderp.tarstech.in/api/purchase/departments";
+        ? `https://erpbackend.tarstech.in/api/purchase/departments/${editingDepartment._id}`
+        : "https://erpbackend.tarstech.in/api/purchase/departments";
 
       const method = editingDepartment ? "PUT" : "POST";
 
@@ -190,7 +190,7 @@ const DepartmentManagement = () => {
     if (window.confirm("Are you sure you want to delete this department?")) {
       try {
         const response = await fetch(
-          `https://backenderp.tarstech.in/api/purchase/departments/${departmentId}`,
+          `https://erpbackend.tarstech.in/api/purchase/departments/${departmentId}`,
           {
             method: "DELETE",
           }

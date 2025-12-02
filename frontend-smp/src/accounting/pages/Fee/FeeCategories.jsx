@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_BASE = 'https://backenderp.tarstech.in';
+const API_BASE = 'https://erpbackend.tarstech.in';
 
 export default function FeeCategories() {
   const [activeTab, setActiveTab] = useState('admission'); // 'admission' or 'exam'

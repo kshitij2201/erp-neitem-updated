@@ -94,7 +94,7 @@ const DepartmentStudents = ({ userData }) => {
         // For CC, fetch their assigned class students
         console.log("Fetching CC class students");
         response = await axios.get(
-          "https://backenderp.tarstech.in/api/faculty/get-cc-class-students",
+          "https://erpbackend.tarstech.in/api/faculty/get-cc-class-students",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -116,7 +116,7 @@ const DepartmentStudents = ({ userData }) => {
 
         console.log(`Fetching department students for department: ${userDepartment}`);
         response = await axios.get(
-          `https://backenderp.tarstech.in/api/faculty/students-attendance/department/${encodeURIComponent(
+          `https://erpbackend.tarstech.in/api/faculty/students-attendance/department/${encodeURIComponent(
             userDepartment
           )}`,
           {

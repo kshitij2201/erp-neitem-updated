@@ -47,7 +47,7 @@ const testLiveUTR = async () => {
     console.log('UTR being sent:', `"${frontendData.utr}"`);
 
     try {
-      const response = await fetch('https://backenderp.tarstech.in/api/payments', {
+      const response = await fetch('https://erpbackend.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

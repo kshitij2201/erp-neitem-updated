@@ -203,7 +203,7 @@ const corsOptions = {
 
     // Define allowed origins
     const allowedOrigins = [
-      "https://backenderp.tarstech.in",
+      "https://erpbackend.tarstech.in",
       "http://localhost:5173",
       "http://localhost:5174",
       "http://127.0.0.1:4000",

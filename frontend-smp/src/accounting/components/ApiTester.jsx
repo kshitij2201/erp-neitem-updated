@@ -7,19 +7,19 @@ export default function ApiTester() {
   const [error, setError] = useState(null);
 
   const apiEndpoints = [
-    { name: 'Account Stats Overview', url: 'https://backenderp.tarstech.in/api/account/stats/overview' },
-    { name: 'Account Expenses Total', url: 'https://backenderp.tarstech.in/api/account/expenses/total' },
-    { name: 'Faculty Salary Total', url: 'https://backenderp.tarstech.in/api/faculty/salary/total' },
-    { name: 'Analytics Overview', url: 'https://backenderp.tarstech.in/api/analytics/overview' },
-    { name: 'Revenue Breakdown', url: 'https://backenderp.tarstech.in/api/revenue/breakdown' },
-    { name: 'Store Items Count', url: 'https://backenderp.tarstech.in/api/store/items/count' },
-    { name: 'Maintenance Requests Count', url: 'https://backenderp.tarstech.in/api/maintenance/requests/count' },
-    { name: 'Purchases Total', url: 'https://backenderp.tarstech.in/api/purchases/total' },
-    { name: 'Tax Status', url: 'https://backenderp.tarstech.in/api/tax/status' },
-    { name: 'Faculty Tax Income', url: 'https://backenderp.tarstech.in/api/faculty/tax/income' },
-    { name: 'Faculty PF Status', url: 'https://backenderp.tarstech.in/api/faculty/pf/status' },
-    { name: 'Faculty Gratuity Status', url: 'https://backenderp.tarstech.in/api/faculty/gratuity/status' },
-    { name: 'Faculty Compliance Status', url: 'https://backenderp.tarstech.in/api/faculty/compliance/status' },
+    { name: 'Account Stats Overview', url: 'https://erpbackend.tarstech.in/api/account/stats/overview' },
+    { name: 'Account Expenses Total', url: 'https://erpbackend.tarstech.in/api/account/expenses/total' },
+    { name: 'Faculty Salary Total', url: 'https://erpbackend.tarstech.in/api/faculty/salary/total' },
+    { name: 'Analytics Overview', url: 'https://erpbackend.tarstech.in/api/analytics/overview' },
+    { name: 'Revenue Breakdown', url: 'https://erpbackend.tarstech.in/api/revenue/breakdown' },
+    { name: 'Store Items Count', url: 'https://erpbackend.tarstech.in/api/store/items/count' },
+    { name: 'Maintenance Requests Count', url: 'https://erpbackend.tarstech.in/api/maintenance/requests/count' },
+    { name: 'Purchases Total', url: 'https://erpbackend.tarstech.in/api/purchases/total' },
+    { name: 'Tax Status', url: 'https://erpbackend.tarstech.in/api/tax/status' },
+    { name: 'Faculty Tax Income', url: 'https://erpbackend.tarstech.in/api/faculty/tax/income' },
+    { name: 'Faculty PF Status', url: 'https://erpbackend.tarstech.in/api/faculty/pf/status' },
+    { name: 'Faculty Gratuity Status', url: 'https://erpbackend.tarstech.in/api/faculty/gratuity/status' },
+    { name: 'Faculty Compliance Status', url: 'https://erpbackend.tarstech.in/api/faculty/compliance/status' },
   ];
 
   const testApi = async (url) => {

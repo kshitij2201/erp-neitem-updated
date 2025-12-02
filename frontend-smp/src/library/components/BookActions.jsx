@@ -294,7 +294,7 @@ const BookActions = () => {
 
           try {
             const response = await axios.get(
-              `backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+              `erpbackend.tarstech.in/api/students/enrollment/${encodeURIComponent(
                 studentId
               )}`,
               { headers: getAuthHeaders() }
@@ -427,7 +427,7 @@ const BookActions = () => {
       try {
         // First try the accno endpoint
         const response = await axios.get(
-          `https://backenderp.tarstech.in/api/books/accno/${accno}`,
+          `https://erpbackend.tarstech.in/api/books/accno/${accno}`,
           { headers: getAuthHeaders() }
         );
         bookData = response.data;
@@ -439,7 +439,7 @@ const BookActions = () => {
       } catch (err) {
         try {
           // Try alternative endpoint
-          const response = await axios.get(`https://backenderp.tarstech.in/api/books/${accno}`);
+          const response = await axios.get(`https://erpbackend.tarstech.in/api/books/${accno}`);
           bookData = response.data;
 
           // Verify the ACCNO matches exactly
@@ -450,7 +450,7 @@ const BookActions = () => {
           try {
             // Try search endpoint
             const response = await axios.get(
-              `https://backenderp.tarstech.in/api/books?search=${encodeURIComponent(
+              `https://erpbackend.tarstech.in/api/books?search=${encodeURIComponent(
                 accno
               )}`
             );
@@ -468,7 +468,7 @@ const BookActions = () => {
           } catch (err3) {
             try {
               // Last attempt - get all books and filter
-              const response = await axios.get(`https://backenderp.tarstech.in/api/books`);
+              const response = await axios.get(`https://erpbackend.tarstech.in/api/books`);
               const allBooks =
                 response.data.data || response.data.books || response.data;
               if (Array.isArray(allBooks)) {
@@ -624,7 +624,7 @@ const BookActions = () => {
       };
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/books",
+        "https://erpbackend.tarstech.in/api/books",
         bookData
       );
 
@@ -632,7 +632,7 @@ const BookActions = () => {
         // Immediately update status and quantity in backend if not set
         try {
           await axios.patch(
-            `backenderp.tarstech.in/api/books/accno/${formData.ACCNO}`,
+            `erpbackend.tarstech.in/api/books/accno/${formData.ACCNO}`,
             {
               status: "available",
               QUANTITY: 1,
@@ -751,7 +751,7 @@ const BookActions = () => {
       };
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/issues/lost",
+        "https://erpbackend.tarstech.in/api/issues/lost",
         lostBookData
       );
 
@@ -858,7 +858,7 @@ const BookActions = () => {
       // Check how many books are already issued to this borrower (use correct endpoint)
       try {
         const borrowerResponse = await axios.get(
-          `https://backenderp.tarstech.in/api/issues/borrowed-books?borrowerId=${borrowerId}&borrowerType=${formData.borrowerType}`
+          `https://erpbackend.tarstech.in/api/issues/borrowed-books?borrowerId=${borrowerId}&borrowerType=${formData.borrowerType}`
         );
 
         // The backend should return an array of issued books in .data or .borrowedBooks
@@ -956,7 +956,7 @@ const BookActions = () => {
 
       // Use the issues endpoint instead of books endpoint
       const issueResponse = await axios.post(
-        "https://backenderp.tarstech.in/api/issues/issue",
+        "https://erpbackend.tarstech.in/api/issues/issue",
         issueData
       );
 
@@ -1110,7 +1110,7 @@ const BookActions = () => {
       setSuccess("");
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/issues/renew",
+        "https://erpbackend.tarstech.in/api/issues/renew",
         {
           bookId: selectedBookId,
           borrowerId,
@@ -1219,7 +1219,7 @@ const BookActions = () => {
 
       // Make real API call to fetch borrowed books - include all statuses
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+        `https://erpbackend.tarstech.in/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId.trim(),
@@ -1255,7 +1255,7 @@ const BookActions = () => {
                 };
 
           const historyResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/issues/history`,
+            `https://erpbackend.tarstech.in/api/issues/history`,
             {
               params: historyParams,
             }
@@ -1434,7 +1434,7 @@ const BookActions = () => {
       }
 
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/history?${params}`
+        `https://erpbackend.tarstech.in/api/issues/history?${params}`
       );
 
       if (response.data.data.records.length === 0) {
@@ -1442,7 +1442,7 @@ const BookActions = () => {
         if (filters.studentId && filters.borrowerType === "student") {
           try {
             await axios.get(
-              `backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+              `erpbackend.tarstech.in/api/students/enrollment/${encodeURIComponent(
                 filters.studentId
               )}`,
               { headers: getAuthHeaders() }
@@ -1473,7 +1473,7 @@ const BookActions = () => {
         }
         if (filters.ACCNO) {
           try {
-            await axios.get(`backenderp.tarstech.in/api/books/accno/${filters.ACCNO}`);
+            await axios.get(`erpbackend.tarstech.in/api/books/accno/${filters.ACCNO}`);
           } catch (err) {
             if (err.response?.status === 404) {
               specificError = `Book with ACCNO ${filters.ACCNO} not found.`;
@@ -1539,7 +1539,7 @@ const BookActions = () => {
         const studentId = value.trim();
 
         const response = await axios.get(
-          `backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+          `erpbackend.tarstech.in/api/students/enrollment/${encodeURIComponent(
             studentId
           )}`,
           { headers: getAuthHeaders() }
@@ -1737,7 +1737,7 @@ const BookActions = () => {
 
       // Fetch issued books first - include all statuses and renewed books
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+        `https://erpbackend.tarstech.in/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId,
@@ -1775,7 +1775,7 @@ const BookActions = () => {
                 };
 
           const historyResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/issues/history`,
+            `https://erpbackend.tarstech.in/api/issues/history`,
             {
               params: historyParams,
             }
@@ -1911,7 +1911,7 @@ const BookActions = () => {
       try {
         // Use the same base endpoint as issue functionality
         res = await axios.post(
-          "https://backenderp.tarstech.in/api/issues/return",
+          "https://erpbackend.tarstech.in/api/issues/return",
           returnData
         );
       } catch (endpointErr) {
@@ -1928,7 +1928,7 @@ const BookActions = () => {
 
           // Try again with the enhanced data
           res = await axios.post(
-            "https://backenderp.tarstech.in/api/issues/return",
+            "https://erpbackend.tarstech.in/api/issues/return",
             returnData
           );
         } else {
@@ -1960,7 +1960,7 @@ const BookActions = () => {
           try {
             // Use the same endpoint pattern as the successful return call
             await axios.post(
-              "https://backenderp.tarstech.in/api/issues/return/confirm-payment",
+              "https://erpbackend.tarstech.in/api/issues/return/confirm-payment",
               {
                 issueId: data._id,
                 ACCNO: selectedBookId,
@@ -2335,19 +2335,19 @@ const BookActions = () => {
   };
 
   const getAllBooks = async () => {
-    const response = await fetch("https://backenderp.tarstech.in/api/books");
+    const response = await fetch("https://erpbackend.tarstech.in/api/books");
     const books = await response.json();
     return books;
   };
 
   const searchBooksByACCNO = async (accno) => {
-    const response = await fetch(`backenderp.tarstech.in/api/books?accno=${accno}`);
+    const response = await fetch(`erpbackend.tarstech.in/api/books?accno=${accno}`);
     const books = await response.json();
     return books;
   };
 
   const getBookByACCNO = async (accno) => {
-    const response = await fetch(`backenderp.tarstech.in/api/books/accno/${accno}`);
+    const response = await fetch(`erpbackend.tarstech.in/api/books/accno/${accno}`);
     const book = await response.json();
     return book;
   };
@@ -2360,7 +2360,7 @@ const BookActions = () => {
       }
 
       const response = await axios.post(
-        `https://backenderp.tarstech.in/api/issues/return`,
+        `https://erpbackend.tarstech.in/api/issues/return`,
         {
           ACCNO,
           borrowerId: borrowerData.borrowerId,

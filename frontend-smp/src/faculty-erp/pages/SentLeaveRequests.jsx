@@ -10,7 +10,7 @@ const SentLeaveRequests = ({ employeeId }) => {
     if (!employeeId) return;
     setLoading(true);
     axios
-      .get(`https://backenderp.tarstech.in/api/leave/my-leaves/${employeeId}`)
+      .get(`https://erpbackend.tarstech.in/api/leave/my-leaves/${employeeId}`)
       .then((res) => {
         console.log("Leave API response:", res.data);
         setLeaves(res.data.leaves || []);

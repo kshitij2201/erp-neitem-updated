@@ -148,7 +148,7 @@ const StudentScholarship = () => {
 
       // First try the existing scholarships endpoint to get all scholarships
       const scholarshipRes = await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/scholarships",
+        "https://erpbackend.tarstech.in/api/scholarships",
         {
           method: "GET",
         }
@@ -183,14 +183,14 @@ const StudentScholarship = () => {
       // If the specific endpoint doesn't exist, try alternative approach
       try {
         const studentRes = await fetchWithRetry(
-          "https://backenderp.tarstech.in/api/students",
+          "https://erpbackend.tarstech.in/api/students",
           {
             method: "GET",
           }
         );
 
         const scholarshipRes = await fetchWithRetry(
-          "https://backenderp.tarstech.in/api/scholarships",
+          "https://erpbackend.tarstech.in/api/scholarships",
           {
             method: "GET",
           }
@@ -267,7 +267,7 @@ const StudentScholarship = () => {
       );
 
       await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/scholarships/upload-pdf",
+        "https://erpbackend.tarstech.in/api/scholarships/upload-pdf",
         {
           method: "POST",
           data: formData,
@@ -290,7 +290,7 @@ const StudentScholarship = () => {
     setResolvingRemark(year);
     try {
       await fetchWithRetry(
-        "https://backenderp.tarstech.in/api/scholarships/add-remark",
+        "https://erpbackend.tarstech.in/api/scholarships/add-remark",
         {
           method: "POST",
           data: { studentId: studentData.studentId, year, remark: "" },

@@ -501,7 +501,7 @@ const FacultyRegistrationForm = () => {
 
       // 1. Register Faculty
       const facultyResponse = await fetch(
-        "https://backenderp.tarstech.in/api/faculty/register",
+        "https://erpbackend.tarstech.in/api/faculty/register",
         {
           method: "POST",
           body: formDataToSubmit,
@@ -523,7 +523,7 @@ const FacultyRegistrationForm = () => {
       };
 
       const salaryResponse = await fetch(
-        "https://backenderp.tarstech.in/api/salary",
+        "https://erpbackend.tarstech.in/api/salary",
         {
           method: "POST",
           headers: {

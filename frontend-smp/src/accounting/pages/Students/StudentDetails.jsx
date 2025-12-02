@@ -139,7 +139,7 @@ export default function StudentDetails() {
 
         // Fetch all students for fast search and navigation
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/public",
+          "https://erpbackend.tarstech.in/api/students/public",
           {
             params: { 
               search: debouncedSearchTerm,
@@ -190,7 +190,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on https://erpbackend.tarstech.in"
           );
         } else {
           setError(
@@ -241,7 +241,7 @@ export default function StudentDetails() {
         batch.map(async (student) => {
           try {
             const res = await axios.get(
-              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
+              `https://erpbackend.tarstech.in/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data || [];
@@ -337,7 +337,7 @@ export default function StudentDetails() {
 
           // Fetch department-specific fee heads from FeeHeads API
           const feeRes = await axios.get(
-            `https://backenderp.tarstech.in/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
+            `https://erpbackend.tarstech.in/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
             { headers }
           );
           const departmentFees = feeRes.data;
@@ -353,7 +353,7 @@ export default function StudentDetails() {
 
           // Fetch all payments for the student
           const paymentsRes = await axios.get(
-            `https://backenderp.tarstech.in/api/payments/student/${student._id}`,
+            `https://erpbackend.tarstech.in/api/payments/student/${student._id}`,
             { headers }
           );
           const payments = paymentsRes.data;
@@ -427,7 +427,7 @@ export default function StudentDetails() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("https://backenderp.tarstech.in/api/accounts/financial-summary", { headers });
+      const response = await axios.get("https://erpbackend.tarstech.in/api/accounts/financial-summary", { headers });
 
       setFinancialSummary(response.data);
     } catch (err) {
@@ -458,7 +458,7 @@ export default function StudentDetails() {
 
         // Fetch students with server-side pagination
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/public",
+          "https://erpbackend.tarstech.in/api/students/public",
           {
             params: { 
               search: debouncedSearchTerm,
@@ -502,7 +502,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on https://erpbackend.tarstech.in"
           );
         } else {
           setError(
