@@ -46,7 +46,7 @@ const testAPIValidation = async () => {
     console.log(JSON.stringify(testData, null, 2));
 
     try {
-      const response = await fetch('http://localhost:4000/api/payments', {
+      const response = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ const testAPIValidation = async () => {
     };
 
     try {
-      const response = await fetch('http://localhost:4000/api/payments', {
+      const response = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

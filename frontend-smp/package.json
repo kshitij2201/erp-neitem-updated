@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "host": "vite --host",
-    "build": "vite build",
+    "build": "vite build && copy .htaccess dist\\.htaccess",
+    "build:deploy": "vite build && copy .htaccess dist\\.htaccess && echo Build complete with .htaccess copied to dist folder",
     "lint": "eslint .",
     "preview": "vite preview"
   },

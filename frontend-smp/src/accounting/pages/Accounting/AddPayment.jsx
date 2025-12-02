@@ -149,7 +149,7 @@ export default function AddPayment() {
 
       // Fetch students with search and pagination
       const response = await axios.get(
-        `http://localhost:4000/api/students?${params.toString()}`,
+        `https://backenderp.tarstech.in/api/students?${params.toString()}`,
         { headers }
       );
 
@@ -232,7 +232,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "http://localhost:4000/api/fee-heads",
+        "https://backenderp.tarstech.in/api/fee-heads",
         {
           headers,
         }
@@ -266,7 +266,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "http://localhost:4000/api/payments?limit=50",
+        "https://backenderp.tarstech.in/api/payments?limit=50",
         { headers }
       );
       setRecentPayments(Array.isArray(response.data) ? response.data : []);
@@ -288,7 +288,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://localhost:4000/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
+        `https://backenderp.tarstech.in/api/students/${studentId}/pending-fees?academicYear=${formData.academicYear}`,
         { headers }
       );
       setPendingFees(response.data || []);
@@ -306,7 +306,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const paymentsResponse = await axios.get(
-        `http://localhost:4000/api/payments?studentId=${studentId}`,
+        `https://backenderp.tarstech.in/api/payments?studentId=${studentId}`,
         { headers }
       );
       const payments = paymentsResponse.data || [];
@@ -479,7 +479,7 @@ export default function AddPayment() {
       console.log('📤 Sending payment data to API:', JSON.stringify(paymentData, null, 2));
       
       const response = await axios.post(
-        "http://localhost:4000/api/payments",
+        "https://backenderp.tarstech.in/api/payments",
         paymentData,
         { headers }
       );

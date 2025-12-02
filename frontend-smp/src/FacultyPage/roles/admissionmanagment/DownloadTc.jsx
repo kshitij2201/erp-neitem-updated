@@ -10,6 +10,7 @@ const DownloadTc = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [manualEntry, setManualEntry] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [tcData, setTcData] = useState({
         serialNo: '1673',
         registerNo: '1:08',
@@ -25,11 +26,17 @@ const DownloadTc = () => {
         lastSchool: 'N/A',
         dateOfAdmission: '',
         progress: 'Satisfactory',
-        conduct: 'Good',
-        dateOfLeaving: '',
+        conduct: 'Good Conduct',
+        dateOfLeaving: new Date().toLocaleDateString('en-GB'),
         standard: 'B.Tech',
         reason: 'term completion',
         remarks: '',
+        semester: '',
+        examinationSession: '',
+        examinationYear: '',
+        standardStudying: '',
+        subject: '',
+        isCleared: true,
         sealNo: '',
         enrollmentNo: 'N/A'
     });
@@ -48,7 +55,7 @@ const DownloadTc = () => {
         try {
             setLoading(true);
             const response = await axios.get(
-                "http://localhost:4000/api/superadmin/students",
+                "https://backenderp.tarstech.in/api/superadmin/students",
                 { headers: getAuthHeaders() }
             );
             setStudents(response.data);
@@ -136,8 +143,24 @@ const DownloadTc = () => {
         });
     };
 
+    // Generate formatted remarks
+    const generateFormattedRemarks = (tcData) => {
+        if (!tcData.remarks || !tcData.standardStudying || !tcData.semester || !tcData.subject || !tcData.examinationSession || !tcData.examinationYear) {
+            return tcData.remarks || 'N/A';
+        }
+
+        const standardMap = {
+            'B.Tech': 'Bachelor of Engineering',
+            'MCA': 'Master of Computer Applications'
+        };
+
+        const standard = standardMap[tcData.standardStudying] || tcData.standardStudying;
+        
+        return `${tcData.remarks} in ${standard} ${tcData.semester} ${tcData.subject} examination conducted by RTMNU, Nagpur held in ${tcData.examinationSession}-${tcData.examinationYear}`;
+    };
+
     // Generate and download TC PDF
-    const handleDownloadTC = () => {
+    const handleDownloadTC = async () => {
         if (!manualEntry && !selectedStudent) {
             alert('Please select a student first');
             return;
@@ -148,10 +171,16 @@ const DownloadTc = () => {
             return;
         }
 
-        // Create a new window for printing
-        const printWindow = window.open('', '_blank');
+        setIsGenerating(true);
+        
+        try {
+            // Add a small delay to show the loading state
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
 
-        const htmlContent = `
+            const htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -160,32 +189,33 @@ const DownloadTc = () => {
             body {
               font-family: 'Times New Roman', serif;
               margin: 0;
-              padding: 20mm;
-              line-height: 1.3;
+              padding: 8mm;
+              line-height: 1.4;
               background: white;
               width: 210mm;
               min-height: 297mm;
               box-sizing: border-box;
+              font-size: 12px;
             }
-            .certificate {
-              width: 100%;
-              height: calc(297mm - 40mm);
-              margin: 0;
-              border: 2px solid #000;
-              padding: 16px;
-              position: relative;
-              page-break-inside: avoid;
-              box-sizing: border-box;
-              display: flex;
-              flex-direction: column;
-            }
+                        .certificate {
+                            width: 100%;
+                            min-height: calc(297mm - 16mm);
+                            margin: 0;
+                            border: 2px solid #000;
+                            padding: 12px;
+                            position: relative;
+                            page-break-inside: avoid;
+                            box-sizing: border-box;
+                            display: flex;
+                            flex-direction: column;
+                        }
             .header {
               text-align: center;
-              margin-bottom: 16px;
+              margin-bottom: 8px;
               border-bottom: 2px solid #000;
-              padding-bottom: 12px;
+              padding-bottom: 6px;
               position: relative;
-              min-height: 90px;
+              min-height: 85px;
               flex-shrink: 0;
             }
             .logo-section {
@@ -198,92 +228,161 @@ const DownloadTc = () => {
               z-index: 1;
             }
             .header-content {
-              padding-top: 10px;
+              padding-top: 5px;
               position: relative;
               z-index: 2;
             }
-            .institute-name {
-              font-size: 22px;
+            .society-name {
+              font-size: 11px;
+              margin-bottom: 2px;
+              text-transform: lowercase;
+              font-style: italic;
+            }
+            .institute-main {
+              font-size: 28px;
               font-weight: bold;
-              margin: 8px 0;
+              margin: 2px 0;
+              text-transform: uppercase;
+              letter-spacing: 2px;
+            }
+            .institute-full {
+              font-size: 16px;
+              margin: 2px 0;
+              font-weight: 600;
             }
             .institute-details {
-              font-size: 11px;
-              margin: 3px 0;
+              font-size: 10px;
+              margin: 1px 0;
+              font-style: italic;
+            }
+            .institute-address {
+              font-size: 10px;
+              margin: 1px 0;
+            }
+            .institute-contact {
+              font-size: 9px;
+              margin: 1px 0;
             }
             .title {
-              font-size: 18px;
+              font-size: 20px;
               font-weight: bold;
-              margin: 12px 0;
-              border-bottom: 1px solid #000;
-              padding-bottom: 4px;
+              margin: 6px 0;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              text-decoration: underline;
+              text-align: center;
+              padding: 8px 0;
             }
             .subtitle {
-              font-size: 10px;
+              font-size: 20px;
               font-style: italic;
               margin: 8px 0;
+              text-align: center;
+              border-top: 2px solid #000;
+              padding-top: 8px;
             }
-            .content {
-              margin: 16px 0;
-              flex: 1;
+            .rule-text {
+              font-size: 11px;
+              margin-bottom: 12px;
+              text-align: center;
+              font-style: italic;
+              line-height: 1.2;
+            }
+            .serial-register {
               display: flex;
-              flex-direction: column;
               justify-content: space-between;
-            }
-            .field {
               margin: 8px 0;
+              font-weight: bold;
+              font-size: 12px;
+              padding: 0 50px 0 20px;
+            }
+                        .content {
+                            margin: 15px 0;
+                            display: block;
+                            flex: none;
+                        }
+            .field {
+              margin: 6px 0;
               display: flex;
               align-items: flex-start;
-              line-height: 1.2;
+              line-height: 1.4;
+              min-height: 18px;
             }
             .field-number {
               font-weight: bold;
-              width: 30px;
+              width: 25px;
               flex-shrink: 0;
+              font-size: 14px;
             }
             .field-label {
               font-weight: bold;
-              width: 200px;
+              width: 280px;
               flex-shrink: 0;
+              font-size: 14px;
             }
             .field-value {
               flex: 1;
+              font-size: 14px;
+              word-wrap: break-word;
+            }
+            .bottom-section {
+              margin-top: 20px;
+              flex-shrink: 0;
+            }
+            .seal-enrollment {
+              display: flex;
+              justify-content: space-between;
+              margin: 12px 0;
+              font-size: 11px;
+            }
+            .certification {
+              font-size: 12px;
+              text-align: center;
+              margin: 6px 0;
+              font-style: italic;
+              font-weight: bold;
             }
             .footer {
-              margin-top: 25px;
               display: flex;
               justify-content: space-between;
               align-items: center;
-              flex-shrink: 0;
+              margin-top: 70px;
+              font-size: 12px;
+              font-weight: bold;
             }
             .signature {
               text-align: center;
             }
-            .certification {
-              font-size: 10px;
-              text-align: center;
-              margin: 15px 0;
-              font-style: italic;
+            .signature:last-child {
+              margin-right: 110px;
             }
             @media print {
+              @page {
+                margin: 0;
+                size: A4;
+              }
               body { 
                 margin: 0;
-                padding: 20mm;
-                font-size: 12px;
+                padding: 8mm;
+                font-size: 11px;
                 width: 210mm;
                 height: 297mm;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
               }
-              .certificate {
-                width: 100%;
-                height: calc(297mm - 40mm);
-                padding: 16px;
-                page-break-inside: avoid;
-              }
+                            .certificate {
+                                width: 100%;
+                                min-height: calc(297mm - 16mm);
+                                padding: 12px;
+                                page-break-inside: avoid;
+                                border: 2px solid #000;
+                            }
               .field {
-                margin: 6px 0;
+                margin: 1px 0;
+                min-height: 12px;
               }
-              .footer {
-                margin-top: 20px;
+              .header {
+                min-height: 80px;
               }
               .no-print { display: none; }
             }
@@ -293,31 +392,30 @@ const DownloadTc = () => {
           <div class="certificate">
             <div class="header">
               <div class="logo-section">
-                <img src="/logo.png" alt="Institute Logo" style="height: 90px;" />
-                <img src="/logo1.png" alt="NAAC Logo" style="height: 90px;" />
+                <img src="/logo1.png" alt="Institute Logo" style="height: 80px;" />
+                <img src="/logo.png" alt="NAAC Logo" style="height: 80px;" />
               </div>
               <div class="header-content">
-                <div style="font-size: 10px; margin-bottom: 5px;">maitrey education society</div>
-                <div class="institute-name">NAGARJUNA</div>
-                <div style="font-size: 16px; margin: 5px 0;">Institute of Engineering, Technology & Management</div>
+                <div class="society-name">maitrey education society</div>
+                <div class="institute-main">NAGARJUNA</div>
+                <div class="institute-full">Institute of Engineering, Technology & Management</div>
                 <div class="institute-details">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                <div class="institute-details">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                <div class="institute-details">Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</div>
+                <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
+                <div class="institute-contact">Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</div>
               </div>
             </div>
-            
             
             <div class="title">TRANSFER CERTIFICATE</div>
             
             <div class="subtitle">(See rule 17 & 32 in chapter II section 1)</div>
-            <div style="font-size: 9px; margin-bottom: 6px;">
+            <div class="rule-text">
               (No change of any entry in this certificate shall be made except by the authority issuing it and any infringement of this<br>
               requirement is liable to involve the imposition of penalty such as that of rustication)
             </div>
             
-            <div style="display: flex; justify-content: space-between; margin: 6px 0;">
-              <div>Serial No. ${tcData.serialNo}</div>
-              <div>Register No. ${tcData.registerNo}</div>
+            <div class="serial-register">
+              <span>Serial No. ${tcData.serialNo}</span>
+              <span>Register No. ${tcData.registerNo}</span>
             </div>
             
             <div class="content">
@@ -342,7 +440,7 @@ const DownloadTc = () => {
               <div class="field">
                 <span class="field-number">4.</span>
                 <span class="field-label">Race & Caste:</span>
-                <span class="field-value">Category: ${tcData.category} &nbsp;&nbsp;&nbsp; Caste: ${tcData.caste}</span>
+                <span class="field-value">Category: ${tcData.category} &nbsp;&nbsp;&nbsp;&nbsp; Caste: ${tcData.caste}</span>
               </div>
               
               <div class="field">
@@ -362,7 +460,7 @@ const DownloadTc = () => {
                 <span class="field-label">Date of Birth:</span>
                 <span class="field-value">
                   a) In Figures: ${tcData.dobFigures}<br>
-                  b) In Words: ${tcData.dobWords}
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b) In Words: ${tcData.dobWords}
                 </span>
               </div>
               
@@ -411,23 +509,25 @@ const DownloadTc = () => {
               <div class="field">
                 <span class="field-number">15.</span>
                 <span class="field-label">Remarks:</span>
-                <span class="field-value">${tcData.remarks || 'N/A'}</span>
+                <span class="field-value">${generateFormattedRemarks(tcData)}</span>
               </div>
             </div>
             
-            <div style="margin: 6px 0; display: flex; justify-content: space-between;">
-              <div>Seal No.: ${tcData.sealNo || '_______'}</div>
-              <div>Enrollment No.: ${tcData.enrollmentNo}</div>
-            </div>
-            
-            <div class="certification">
-              Certified that the above information is in accordance with the Institute Register.
-            </div>
-            
-            <div class="footer">
-              <div>Date: ${tcData.dateOfLeaving}</div>
-              <div class="signature">Clerk</div>
-              <div class="signature">Principal</div>
+            <div class="bottom-section">
+              <div class="seal-enrollment">
+                <span>Seal No.: ${tcData.sealNo || '_______'}</span>
+                <span>Enrollment No.: ${tcData.enrollmentNo}</span>
+              </div>
+              
+              <div class="certification">
+                Certified that the above information is in accordance with the Institute Register.
+              </div>
+              
+              <div class="footer">
+                <span>Date: ${tcData.dateOfLeaving}</span>
+                <span class="signature">Clerk</span>
+                <span class="signature">Principal</span>
+              </div>
             </div>
           </div>
           
@@ -445,6 +545,12 @@ const DownloadTc = () => {
 
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+        } catch (error) {
+            console.error('Error generating TC:', error);
+            alert('Error generating Transfer Certificate. Please try again.');
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     if (loading) {
@@ -512,13 +618,20 @@ const DownloadTc = () => {
                                             lastSchool: 'N/A',
                                             dateOfAdmission: '',
                                             progress: 'Satisfactory',
-                                            conduct: 'Good',
+                                            conduct: 'Good Conduct',
                                             dateOfLeaving: new Date().toLocaleDateString('en-GB'),
                                             standard: 'B.Tech',
-                                            reason: 'term completion',
+                                            reason: '',
                                             remarks: '',
+                                            semester: '',
+                                            examinationSession: '',
+                                            examinationYear: '',
+                                            standardStudying: '',
+                                            subject: '',
+                                            isCleared: true,
                                             sealNo: '',
-                                            enrollmentNo: 'N/A'
+                                            enrollmentNo: 'N/A',
+                                            customRemarks: ''
                                         });
                                     }}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${manualEntry ? 'bg-blue-600' : 'bg-gray-200'
@@ -630,14 +743,42 @@ const DownloadTc = () => {
                                 <h2 className="text-xl font-semibold text-gray-800">Transfer Certificate Details</h2>
                                 <button
                                     onClick={handleDownloadTC}
-                                    disabled={!manualEntry && !selectedStudent}
-                                    className={`flex items-center px-6 py-3 rounded-lg font-medium transition-colors ${(manualEntry || selectedStudent)
+                                    disabled={(!manualEntry && !selectedStudent) || isGenerating}
+                                    className={`flex items-center px-6 py-3 rounded-lg font-medium transition-colors ${(manualEntry || selectedStudent) && !isGenerating
                                             ? 'bg-blue-600 text-white hover:bg-blue-700'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                         }`}
                                 >
-                                    <Download className="mr-2" size={20} />
-                                    Generate TC
+                                    {isGenerating ? (
+                                        <span className="flex items-center">
+                                            <svg
+                                                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                />
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                />
+                                            </svg>
+                                            Generating...
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <Download className="mr-2" size={20} />
+                                            Generate TC
+                                        </>
+                                    )}
                                 </button>
                             </div>
 
@@ -762,9 +903,7 @@ const DownloadTc = () => {
                                                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="Satisfactory">Satisfactory</option>
-                                                <option value="Good">Good</option>
-                                                <option value="Excellent">Excellent</option>
-                                                <option value="Average">Average</option>
+                                                <option value="Not Satisfied">Not Satisfied</option>
                                             </select>
                                         </div>
                                     </div>
@@ -777,33 +916,159 @@ const DownloadTc = () => {
                                                 onChange={(e) => setTcData({ ...tcData, conduct: e.target.value })}
                                                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                             >
-                                                <option value="Good">Good</option>
-                                                <option value="Very Good">Very Good</option>
-                                                <option value="Excellent">Excellent</option>
-                                                <option value="Satisfactory">Satisfactory</option>
+                                                <option value="Good Conduct">Good Conduct</option>
+                                                <option value="Bad Conduct">Bad Conduct</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Leaving</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Leaving Date</label>
                                             <input
-                                                type="text"
-                                                value={tcData.reason}
-                                                onChange={(e) => setTcData({ ...tcData, reason: e.target.value })}
+                                                type="date"
+                                                value={tcData.dateOfLeaving ? new Date(tcData.dateOfLeaving.split('/').reverse().join('-')).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => {
+                                                    const date = new Date(e.target.value);
+                                                    setTcData({ ...tcData, dateOfLeaving: date.toLocaleDateString('en-GB') });
+                                                }}
                                                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                                        <textarea
-                                            value={tcData.remarks}
-                                            onChange={(e) => setTcData({ ...tcData, remarks: e.target.value })}
-                                            rows={3}
-                                            className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Enter any additional remarks..."
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Leaving</label>
+                                            <select
+                                                value={tcData.reason}
+                                                onChange={(e) => setTcData({ ...tcData, reason: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Reason</option>
+                                                <option value="term completion">Term Completion</option>
+                                                <option value="own request">Own Request</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                                            <select
+                                                value={tcData.semester}
+                                                onChange={(e) => setTcData({ ...tcData, semester: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Semester</option>
+                                                <option value="1st Semester">1st Semester</option>
+                                                <option value="2nd Semester">2nd Semester</option>
+                                                <option value="3rd Semester">3rd Semester</option>
+                                                <option value="4th Semester">4th Semester</option>
+                                                <option value="5th Semester">5th Semester</option>
+                                                <option value="6th Semester">6th Semester</option>
+                                                <option value="7th Semester">7th Semester</option>
+                                                <option value="8th Semester">8th Semester</option>
+                                            </select>
+                                        </div>
                                     </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Examination Session</label>
+                                            <select
+                                                value={tcData.examinationSession}
+                                                onChange={(e) => setTcData({ ...tcData, examinationSession: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Session</option>
+                                                <option value="Winter">Winter</option>
+                                                <option value="Summer">Summer</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Examination Year</label>
+                                            <select
+                                                value={tcData.examinationYear}
+                                                onChange={(e) => setTcData({ ...tcData, examinationYear: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Year</option>
+                                                <option value="2019">2019</option>
+                                                <option value="2020">2020</option>
+                                                <option value="2021">2021</option>
+                                                <option value="2022">2022</option>
+                                                <option value="2023">2023</option>
+                                                <option value="2024">2024</option>
+                                                <option value="2025">2025</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                            <select
+                                                value={tcData.subject}
+                                                onChange={(e) => setTcData({ ...tcData, subject: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Subject</option>
+                                                <option value="CSE & AIML">CSE & AIML</option>
+                                                <option value="Mechanical">Mechanical</option>
+                                                <option value="Electrical">Electrical</option>
+                                                <option value="MBA">MBA</option>
+                                                <option value="CS">CS</option>
+                                                <option value="Civil">Civil</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Standard in which Studying</label>
+                                            <select
+                                                value={tcData.standardStudying}
+                                                onChange={(e) => setTcData({ ...tcData, standardStudying: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Standard</option>
+                                                <option value="B.Tech">B.Tech</option>
+                                                <option value="MCA">MCA</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                                            <select
+                                                value={tcData.remarks}
+                                                onChange={(e) => setTcData({ ...tcData, remarks: e.target.value })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Remark</option>
+                                                <option value="He is failed">He is failed</option>
+                                                <option value="She is failed">She is failed</option>
+                                                <option value="He is completed">He is completed</option>
+                                                <option value="She is completed">She is completed</option>
+                                                <option value="He is not appeared">He is not appeared</option>
+                                                <option value="She is not appeared">She is not appeared</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">No Dues (Cleared)</label>
+                                            <select
+                                                value={tcData.isCleared ? 'true' : 'false'}
+                                                onChange={(e) => setTcData({ ...tcData, isCleared: e.target.value === 'true' })}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="true">Yes - All dues cleared</option>
+                                                <option value="false">No - Dues pending</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {tcData.remarks === 'Custom remark' && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Custom Remarks</label>
+                                            <textarea
+                                                value={tcData.customRemarks || ''}
+                                                onChange={(e) => setTcData({ ...tcData, customRemarks: e.target.value })}
+                                                rows={3}
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Enter custom remarks..."
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="text-center py-12 text-gray-500">

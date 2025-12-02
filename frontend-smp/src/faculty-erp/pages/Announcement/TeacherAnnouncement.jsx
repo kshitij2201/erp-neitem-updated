@@ -30,7 +30,7 @@ const TeacherAnnouncementView = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "http://localhost:4000/api/auth/profile",
+            "https://backenderp.tarstech.in/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -63,10 +63,10 @@ const TeacherAnnouncementView = () => {
           userDepartment || "none"
         }`
       );
-      console.log(`Full URL: http://localhost:4000/api/announcements/teaching_staff${queryParams}`);
+      console.log(`Full URL: https://backenderp.tarstech.in/api/announcements/teaching_staff${queryParams}`);
       
       const res = await axios.get(
-        `http://localhost:4000/api/announcements/teaching_staff${queryParams}`
+        `https://backenderp.tarstech.in/api/announcements/teaching_staff${queryParams}`
       );
       console.log(`API Response:`, res.data);
       console.log(`Found ${res.data.length} announcements`);
