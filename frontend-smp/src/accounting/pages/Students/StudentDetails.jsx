@@ -337,7 +337,7 @@ export default function StudentDetails() {
 
           // Fetch department-specific fee heads from FeeHeads API
           const feeRes = await axios.get(
-            `http://localhost:4000/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
+            `https://backenderp.tarstech.in/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
             { headers }
           );
           const departmentFees = feeRes.data;
