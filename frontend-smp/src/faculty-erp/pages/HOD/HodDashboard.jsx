@@ -143,7 +143,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/dashboard/hod-todos?status=${
+        `https://backenderp.tarstech.in/api/dashboard/hod-todos?status=${
           todoFilter === "all" ? "" : todoFilter
         }`,
         {
@@ -186,7 +186,7 @@ export default function HodDashboard() {
       }
 
       const response = await fetch(
-        "http://erpbackend.tarstech.in/api/dashboard/hod-todos",
+        "https://backenderp.tarstech.in/api/dashboard/hod-todos",
         {
           method: "POST",
           headers: {
@@ -227,7 +227,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/dashboard/hod-todos/${todoId}`,
+        `https://backenderp.tarstech.in/api/dashboard/hod-todos/${todoId}`,
         {
           method: "PUT",
           headers: {
@@ -259,7 +259,7 @@ export default function HodDashboard() {
       if (!token) return;
 
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/dashboard/hod-todos/${todoId}`,
+        `https://backenderp.tarstech.in/api/dashboard/hod-todos/${todoId}`,
         {
           method: "DELETE",
           headers: {
@@ -329,7 +329,7 @@ export default function HodDashboard() {
         }
 
         const response = await fetch(
-          "http://erpbackend.tarstech.in/api/dashboard/hod-stats",
+          "https://backenderp.tarstech.in/api/dashboard/hod-stats",
           {
             headers: {
               Authorization: `Bearer ${token}`,

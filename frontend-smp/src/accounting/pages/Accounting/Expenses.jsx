@@ -43,7 +43,7 @@ export default function Expenses() {
         );
 
         const res = await axios.get(
-          "http://erpbackend.tarstech.in/api/expenses",
+          "https://backenderp.tarstech.in/api/expenses",
           {
             params: { search: searchTerm },
             headers,
@@ -66,7 +66,7 @@ export default function Expenses() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const res = await axios.get(
-          "http://erpbackend.tarstech.in/api/expenses/total",
+          "https://backenderp.tarstech.in/api/expenses/total",
           {
             headers,
           }
@@ -166,7 +166,7 @@ export default function Expenses() {
       console.log("Headers being sent:", headers);
 
       const response = await axios.post(
-        "http://erpbackend.tarstech.in/api/expenses",
+        "https://backenderp.tarstech.in/api/expenses",
         payload,
         { headers }
       );
@@ -184,7 +184,7 @@ export default function Expenses() {
       });
 
       // Refetch expenses
-      const res = await axios.get("http://erpbackend.tarstech.in/api/expenses", {
+      const res = await axios.get("https://backenderp.tarstech.in/api/expenses", {
         params: { search: searchTerm },
         headers,
       });
@@ -192,7 +192,7 @@ export default function Expenses() {
 
       // Refetch total
       const totalRes = await axios.get(
-        "http://erpbackend.tarstech.in/api/expenses/total",
+        "https://backenderp.tarstech.in/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -241,7 +241,7 @@ export default function Expenses() {
       console.log("Updating expense status:", { id, status });
       // Send both status and action to backend for audit clarity
       const response = await axios.patch(
-        `http://erpbackend.tarstech.in/api/expenses/${id}/status`,
+        `https://backenderp.tarstech.in/api/expenses/${id}/status`,
         { status, action: status },
         { headers }
       );
@@ -275,7 +275,7 @@ export default function Expenses() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      await axios.delete(`http://erpbackend.tarstech.in/api/expenses/${id}`, {
+      await axios.delete(`https://backenderp.tarstech.in/api/expenses/${id}`, {
         headers,
       });
 
@@ -284,7 +284,7 @@ export default function Expenses() {
 
       // Refetch total since we deleted an expense
       const totalRes = await axios.get(
-        "http://erpbackend.tarstech.in/api/expenses/total",
+        "https://backenderp.tarstech.in/api/expenses/total",
         { headers }
       );
       setTotalExpenses(totalRes.data.total);
@@ -362,7 +362,7 @@ export default function Expenses() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        `http://erpbackend.tarstech.in/api/expenses/export/${format}`,
+        `https://backenderp.tarstech.in/api/expenses/export/${format}`,
         {
           responseType: "blob",
           params: { headerInfo: JSON.stringify(headerInfo) },

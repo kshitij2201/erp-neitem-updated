@@ -33,7 +33,7 @@ function FetchedTimetable() {
         setUserDepartment(user.department);
 
         // Backend API URL
-        const apiUrl = `http://erpbackend.tarstech.in/api/timetable?department=${encodeURIComponent(
+        const apiUrl = `https://backenderp.tarstech.in/api/timetable?department=${encodeURIComponent(
           user.department
         )}`;
         console.log("Fetching from:", apiUrl);

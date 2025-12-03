@@ -78,7 +78,7 @@ export default function Dashboard() {
     };
 
     try {
-      const apiBase = import.meta.env.DEV ? "/api" : "http://erpbackend.tarstech.in/api";
+      const apiBase = "https://backenderp.tarstech.in/api";
 
       // Try to read fresh cache
       try {

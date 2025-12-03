@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const BASE_URL = 'http://erpbackend.tarstech.in/api';
+const BASE_URL = 'https://backenderp.tarstech.in/api';
 
 async function testHodDashboard() {
   try {

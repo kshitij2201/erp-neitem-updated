@@ -134,7 +134,7 @@ const AnnouncementForm = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "http://erpbackend.tarstech.in/api/auth/profile",
+            "https://backenderp.tarstech.in/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -210,7 +210,7 @@ const AnnouncementForm = () => {
       console.log('Selected visibleTo roles:', formData.visibleTo);
 
       await axios.post(
-        "http://erpbackend.tarstech.in/api/announcements",
+        "https://backenderp.tarstech.in/api/announcements",
         announcementData
       );
       setMessage({
@@ -253,7 +253,7 @@ const AnnouncementForm = () => {
       );
 
       const res = await axios.get(
-        `http://erpbackend.tarstech.in/api/announcements/${currentDashboard}${queryParams}`
+        `https://backenderp.tarstech.in/api/announcements/${currentDashboard}${queryParams}`
       );
       setAnnouncements(res.data);
       setLoading(false);

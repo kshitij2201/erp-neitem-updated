@@ -29,7 +29,7 @@ const BookDetails = () => {
         try {
           // First try by ACCNO
           const response = await axios.get(
-            `erpbackend.tarstech.in/api/books/accno/${accno}`
+            `backenderp.tarstech.in/api/books/accno/${accno}`
           );
           bookData = response.data;
           console.log("Book found via accno endpoint:", bookData);
@@ -38,7 +38,7 @@ const BookDetails = () => {
           try {
             // Try by ID endpoint
             const response = await axios.get(
-              `erpbackend.tarstech.in/api/books/${accno}`
+              `backenderp.tarstech.in/api/books/${accno}`
             );
             bookData = response.data;
             console.log("Book found via by-id endpoint:", bookData);
@@ -47,7 +47,7 @@ const BookDetails = () => {
             try {
               // Try search endpoint
               const response = await axios.get(
-                `erpbackend.tarstech.in/api/books?search=${encodeURIComponent(
+                `backenderp.tarstech.in/api/books?search=${encodeURIComponent(
                   accno
                 )}`
               );
@@ -70,7 +70,7 @@ const BookDetails = () => {
               try {
                 // Last attempt - get all books and filter
                 const response = await axios.get(
-                  `erpbackend.tarstech.in/api/books`
+                  `backenderp.tarstech.in/api/books`
                 );
                 const allBooks =
                   response.data.data || response.data.books || response.data;
@@ -250,7 +250,7 @@ const BookDetails = () => {
 
       // Try to get current issue details for this book
       const response = await axios.get(
-        `erpbackend.tarstech.in/api/issues/history`,
+        `backenderp.tarstech.in/api/issues/history`,
         {
           params: {
             bookId: accno,
@@ -351,7 +351,7 @@ const BookDetails = () => {
 
       // Try to get current issue details for this book
       const response = await axios.get(
-        `erpbackend.tarstech.in/api/issues/history`,
+        `backenderp.tarstech.in/api/issues/history`,
         {
           params: {
             bookId: accno,

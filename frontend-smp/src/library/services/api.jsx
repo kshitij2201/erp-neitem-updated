@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://erpbackend.tarstech.in";
+const API_URL = "https://backenderp.tarstech.in";
 
 export const getBooks = () => axios.get(`${API_URL}/api/books`);
 export const getStudents = () => axios.get(`${API_URL}/api/students`);

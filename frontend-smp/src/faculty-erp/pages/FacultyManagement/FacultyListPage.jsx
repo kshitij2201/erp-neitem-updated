@@ -65,7 +65,7 @@ export default function FacultyDashboard() {
         setLoading(true);
         setError(null);
         const response = await fetch(
-          "http://erpbackend.tarstech.in/api/faculty/faculties?limit=1000",
+          "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }
@@ -89,7 +89,7 @@ export default function FacultyDashboard() {
       } catch (err) {
         console.error("Fetch faculties error:", err);
         setError(
-          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at http://erpbackend.tarstech.in.`
+          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at https://backenderp.tarstech.in.`
         );
         setLoading(false);
       }
@@ -102,10 +102,10 @@ export default function FacultyDashboard() {
     const fetchHistory = async () => {
       try {
         const hodResponse = await fetch(
-          "http://erpbackend.tarstech.in/api/faculty/hod-history"
+          "https://backenderp.tarstech.in/api/faculty/hod-history"
         );
         const principalResponse = await fetch(
-          "http://erpbackend.tarstech.in/api/faculty/principal-history"
+          "https://backenderp.tarstech.in/api/faculty/principal-history"
         );
         if (hodResponse.ok) {
           const hodData = await hodResponse.json();
@@ -217,7 +217,7 @@ export default function FacultyDashboard() {
   const handleDeleteFaculty = async (facultyId) => {
     try {
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/faculty/delete/${facultyId}`,
+        `https://backenderp.tarstech.in/api/faculty/delete/${facultyId}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -308,7 +308,7 @@ export default function FacultyDashboard() {
     try {
       setFormLoading(true);
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/faculty/assign-${formData.role}`,
+        `https://backenderp.tarstech.in/api/faculty/assign-${formData.role}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -407,7 +407,7 @@ export default function FacultyDashboard() {
     try {
       // Optionally, you can call a backend endpoint to remove HOD role
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/faculty/remove-hod/${facultyId}`,
+        `https://backenderp.tarstech.in/api/faculty/remove-hod/${facultyId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -442,7 +442,7 @@ export default function FacultyDashboard() {
       if (!confirmRemoval) return;
 
       const response = await fetch(
-        `http://erpbackend.tarstech.in/api/faculty/remove-principal/${facultyId}`,
+        `https://backenderp.tarstech.in/api/faculty/remove-principal/${facultyId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

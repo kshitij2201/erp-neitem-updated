@@ -86,10 +86,10 @@ const SummaryPage = () => {
           departmentsResponse,
           streamsResponse,
         ] = await Promise.all([
-          fetch("http://erpbackend.tarstech.in/api/superadmin/students", { headers }),
-          fetch("http://erpbackend.tarstech.in/api/superadmin/castes", { headers }),
-          fetch("http://erpbackend.tarstech.in/api/superadmin/departments", { headers }),
-          fetch("http://erpbackend.tarstech.in/api/superadmin/streams", { headers }),
+          fetch("https://backenderp.tarstech.in/api/superadmin/students", { headers }),
+          fetch("https://backenderp.tarstech.in/api/superadmin/castes", { headers }),
+          fetch("https://backenderp.tarstech.in/api/superadmin/departments/all", { headers }),
+          fetch("https://backenderp.tarstech.in/api/superadmin/streams", { headers }),
         ]);
 
         // Check for authentication errors
@@ -128,10 +128,12 @@ const SummaryPage = () => {
 
         setStudents(studentsData);
         setCastes(castesData);
-        setDepartments(departmentsData);
+        // Extract the departments array from the response object
+        const departments = departmentsData.departments || departmentsData.departmentList || departmentsData;
+        setDepartments(Array.isArray(departments) ? departments : []);
         setStreams(streamsData);
 
-        processData(studentsData, castesData, departmentsData, streamsData);
+        processData(studentsData, castesData, Array.isArray(departments) ? departments : [], streamsData);
       } catch (error) {
         console.error("Data fetching error:", error);
 

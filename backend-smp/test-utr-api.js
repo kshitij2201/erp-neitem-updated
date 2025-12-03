@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const testUTRWithAPI = async () => {
   try {
-    const API_BASE = 'http://erpbackend.tarstech.in/api';
+    const API_BASE = 'https://backenderp.tarstech.in/api';
 
     console.log('🧪 Testing UTR API after server restart');
 

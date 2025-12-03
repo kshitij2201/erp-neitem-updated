@@ -41,7 +41,7 @@ const Signup = () => {
 
     try {
       const response = await axios.post(
-        "http://erpbackend.tarstech.in/api/auth/signup",
+        "https://backenderp.tarstech.in/api/auth/signup",
         {
           name: formData.name,
           email: formData.email,

@@ -20,7 +20,7 @@ const Login = ({ onLogin = () => {} }) => {
         : { employeeId: emailOrId, password };
 
       const response = await fetch(
-        "http://erpbackend.tarstech.in/api/auth/login",
+        "https://backenderp.tarstech.in/api/auth/login",
         {
           method: "POST",
           headers: {

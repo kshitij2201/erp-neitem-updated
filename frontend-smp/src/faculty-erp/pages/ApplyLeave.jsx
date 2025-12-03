@@ -86,7 +86,7 @@ const ApplyLeave = ({ userData }) => {
 
     try {
       const response = await axios.post(
-        "http://erpbackend.tarstech.in/api/leave/apply",
+        "https://backenderp.tarstech.in/api/leave/apply",
         {
           ...formData,
           employeeId: userData?.employeeId,

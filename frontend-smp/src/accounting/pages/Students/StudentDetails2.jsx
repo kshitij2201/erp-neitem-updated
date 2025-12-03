@@ -31,7 +31,7 @@ export default function StudentDetails2() {
 
         // Use local API for students with search term
         const res = await axios.get(
-          "http://erpbackend.tarstech.in/api/students",
+          "https://backenderp.tarstech.in/api/students",
           {
             params: { search: debouncedSearchTerm },
             headers,
@@ -57,7 +57,7 @@ export default function StudentDetails2() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on http://erpbackend.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
           );
         } else {
           setError(
@@ -84,7 +84,7 @@ export default function StudentDetails2() {
           try {
             // Fetch fee heads with semester matching
             const feeRes = await axios.get(
-              `http://erpbackend.tarstech.in/api/fee-heads/applicable/${student._id}`,
+              `https://backenderp.tarstech.in/api/fee-heads/applicable/${student._id}`,
               {
                 headers,
                 params: {
@@ -171,7 +171,7 @@ export default function StudentDetails2() {
         studentList.map(async (student) => {
           try {
             const res = await axios.get(
-              `http://erpbackend.tarstech.in/api/insurance/student/${student._id}`,
+              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data;

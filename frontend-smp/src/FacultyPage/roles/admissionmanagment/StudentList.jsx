@@ -457,13 +457,15 @@ function StudentList() {
     return { Authorization: `Bearer ${token}` };
   };
 
-  const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+  const fetchWithRetry = async (url, options, retries = 2, delay = 500) => {
     for (let i = 0; i < retries; i++) {
       try {
         const response = await axios(url, options);
         return response;
       } catch (err) {
         if (i === retries - 1) throw err;
+        // Only retry on network errors, not on 4xx/5xx status codes
+        if (err.response?.status >= 400) throw err;
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
@@ -478,7 +480,7 @@ function StudentList() {
       const query = admissionTypeFilter
         ? `?admissionType=${admissionTypeFilter}`
         : "";
-      const res = await fetchWithRetry(`http://erpbackend.tarstech.in/api/superadmin/students${query}`, {
+      const res = await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students${query}`, {
         headers,
       });
 
@@ -510,7 +512,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("http://erpbackend.tarstech.in/api/superadmin/semesters", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/semesters", {
           headers,
         });
 
@@ -536,7 +538,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("http://erpbackend.tarstech.in/api/superadmin/streams", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/streams", {
           headers,
         });
 
@@ -562,17 +564,55 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("http://erpbackend.tarstech.in/api/superadmin/departments", {
-          headers,
-        });
+        console.log("Fetching departments from API...");
+        
+        // Try multiple endpoints to see which one works
+        const endpoints = [
+          "https://backenderp.tarstech.in/api/superadmin/departments/all",
+          "https://backenderp.tarstech.in/api/superadmin/departments",
+          "https://backenderp.tarstech.in/api/departments/all",
+          "https://backenderp.tarstech.in/api/departments"
+        ];
+        
+        let departmentData = [];
+        let successfulEndpoint = null;
+        
+        for (const endpoint of endpoints) {
+          try {
+            console.log(`Trying endpoint: ${endpoint}`);
+            const res = await fetchWithRetry(endpoint, {
+              headers,
+            });
 
-        if (res.status === 401) {
-          localStorage.removeItem("token");
-          navigate("/");
-          return;
+            if (res.status === 401) {
+              localStorage.removeItem("token");
+              navigate("/");
+              return;
+            }
+
+            if (res.status === 200 && res.data) {
+              console.log(`Success with endpoint: ${endpoint}`, res.data);
+              departmentData = res.data;
+              successfulEndpoint = endpoint;
+              break;
+            }
+          } catch (endpointErr) {
+            console.log(`Failed endpoint ${endpoint}:`, endpointErr.response?.status || endpointErr.message);
+            continue;
+          }
         }
-
-        setDepartments(res.data || []);
+        
+        if (successfulEndpoint) {
+          console.log("Departments fetched successfully:", departmentData);
+          // Extract the departments array from the response object
+          const depts = departmentData.departments || departmentData.departmentList || departmentData;
+          console.log("Setting departments array:", depts);
+          setDepartments(Array.isArray(depts) ? depts : []);
+        } else {
+          console.error("All department endpoints failed");
+          setDepartments([]);
+        }
+        
       } catch (err) {
         if (err.response?.status === 401) {
           localStorage.removeItem("token");
@@ -580,6 +620,9 @@ function StudentList() {
           return;
         }
         console.error("Failed to fetch departments:", err);
+        console.error("Error response:", err.response);
+        // Set empty array to prevent map errors
+        setDepartments([]);
       }
     };
 
@@ -662,7 +705,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        await fetchWithRetry(`http://erpbackend.tarstech.in/api/superadmin/students/${id}`, {
+        await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students/${id}`, {
           method: "DELETE",
           headers,
         });
@@ -688,7 +731,7 @@ function StudentList() {
       if (!headers) return;
 
       const response = await fetchWithRetry(
-        `http://erpbackend.tarstech.in/api/superadmin/students/promote/${id}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/promote/${id}`,
         {
           method: "PUT",
           headers,
@@ -721,7 +764,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -891,7 +934,7 @@ function StudentList() {
       if (!headers) return;
 
       await fetchWithRetry(
-        `http://erpbackend.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
         {
           method: "POST",
           headers: {
@@ -1222,7 +1265,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -1243,7 +1286,7 @@ function StudentList() {
           if (!headers) return;
 
           const subjectsRes = await fetchWithRetry(
-            `http://erpbackend.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
             { headers }
           );
 
@@ -1312,7 +1355,7 @@ function StudentList() {
         if (!headers) return;
 
         const res = await fetchWithRetry(
-          `http://erpbackend.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           { headers }
         );
 
@@ -1371,7 +1414,7 @@ function StudentList() {
         if (!headers) return;
 
         const response = await fetchWithRetry(
-          `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
+          `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
           {
             method: "POST",
             headers: {
@@ -1405,7 +1448,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
             {
               method: "PUT",
               headers: {
@@ -1465,7 +1508,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `http://erpbackend.tarstech.in/api/superadmin/students/${studentId}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
             {
               method: "PUT",
               headers: {
@@ -1622,7 +1665,7 @@ function StudentList() {
                 aria-label="Select stream"
               >
                 <option value="">All Streams</option>
-                {streams.map((stream) => (
+                {Array.isArray(streams) && streams.map((stream) => (
                   <option key={stream._id} value={stream._id}>
                     {stream.name}
                   </option>
@@ -1642,7 +1685,7 @@ function StudentList() {
                 aria-label="Select department"
               >
                 <option value="">All Departments</option>
-                {departments.map((department) => (
+                {Array.isArray(departments) && departments.map((department) => (
                   <option key={department._id} value={department._id}>
                     {department.name}
                   </option>
@@ -1662,7 +1705,7 @@ function StudentList() {
                 aria-label="Select semester"
               >
                 <option value="">All Semesters</option>
-                {semesters.map((semester) => (
+                {Array.isArray(semesters) && semesters.map((semester) => (
                   <option key={semester._id} value={semester._id}>
                     Semester {semester.number}
                   </option>
@@ -1961,7 +2004,7 @@ function StudentList() {
                       aria-label="Select semester"
                     >
                       <option value="">Select Semester</option>
-                      {semesters.map((semester) => (
+                      {Array.isArray(semesters) && semesters.map((semester) => (
                         <option key={semester._id} value={semester._id}>
                           Semester {semester.number}
                         </option>

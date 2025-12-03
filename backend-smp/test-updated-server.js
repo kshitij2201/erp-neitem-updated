@@ -42,7 +42,7 @@ const testUpdatedServer = async () => {
     };
 
     try {
-      const response1 = await fetch('http://erpbackend.tarstech.in/api/payments', {
+      const response1 = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ const testUpdatedServer = async () => {
     };
 
     try {
-      const response2 = await fetch('http://erpbackend.tarstech.in/api/payments', {
+      const response2 = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +135,7 @@ const testUpdatedServer = async () => {
     };
 
     try {
-      const response3 = await fetch('http://erpbackend.tarstech.in/api/payments', {
+      const response3 = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

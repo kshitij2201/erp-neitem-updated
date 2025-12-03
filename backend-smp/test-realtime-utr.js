@@ -48,7 +48,7 @@ const testRealTimeUTR = async () => {
     console.log('Form data being sent:', JSON.stringify(formData, null, 2));
 
     try {
-      const response = await fetch('http://erpbackend.tarstech.in/api/payments', {
+      const response = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ const testRealTimeUTR = async () => {
     };
 
     try {
-      const response = await fetch('http://erpbackend.tarstech.in/api/payments', {
+      const response = await fetch('https://backenderp.tarstech.in/api/payments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

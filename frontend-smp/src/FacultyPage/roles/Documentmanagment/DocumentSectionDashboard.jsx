@@ -204,7 +204,7 @@ const DocumentManagementDashboard = () => {
       }
 
       const res = await axios.get(
-        "http://erpbackend.tarstech.in/api/superadmin/students",
+        "https://backenderp.tarstech.in/api/superadmin/students",
         {
           params,
           headers: getAuthHeaders(),
@@ -264,7 +264,7 @@ const DocumentManagementDashboard = () => {
     }
     try {
       const studentRes = await axios.get(
-        `http://erpbackend.tarstech.in/api/superadmin/students/${studentData._id}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentData._id}`,
         {
           headers: getAuthHeaders(),
         }
@@ -343,7 +343,7 @@ const DocumentManagementDashboard = () => {
       // First try to register the certificate with the backend
       try {
         await axios.post(
-          `http://erpbackend.tarstech.in/api/superadmin/students/generate-certificate/${studentData._id}`,
+          `https://backenderp.tarstech.in/api/superadmin/students/generate-certificate/${studentData._id}`,
           {
             type: "BC",
             purpose: "Academic purpose",

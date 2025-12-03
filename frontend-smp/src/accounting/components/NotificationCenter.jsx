@@ -36,7 +36,7 @@ const NotificationCenter = () => {
   const fetchAlerts = async () => {
     try {
       const response = await fetch(
-        "http://erpbackend.tarstech.in/api/payments/analytics?period=1"
+        "https://backenderp.tarstech.in/api/payments/analytics?period=1"
       );
       if (response.ok) {
         const data = await response.json();
@@ -78,7 +78,7 @@ const NotificationCenter = () => {
     // Check for failed payments in last 5 minutes
     try {
       const response = await fetch(
-        "http://erpbackend.tarstech.in/api/payments/history?status=Failed&period=1"
+        "https://backenderp.tarstech.in/api/payments/history?status=Failed&period=1"
       );
       if (response.ok) {
         const failedPayments = await response.json();

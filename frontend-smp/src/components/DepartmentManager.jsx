@@ -23,7 +23,7 @@
 
 //   const fetchStreams = async () => {
 //     try {
-//       const res = await axios.get("http://erpbackend.tarstech.in/api/streams", {
+//       const res = await axios.get("https://backenderp.tarstech.in/api/streams", {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
 //       setStreams(res.data);
@@ -37,7 +37,7 @@
 
 //   const fetchDepartments = async (streamId) => {
 //     try {
-//       const res = await axios.get(`http://erpbackend.tarstech.in/api/superadmin/departments?streamId=${streamId}`, {
+//       const res = await axios.get(`https://backenderp.tarstech.in/api/superadmin/departments?streamId=${streamId}`, {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
 //       setDepartments(res.data);
@@ -50,7 +50,7 @@
 //     if (!newDept.trim() || !selectedStreamId) return;
 //     try {
 //       await axios.post(
-//         "http://erpbackend.tarstech.in/api/superadmin/departments",
+//         "https://backenderp.tarstech.in/api/superadmin/departments",
 //         { name: newDept, stream: selectedStreamId },
 //         {
 //           headers: { Authorization: `Bearer ${token}` },
@@ -65,7 +65,7 @@
 
 //   const handleDelete = async (id) => {
 //     try {
-//       await axios.delete(`http://erpbackend.tarstech.in/api/superadmin/departments/${id}`, {
+//       await axios.delete(`https://backenderp.tarstech.in/api/superadmin/departments/${id}`, {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
 //       fetchDepartments(selectedStreamId);
@@ -77,7 +77,7 @@
 //   const handleEdit = async (id) => {
 //     try {
 //       await axios.put(
-//         `http://erpbackend.tarstech.in/api/superadmin/departments/${id}`,
+//         `https://backenderp.tarstech.in/api/superadmin/departments/${id}`,
 //         { name: editedDeptName, stream: selectedStreamId },
 //         {
 //           headers: { Authorization: `Bearer ${token}` },
@@ -178,7 +178,7 @@ const DepartmentManager = () => {
   const fetchStreams = async () => {
     try {
       const res = await axios.get(
-        "http://erpbackend.tarstech.in/api/superadmin/streams",
+        "https://backenderp.tarstech.in/api/superadmin/streams",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -195,7 +195,7 @@ const DepartmentManager = () => {
   const fetchDepartments = async (streamId) => {
     try {
       const res = await axios.get(
-        `http://erpbackend.tarstech.in/api/superadmin/departments?streamId=${streamId}`,
+        `https://backenderp.tarstech.in/api/superadmin/departments?streamId=${streamId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -210,7 +210,7 @@ const DepartmentManager = () => {
     if (!newDept.trim() || !selectedStreamId) return;
     try {
       await axios.post(
-        "http://erpbackend.tarstech.in/api/superadmin/departments",
+        "https://backenderp.tarstech.in/api/superadmin/departments",
         { name: newDept, stream: selectedStreamId },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -226,7 +226,7 @@ const DepartmentManager = () => {
   const handleDelete = async (id) => {
     try {
       await axios.delete(
-        `http://erpbackend.tarstech.in/api/superadmin/departments/${id}`,
+        `https://backenderp.tarstech.in/api/superadmin/departments/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -240,7 +240,7 @@ const DepartmentManager = () => {
   const handleEdit = async (id) => {
     try {
       await axios.put(
-        `http://erpbackend.tarstech.in/api/superadmin/departments/${id}`,
+        `https://backenderp.tarstech.in/api/superadmin/departments/${id}`,
         { name: editedDeptName, stream: selectedStreamId },
         {
           headers: { Authorization: `Bearer ${token}` },

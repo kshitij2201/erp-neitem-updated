@@ -26,7 +26,7 @@ const Login = () => {
 
     try {
       const response = await axios.post(
-        "http://erpbackend.tarstech.in/api/auth/login",
+        "https://backenderp.tarstech.in/api/auth/login",
         formData
       );
 

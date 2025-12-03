@@ -30,7 +30,7 @@ const CCAnnouncementView = () => {
       if (token) {
         try {
           const response = await axios.get(
-            "http://erpbackend.tarstech.in/api/auth/profile",
+            "https://backenderp.tarstech.in/api/auth/profile",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -63,10 +63,10 @@ const CCAnnouncementView = () => {
           userDepartment || "none"
         }`
       );
-      console.log(`Full URL: http://erpbackend.tarstech.in/api/announcements/cc${queryParams}`);
+      console.log(`Full URL: https://backenderp.tarstech.in/api/announcements/cc${queryParams}`);
       
       const res = await axios.get(
-        `http://erpbackend.tarstech.in/api/announcements/cc${queryParams}`
+        `https://backenderp.tarstech.in/api/announcements/cc${queryParams}`
       );
       console.log(`API Response:`, res.data);
       console.log(`Found ${res.data.length} announcements`);

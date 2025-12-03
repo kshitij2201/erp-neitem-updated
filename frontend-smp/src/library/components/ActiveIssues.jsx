@@ -9,7 +9,7 @@ const ActiveIssues = () => {
     const fetchActiveIssues = async () => {
       try {
         const response = await axios.get(
-          "http://erpbackend.tarstech.in/api/issues/active"
+          "https://backenderp.tarstech.in/api/issues/active"
         );
         setIssues(response.data);
       } catch (error) {
