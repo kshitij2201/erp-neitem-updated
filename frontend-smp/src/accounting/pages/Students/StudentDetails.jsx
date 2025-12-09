@@ -5,7 +5,6 @@ export default function StudentDetails() {
   const [students, setStudents] = useState([]); // Current page students
   const [feeData, setFeeData] = useState({});
   const [insuranceData, setInsuranceData] = useState({});
-  const [semesterData, setSemesterData] = useState({}); // Semester data from separate collection
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,6 +21,8 @@ export default function StudentDetails() {
     facultySalaries: 0,
   });
   const [totalStudents, setTotalStudents] = useState(0);
+  const [editingFeeHead, setEditingFeeHead] = useState(null);
+  const [editingAmount, setEditingAmount] = useState("");
   const studentsPerPage = 10;
 
   // Calculate pagination values
@@ -65,11 +66,8 @@ export default function StudentDetails() {
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
     
-    // Fetch semester data if not already available
-    if (!semesterData[student._id]) {
-      const newSemesterData = await fetchStudentSemesters([student]);
-      setSemesterData(prev => ({ ...prev, ...newSemesterData }));
-    }
+    // Semester data is already available from the populated student data
+    // No need to fetch separately
     
     // Fetch fee data for the selected student if not already available
     if (!feeData[student._id]) {
@@ -84,38 +82,6 @@ export default function StudentDetails() {
 
   const handleBackToList = () => {
     setSelectedStudent(null);
-  };
-
-  // Fetch semester information from separate collection
-  const fetchStudentSemesters = async (studentList) => {
-    if (!studentList || studentList.length === 0) return {};
-    
-    const semesterMap = {};
-    const token = localStorage.getItem("token");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-    // Process in batches to avoid overwhelming the API
-    const batchSize = 10;
-    for (let i = 0; i < studentList.length; i += batchSize) {
-      const batch = studentList.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (student) => {
-          try {
-            // Fetch semester data from academic records collection
-            const res = await axios.get(
-              `https://backenderp.tarstech.in/api/academic-records/${student._id}`,
-              { headers }
-            );
-            semesterMap[student._id] = res.data?.currentSemester || student.currentSemester || 1;
-          } catch (err) {
-            console.warn(`Error fetching semester for student ${student._id}:`, err);
-            // Fallback to student object or default
-            semesterMap[student._id] = student.currentSemester || 1;
-          }
-        })
-      );
-    }
-    return semesterMap;
   };
 
   const fetchInsurancePolicies = async (studentList) => {
@@ -133,7 +99,7 @@ export default function StudentDetails() {
         batch.map(async (student) => {
           try {
             const res = await axios.get(
-              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
+              `/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data || [];
@@ -154,8 +120,8 @@ export default function StudentDetails() {
     const token = localStorage.getItem("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // Fetch semester data from separate collection first
-    const semesterData = await fetchStudentSemesters(studentList);
+    // Semester data is now directly available from student objects
+    // No need to fetch from separate collection
 
     // Mapping from display format to database format (same as FeeHeads.jsx)
     const batchToDbFormat = {
@@ -209,10 +175,10 @@ export default function StudentDetails() {
       await Promise.all(
         batch.map(async (student) => {
         try {
-          // Get student details with semester from separate collection
+          // Get student details with semester directly from student object
           const studentStream = student.stream?.name || student.stream || 'B.Tech';
           const studentDepartment = student.department?.name || student.department || 'CS';
-          const currentSemester = semesterData[student._id] || student.currentSemester || 1;
+          const currentSemester = student.semester?.number || student.currentSemester?.number || 1;
 
           // Calculate batch based on current semester from database
           let yearDisplay = '1st Year'; // default
@@ -232,7 +198,7 @@ export default function StudentDetails() {
 
           // Fetch department-specific fee heads from FeeHeads API
           const feeRes = await axios.get(
-            `https://backenderp.tarstech.in/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
+            `/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
             { headers }
           );
           const departmentFees = feeRes.data;
@@ -248,7 +214,7 @@ export default function StudentDetails() {
 
           // Fetch all payments for the student
           const paymentsRes = await axios.get(
-            `https://backenderp.tarstech.in/api/payments/student/${student._id}`,
+            `/api/payments/student/${student._id}`,
             { headers }
           );
           const payments = paymentsRes.data;
@@ -322,7 +288,7 @@ export default function StudentDetails() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("https://backenderp.tarstech.in/api/accounts/financial-summary", { headers });
+      const response = await axios.get("/api/accounts/financial-summary", { headers });
 
       setFinancialSummary(response.data);
     } catch (err) {
@@ -353,7 +319,7 @@ export default function StudentDetails() {
 
         // Fetch students with server-side pagination
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/public",
+          "/api/students/public",
           {
             params: { 
               search: debouncedSearchTerm,
@@ -397,7 +363,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on localhost:4000"
           );
         } else {
           setError(
@@ -460,6 +426,61 @@ export default function StudentDetails() {
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handleEditFeeHead = (feeHead) => {
+    setEditingFeeHead(feeHead._id || feeHead.head);
+    setEditingAmount(feeHead.amount.toString());
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFeeHead(null);
+    setEditingAmount("");
+  };
+
+  const handleSaveFeeHead = async (feeHead) => {
+    if (!editingAmount || isNaN(editingAmount) || editingAmount < 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Get student details for the fee head context
+      const studentStream = selectedStudent.stream?.name || selectedStudent.stream || 'B.Tech';
+      const currentSemester = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
+
+      // Calculate batch based on current semester
+      let studentBatch = '2022-2026'; // default
+      if (currentSemester >= 7) studentBatch = '2019-2023';
+      else if (currentSemester >= 5) studentBatch = '2020-2024';
+      else if (currentSemester >= 3) studentBatch = '2021-2025';
+
+      // Update the fee head amount
+      await axios.put(
+        `/api/fees/update`,
+        {
+          stream: studentStream,
+          branch: feeHead.branch,
+          batch: studentBatch,
+          head: feeHead.head,
+          amount: parseFloat(editingAmount)
+        },
+        { headers }
+      );
+
+      // Refresh fee data for the student
+      await fetchFeeHeads([selectedStudent]);
+
+      setEditingFeeHead(null);
+      setEditingAmount("");
+      alert("Fee head amount updated successfully!");
+    } catch (err) {
+      console.error("Error updating fee head:", err);
+      alert("Failed to update fee head amount. Please try again.");
     }
   };
 
@@ -539,14 +560,21 @@ export default function StudentDetails() {
                 <strong>Section:</strong> {selectedStudent.section || "N/A"}
               </p>
               <p>
+                <strong>Year:</strong>{" "}
+                <span className="bg-green-100 text-green-900 px-2 py-1 rounded font-bold">
+                  {(() => {
+                    const sem = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
+                    if (sem <= 2) return '1st Year';
+                    else if (sem <= 4) return '2nd Year';
+                    else if (sem <= 6) return '3rd Year';
+                    else return '4th Year';
+                  })()}
+                </span>
+              </p>
+              <p>
                 <strong>Current Semester:</strong>{" "}
                 <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded font-bold">
-                  {(() => {
-                    const studentSemester = Object.keys(semesterData || {}).length > 0 
-                      ? (semesterData && semesterData[selectedStudent._id]) || selectedStudent.currentSemester || 1
-                      : selectedStudent.Semester || 1;
-                    return studentSemester;
-                  })()}
+                  Semester {selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1}
                 </span>
               </p>
               <p>
@@ -631,7 +659,7 @@ export default function StudentDetails() {
                             <strong> Stream:</strong> {selectedStudent.stream?.name || selectedStudent.stream || "N/A"} | 
                             <strong> Year:</strong> {
                               (() => {
-                                const currentSemester = (semesterData && semesterData[selectedStudent._id]) || selectedStudent.currentSemester || 1;
+                                const currentSemester = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
                                 if (currentSemester >= 7) return '4th Year';
                                 else if (currentSemester >= 5) return '3rd Year';
                                 else if (currentSemester >= 3) return '2nd Year';
@@ -660,7 +688,7 @@ export default function StudentDetails() {
                                   <p className="text-sm text-gray-600 mt-1">
                                     Department: {h.branch} | Year: {
                                       (() => {
-                                        const currentSemester = (semesterData && semesterData[selectedStudent._id]) || selectedStudent.currentSemester || 1;
+                                        const currentSemester = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
                                         if (currentSemester >= 7) return '4th Year';
                                         else if (currentSemester >= 5) return '3rd Year';
                                         else if (currentSemester >= 3) return '2nd Year';
@@ -669,10 +697,44 @@ export default function StudentDetails() {
                                     }
                                   </p>
                                 </div>
-                                <div className="text-right ml-3">
-                                  <div className="font-bold text-xl text-green-700">
-                                    ₹{Number(h.amount).toLocaleString()}
-                                  </div>
+                                <div className="text-right ml-3 flex items-center space-x-2">
+                                  {editingFeeHead === (h._id || h.head) ? (
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="number"
+                                        value={editingAmount}
+                                        onChange={(e) => setEditingAmount(e.target.value)}
+                                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        min="0"
+                                        step="0.01"
+                                      />
+                                      <button
+                                        onClick={() => handleSaveFeeHead(h)}
+                                        className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 font-medium"
+                                      >
+                                        ✓
+                                      </button>
+                                      <button
+                                        onClick={handleCancelEdit}
+                                        className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 font-medium"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center space-x-2">
+                                      <div className="font-bold text-xl text-green-700">
+                                        ₹{Number(h.amount).toLocaleString()}
+                                      </div>
+                                      <button
+                                        onClick={() => handleEditFeeHead(h)}
+                                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 font-medium"
+                                        title="Edit amount"
+                                      >
+                                        ✏️ Edit
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

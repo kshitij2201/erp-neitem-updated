@@ -287,6 +287,22 @@ const studentSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // New explicit fee summary fields (keeps backward compatibility with `feesPaid`/`pendingAmount`)
+    totalFees: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    paidFees: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pendingFees: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     scholarshipAmount: {
       type: Number,
       default: 0,

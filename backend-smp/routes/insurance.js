@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import Insurance from "../models/Insurance.js";
 import Student from "../models/StudentManagement.js";
+import mongoose from 'mongoose';
 
 // GET all insurance policies
 router.get('/', async (req, res) => {
@@ -92,12 +93,16 @@ router.get('/:id', async (req, res) => {
 // GET insurance policies by student ID
 router.get('/student/:studentId', async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.studentId)) {
+      return res.status(400).json({ message: 'Invalid student ID format' });
+    }
     const insurance = await Insurance.find({ studentId: req.params.studentId })
       .populate('studentId', 'firstName lastName studentId department')
       .sort({ createdAt: -1 });
     
     res.json(insurance);
   } catch (error) {
+    console.error('Error fetching insurance for student:', error);
     res.status(500).json({ message: error.message });
   }
 });

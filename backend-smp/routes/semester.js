@@ -1,5 +1,6 @@
 import express from "express";
 import Semester from "../models/Semester.js";
+import FacultySemester from "../models/facultySemester.js";
 import Subject from "../models/AdminSubject.js";
 import Student from "../models/StudentManagement.js";
 
@@ -14,6 +15,20 @@ router.get("/", async (req, res) => {
     res.json(semesters);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch semesters" });
+  }
+});
+
+// GET current semester
+router.get("/current", async (req, res) => {
+  try {
+    const currentSemester = await FacultySemester.findOne({ status: 'active' })
+      .populate('academicYear', 'year');
+    if (!currentSemester) {
+      return res.status(404).json({ error: "No active semester found" });
+    }
+    res.json(currentSemester);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch current semester" });
   }
 });
 

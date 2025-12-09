@@ -55,7 +55,6 @@ const conductorSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Index for better performance
-conductorSchema.index({ 'employment.employeeId': 1 });
 conductorSchema.index({ employeeId: 1 });
 
 // Hash password before saving

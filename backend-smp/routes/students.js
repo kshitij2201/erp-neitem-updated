@@ -364,9 +364,10 @@ router.get('/public', async (req, res) => {
     
     // Fetch all students with populated data
     let allStudents = await Student.find()
-      .select('firstName middleName lastName studentId enrollmentNumber email department stream gender casteCategory admissionType')
+      .select('firstName middleName lastName studentId enrollmentNumber email department stream semester gender casteCategory admissionType')
       .populate('department', 'name')
       .populate('stream', 'name')
+      .populate('semester', 'number')
       .sort({ createdAt: -1 });
     
     console.log('Total students fetched:', allStudents.length);
