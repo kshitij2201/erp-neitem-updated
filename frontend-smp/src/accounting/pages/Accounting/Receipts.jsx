@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import ExcelJS from 'exceljs';
+// Use ExcelJS browser-friendly build to avoid CJS resolution issues with Vite
+import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { saveAs } from 'file-saver';
 
 const API_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
