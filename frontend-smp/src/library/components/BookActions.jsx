@@ -81,6 +81,9 @@ const BookActions = () => {
     limit: 10,
     totalPages: 1,
   });
+  
+  // Add debounce for ACCNO input to prevent auto-revert
+  const [accnoDebounceTimer, setAccnoDebounceTimer] = useState(null);
 
   // Handle auto-refresh after new book issue
   useEffect(() => {
@@ -255,7 +258,7 @@ const BookActions = () => {
 
       if (type === "faculty") {
         const response = await axios.get(
-          "https://backend-erp-faculty.vercel.app/api/faculty/faculties",
+          "https://backenderp.tarstech.in/api/faculty/faculties",
           { headers: getAuthHeaders() }
         );
         const facultyMember = response.data.find((f) => f.employeeId === id);
@@ -294,7 +297,7 @@ const BookActions = () => {
 
           try {
             const response = await axios.get(
-              `backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+              `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
                 studentId
               )}`,
               { headers: getAuthHeaders() }
@@ -488,8 +491,8 @@ const BookActions = () => {
 
         setFormData((prev) => ({
           ...prev,
-          ACCNO: bookData.ACCNO || accno,
-          isbn: bookData.ACCNO || accno,
+          ACCNO: accno, // Always preserve user input
+          isbn: accno, // Always preserve user input
           bookTitle: bookData.TITLENAME || bookData.title || "",
           author: bookData.AUTHOR || bookData.author || "",
           publisher: bookData["PUBLISHER NAME"] || bookData.publisher || "",
@@ -632,7 +635,7 @@ const BookActions = () => {
         // Immediately update status and quantity in backend if not set
         try {
           await axios.patch(
-            `backenderp.tarstech.in/api/books/accno/${formData.ACCNO}`,
+            `hhttps://backenderp.tarstech.in/api/books/accno/${formData.ACCNO}`,
             {
               status: "available",
               QUANTITY: 1,
@@ -1152,11 +1155,46 @@ const BookActions = () => {
           renewCount: (renewedBook?.renewCount || 0) + 1,
         });
 
+        // Update the renewed book in the current issued books list to reflect new due date
+        setIssuedBooks(prevBooks => 
+          prevBooks.map(book => {
+            if (String(book.ACCNO) === String(selectedBookId)) {
+              return {
+                ...book,
+                dueDate: formData.newDueDate,
+                renewCount: (book.renewCount || 0) + 1,
+                transactionType: 'renew',
+                issueDate: new Date().toISOString().split('T')[0], // Update to renewal date
+                status: 'active'
+              };
+            }
+            return book;
+          })
+        );
+
         setSuccess("Book renewed successfully!");
         setShowRenewSuccessModal(true);
 
-        // Only refresh issued books for the current borrower, not globally
+        // Refresh issued books for the current borrower with force refresh
         await fetchIssuedBooks(borrowerId, formData.borrowerType);
+
+        // Also refresh student data if it exists in localStorage
+        try {
+          const savedStudents = localStorage.getItem('studentSearchResults');
+          if (savedStudents) {
+            const students = JSON.parse(savedStudents);
+            const updatedStudents = students.map(student => {
+              if (student.studentId === borrowerId && formData.borrowerType === 'student') {
+                // Force refresh this student's issued books
+                fetchIssuedBooks(student.studentId, 'student');
+              }
+              return student;
+            });
+            localStorage.setItem('studentSearchResults', JSON.stringify(updatedStudents));
+          }
+        } catch (e) {
+          console.warn('Could not update localStorage:', e);
+        }
 
         // Clear form fields
         setSelectedBookId("");
@@ -1176,11 +1214,24 @@ const BookActions = () => {
                   borrowerId: borrowerId,
                   borrowerType: formData.borrowerType,
                   bookId: selectedBookId,
+                  newDueDate: formData.newDueDate,
                   timestamp: new Date().toISOString(),
                 },
               })
             );
           }
+          
+          // Also dispatch a more generic refresh event for student lists
+          window.dispatchEvent(
+            new CustomEvent("refreshStudentData", {
+              detail: {
+                borrowerId: borrowerId,
+                borrowerType: formData.borrowerType,
+                action: 'renew',
+                timestamp: new Date().toISOString(),
+              },
+            })
+          );
         }, 100); // Small delay to ensure all processing is complete
       } else {
         setError(response.data.message || "Failed to renew book");
@@ -1226,6 +1277,7 @@ const BookActions = () => {
             borrowerType: borrowerType,
             includeRenewed: true, // Explicitly include renewed books
             status: "all", // Get all active books regardless of status
+            _t: Date.now(), // Cache buster for fresh data
           },
         }
       );
@@ -1393,6 +1445,45 @@ const BookActions = () => {
     activeForm,
   ]);
 
+  // ✅ Listen for renewal events to refresh data
+  useEffect(() => {
+    const handleBookRenewed = (event) => {
+      const { borrowerId, borrowerType, bookId, newDueDate } = event.detail;
+      
+      // If this matches current borrower, refresh the books
+      const currentBorrowerId = formData.borrowerType === 'student' ? formData.studentId : formData.employeeId;
+      if (borrowerId === currentBorrowerId && borrowerType === formData.borrowerType) {
+        setTimeout(() => {
+          fetchIssuedBooks(borrowerId, borrowerType);
+        }, 500); // Allow backend time to process
+      }
+    };
+
+    const handleRefreshStudentData = (event) => {
+      const { borrowerId, borrowerType } = event.detail;
+      
+      // Force refresh for any affected students
+      if (borrowerType === 'student') {
+        setTimeout(() => {
+          fetchIssuedBooks(borrowerId, borrowerType);
+        }, 300);
+      }
+    };
+
+    window.addEventListener('bookRenewed', handleBookRenewed);
+    window.addEventListener('refreshStudentData', handleRefreshStudentData);
+
+    return () => {
+      window.removeEventListener('bookRenewed', handleBookRenewed);
+      window.removeEventListener('refreshStudentData', handleRefreshStudentData);
+      
+      // Clean up ACCNO debounce timer
+      if (accnoDebounceTimer) {
+        clearTimeout(accnoDebounceTimer);
+      }
+    };
+  }, [formData.borrowerType, formData.studentId, formData.employeeId]);
+
   const fetchHistory = async () => {
     try {
       setLoading(true);
@@ -1442,7 +1533,7 @@ const BookActions = () => {
         if (filters.studentId && filters.borrowerType === "student") {
           try {
             await axios.get(
-              `backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+              `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
                 filters.studentId
               )}`,
               { headers: getAuthHeaders() }
@@ -1456,7 +1547,7 @@ const BookActions = () => {
         if (filters.employeeId && filters.borrowerType === "faculty") {
           try {
             const response = await axios.get(
-              "https://backend-erp-faculty.vercel.app/api/faculty/faculties",
+              "https://backenderp.tarstech.in/api/faculty/faculties",
               { headers: getAuthHeaders() }
             );
             const facultyMember = response.data.find(
@@ -1473,7 +1564,7 @@ const BookActions = () => {
         }
         if (filters.ACCNO) {
           try {
-            await axios.get(`backenderp.tarstech.in/api/books/accno/${filters.ACCNO}`);
+            await axios.get(`https://backenderp.tarstech.in/api/books/accno/${filters.ACCNO}`);
           } catch (err) {
             if (err.response?.status === 404) {
               specificError = `Book with ACCNO ${filters.ACCNO} not found.`;
@@ -1523,8 +1614,20 @@ const BookActions = () => {
       setSelectedBookId("");
     }
 
-    if (name === "ACCNO" && value.length > 0) {
-      fetchBookDetails(value);
+    // Debounce ACCNO input to prevent immediate overwrite of user input
+    if (name === "ACCNO") {
+      // Clear existing timer
+      if (accnoDebounceTimer) {
+        clearTimeout(accnoDebounceTimer);
+      }
+      
+      // Only fetch book details if value has length and after user stops typing for 1 second
+      if (value.length > 0) {
+        const newTimer = setTimeout(() => {
+          fetchBookDetails(value);
+        }, 1000); // 1 second delay
+        setAccnoDebounceTimer(newTimer);
+      }
     }
 
     if (name === "studentId" && value.length > 0) {
@@ -1539,7 +1642,7 @@ const BookActions = () => {
         const studentId = value.trim();
 
         const response = await axios.get(
-          `backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+          `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
             studentId
           )}`,
           { headers: getAuthHeaders() }
@@ -1615,7 +1718,7 @@ const BookActions = () => {
         const employeeId = value.trim();
 
         const response = await axios.get(
-          "https://backend-erp-faculty.vercel.app/api/faculty/faculties",
+          "https://backenderp.tarstech.in/api/faculty/faculties",
           { headers: getAuthHeaders() }
         );
 
@@ -2341,13 +2444,13 @@ const BookActions = () => {
   };
 
   const searchBooksByACCNO = async (accno) => {
-    const response = await fetch(`backenderp.tarstech.in/api/books?accno=${accno}`);
+    const response = await fetch(`https://backenderp.tarstech.in/api/books?accno=${accno}`);
     const books = await response.json();
     return books;
   };
 
   const getBookByACCNO = async (accno) => {
-    const response = await fetch(`backenderp.tarstech.in/api/books/accno/${accno}`);
+    const response = await fetch(`https://backenderp.tarstech.in/api/books/accno/${accno}`);
     const book = await response.json();
     return book;
   };

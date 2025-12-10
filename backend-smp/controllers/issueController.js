@@ -56,7 +56,7 @@ export const issueBookHandler = async (req, res) => {
       });
     }
 
-    if (book.quantity <= 0) {
+    if ((book.QUANTITY || 0) <= 0) {
       return res.status(400).json({
         success: false,
         message: 'Book is out of stock'
@@ -175,12 +175,11 @@ export const issueBookHandler = async (req, res) => {
     const issueRecordEntry = new IssueRecord(issueRecordData);
 
     // Update book quantity and status
-    book.quantity -= 1;
-    // Support both QUANTITY (schema) and quantity (legacy) fields
-    book.QUANTITY = book.quantity;
+    // Use QUANTITY field (as defined in schema) instead of quantity
+    book.QUANTITY = (book.QUANTITY || 1) - 1;
     
     // Update book status - if quantity becomes 0, set to ISSUE, otherwise keep PRESENT
-    book.STATUS = book.quantity <= 0 ? 'ISSUE' : 'PRESENT';
+    book.STATUS = book.QUANTITY <= 0 ? 'ISSUE' : 'PRESENT';
 
     // Save all records
     await Promise.all([
@@ -198,7 +197,7 @@ export const issueBookHandler = async (req, res) => {
       data: {
         issueRecord,
         issueRecordEntry,
-        remainingQuantity: book.quantity,
+        remainingQuantity: book.QUANTITY,
         book: {
           ACCNO: book.ACCNO,
           QUANTITY: book.QUANTITY,
@@ -400,9 +399,8 @@ export const returnBookHandler = async (req, res) => {
     console.log('Updating book with ACCNO:', ACCNO);
     const book = await Book.findOne({ ACCNO });
     if (book) {
-      book.quantity = (book.quantity || 0) + 1;
-      // Support both QUANTITY (schema) and quantity (legacy) fields
-      book.QUANTITY = book.quantity;
+      // Use QUANTITY field (as defined in schema) instead of quantity
+      book.QUANTITY = (book.QUANTITY || 0) + 1;
       
       // Update status back to PRESENT when book is returned
       book.STATUS = 'PRESENT';

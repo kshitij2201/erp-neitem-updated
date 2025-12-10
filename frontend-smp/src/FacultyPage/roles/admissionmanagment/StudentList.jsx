@@ -660,13 +660,21 @@ function StudentList() {
     });
   };
 
-  const filteredStudents = students.filter((student) => {
+  const sortedStudents = useMemo(() => {
+    return [...students].sort((a, b) => {
+      const nameA = `${a.firstName} ${a.lastName || ''}`.toLowerCase();
+      const nameB = `${b.firstName} ${b.lastName || ''}`.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [students]);
+
+  const filteredStudents = sortedStudents.filter((student) => {
     const searchLower = searchTerm.toLowerCase();
     
     // Search filter
+    const fullName = `${student.firstName} ${student.lastName || ''}`.toLowerCase();
     const matchesSearch = !searchTerm || (
-      student.firstName?.toLowerCase().includes(searchLower) ||
-      student.lastName?.toLowerCase().includes(searchLower) ||
+      fullName.startsWith(searchLower) ||
       student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
       student.nationality?.toLowerCase().includes(searchLower) ||
       student.placeOfBirth?.toLowerCase().includes(searchLower) ||

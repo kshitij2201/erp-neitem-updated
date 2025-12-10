@@ -207,39 +207,88 @@ export default function DepartmentFaculty({ userData }) {
         setError(null);
 
         console.log(
-          "[DepartmentFaculty] Calling fetch for all faculties"
+          "[DepartmentFaculty] Calling fetch for all faculties and facultyalldepartment"
         );
-        const response = await fetch(
+        
+        // Fetch all faculties
+        const facultyResponse = await fetch(
           "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }
         );
-        if (!response.ok) {
+        if (!facultyResponse.ok) {
           throw new Error(
-            `Failed to fetch faculty data: ${response.status} ${response.statusText}`
+            `Failed to fetch faculty data: ${facultyResponse.status} ${facultyResponse.statusText}`
           );
         }
-        const data = await response.json();
-        const allFaculties = Array.isArray(data.data.faculties)
-          ? data.data.faculties
+        const facultyData = await facultyResponse.json();
+        const allFaculties = Array.isArray(facultyData.data.faculties)
+          ? facultyData.data.faculties
           : [];
-        if (!Array.isArray(allFaculties)) {
-          throw new Error(
-            "Invalid data format: Expected an array of faculties"
-          );
-        }
+        
         console.log(
           "[DepartmentFaculty] Successfully fetched",
           allFaculties.length,
           "faculty members"
         );
-        // Filter to include department faculty plus selected faculties
-        const filteredFaculties = allFaculties.filter(f => f.department === department || selectedFaculties.includes(f._id));
+
+        // Fetch faculty from facultyalldepartment table
+        const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+        const token = localStorage.getItem("authToken");
+        
+        const allDeptResponse = await fetch(`${API_URL}/api/faculty/all-departments/faculty`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let allDeptFacultyIds = [];
+        if (allDeptResponse.ok) {
+          const allDeptData = await allDeptResponse.json();
+          console.log('[DepartmentFaculty] Facultyalldepartment response:', allDeptData);
+          if (allDeptData.success && allDeptData.data) {
+            // Extract faculty IDs from the response
+            // Handle both populated (object) and unpopulated (string) facultyId
+            allDeptFacultyIds = allDeptData.data.map(item => {
+              if (typeof item.facultyId === 'string') {
+                // Unpopulated - just the ID string
+                return item.facultyId;
+              } else if (item.facultyId && item.facultyId._id) {
+                // Populated - extract _id from object
+                return item.facultyId._id;
+              }
+              return null;
+            }).filter(id => id !== null); // Remove any null values
+            
+            console.log('[DepartmentFaculty] Faculty IDs from all departments:', allDeptFacultyIds);
+            console.log('[DepartmentFaculty] Sample facultyalldepartment items:', allDeptData.data.slice(0, 2));
+          }
+        } else {
+          console.warn('[DepartmentFaculty] Failed to load facultyalldepartment:', allDeptResponse.statusText);
+        }
+        
+        // Filter to include:
+        // 1. Faculty from the current department
+        // 2. Faculty from facultyalldepartment table (shown in all departments)
+        const filteredFaculties = allFaculties.filter(f => 
+          f.department === department || allDeptFacultyIds.includes(f._id)
+        );
+        
+        console.log('[DepartmentFaculty] Filtered faculties:', {
+          total: allFaculties.length,
+          departmentMatch: allFaculties.filter(f => f.department === department).length,
+          allDeptMatch: allFaculties.filter(f => allDeptFacultyIds.includes(f._id)).length,
+          combined: filteredFaculties.length,
+          currentDepartment: department,
+          allDeptFacultyIds: allDeptFacultyIds,
+          sampleFacultyIds: allFaculties.slice(0, 3).map(f => ({ id: f._id, name: f.name || `${f.firstName} ${f.lastName}`, dept: f.department }))
+        });
+        
         setFaculties(filteredFaculties);
         setUserDepartment(department);
-        // Set filter department to user's department to ensure only their department's faculty is shown
-        setFilterDepartment(department);
+        // Set filter to "all" to show both department and cross-department faculty
+        setFilterDepartment("all");
       } catch (err) {
         console.error("[DepartmentFaculty] Error fetching faculty:", err);
         setError(err.message);
@@ -718,24 +767,9 @@ export default function DepartmentFaculty({ userData }) {
       // Force refresh faculty data to ensure type changes are reflected
       try {
         console.log("[AssignCC] Refreshing faculty data...");
-        const facultyResponse = await fetch(
-          `${
-            import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
-          }/api/faculty/department/${encodeURIComponent(
-            userDepartment || department
-          )}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-          }
-        );
-        if (facultyResponse.ok) {
-          const facultyData = await facultyResponse.json();
-          if (facultyData.success && Array.isArray(facultyData.data)) {
-            console.log("[AssignCC] Faculty data refreshed, updating state");
-            setFaculties(facultyData.data);
-          }
+        // Use fetchAllData to get both department and facultyalldepartment faculty
+        if (userDepartment || department) {
+          await fetchAllData(userDepartment || department);
         }
       } catch (err) {
         console.warn("[AssignCC] Failed to refresh faculty data:", err);
@@ -824,27 +858,9 @@ export default function DepartmentFaculty({ userData }) {
         } successfully.`
       );
 
-      // Optionally, refetch faculties to update subjectsTaught
-      const facultyResponse = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
-        }/api/faculty/faculties?department=${encodeURIComponent(department)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-        }
-      );
-      if (facultyResponse.ok) {
-        const facultyData = await facultyResponse.json();
-        const facultiesData = Array.isArray(facultyData.data?.faculties)
-          ? facultyData.data.faculties
-          : Array.isArray(facultyData.data)
-          ? facultyData.data
-          : Array.isArray(facultyData)
-          ? facultyData
-          : [];
-        setFaculties(facultiesData);
+      // Refetch ALL faculties (department + facultyalldepartment) to update the list
+      if (userData?.department) {
+        await fetchAllData(userData.department);
         setFacultyUpdateCounter(prev => prev + 1);
       }
 
@@ -907,18 +923,6 @@ export default function DepartmentFaculty({ userData }) {
 
       console.log("[DeleteCC] Success response:", responseData);
 
-      // Update faculty type from backend response
-      if (responseData.data && responseData.data.type) {
-        setFaculties((prevFaculties) =>
-          prevFaculties.map((faculty) => {
-            if (faculty._id === assignment.facultyId) {
-              return { ...faculty, type: responseData.data.type };
-            }
-            return faculty;
-          })
-        );
-      }
-
       // Refresh CC assignments
       const updatedAssignmentsResponse = await fetch(
         `${
@@ -939,6 +943,11 @@ export default function DepartmentFaculty({ userData }) {
           : [];
         console.log("[DeleteCC] Updated assignments:", assignments);
         setCCAssignments(assignments);
+      }
+
+      // Refresh ALL faculty data (department + facultyalldepartment)
+      if (userData?.department) {
+        await fetchAllData(userData.department);
       }
     } catch (err) {
       console.error("[DeleteCC] Error:", err);
@@ -1095,11 +1104,17 @@ export default function DepartmentFaculty({ userData }) {
 
   const handleSubjectAction = async (subjectId, faculty) => {
     const isAssigned = isSubjectAssignedToFaculty(subjectId, faculty._id);
+    
+    // Get faculty name properly
+    const facultyName = faculty.name || 
+                        (faculty.firstName && faculty.lastName 
+                          ? `${faculty.firstName} ${faculty.lastName}`.trim()
+                          : faculty.firstName || faculty.lastName || 'this faculty');
 
     if (isAssigned) {
       // Unassign the subject
       const confirmUnassign = window.confirm(
-        `Are you sure you want to unassign this subject from ${faculty.name}?`
+        `Are you sure you want to unassign this subject from ${facultyName}?`
       );
       if (!confirmUnassign) return;
 
@@ -1126,7 +1141,7 @@ export default function DepartmentFaculty({ userData }) {
         await refreshUserData();
         
         // Show success message
-        setAssignSubjectSuccess(`✅ Subject successfully unassigned from ${faculty.name}!`);
+        setAssignSubjectSuccess(`✅ Subject successfully unassigned from ${facultyName}!`);
         setTimeout(() => setAssignSubjectSuccess(null), 3000);
       } catch (error) {
         console.error("Error unassigning subject:", error);
@@ -1622,13 +1637,9 @@ export default function DepartmentFaculty({ userData }) {
                         <button
                           onClick={() => {
                             if (selectedSubject) {
-                              const confirmUnassign = window.confirm(
-                                `Are you sure you want to unassign this subject from ${faculty.name}?`
-                              );
-                              if (confirmUnassign) {
-                                handleSubjectAction(selectedSubject, faculty);
-                                setSelectedSubject("");
-                              }
+                              // handleSubjectAction will show the confirm dialog
+                              handleSubjectAction(selectedSubject, faculty);
+                              setSelectedSubject("");
                             }
                           }}
                           disabled={!selectedSubject || !isSubjectAssignedToFaculty(selectedSubject, faculty._id)}
@@ -2280,8 +2291,14 @@ export default function DepartmentFaculty({ userData }) {
                                               <button
                                                 className="px-4 py-2 text-sm bg-linear-to-r from-rose-500 to-red-600 text-white rounded-lg hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-sm font-medium"
                                                 onClick={async () => {
+                                                  // Get faculty name properly
+                                                  const facultyName = selectedFaculty?.name || 
+                                                    (selectedFaculty?.firstName && selectedFaculty?.lastName 
+                                                      ? `${selectedFaculty.firstName} ${selectedFaculty.lastName}`.trim()
+                                                      : selectedFaculty?.firstName || selectedFaculty?.lastName || 'this faculty');
+                                                  
                                                   const confirmUnassign = window.confirm(
-                                                    `Are you sure you want to unassign "${subject.name}" from ${selectedFaculty?.name}?`
+                                                    `Are you sure you want to unassign "${subject.name}" from ${facultyName}?`
                                                   );
                                                   if (!confirmUnassign) return;
 

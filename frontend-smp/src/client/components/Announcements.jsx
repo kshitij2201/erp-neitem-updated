@@ -53,14 +53,14 @@ const Announcements = () => {
       if (token && (!userDepartment || !userSemester)) {
         try {
           const response = await axios.get(
-            `${API_URL}/api/auth/profile`,
+            `${API_URL}/api/student/auth/profile`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
-          if (response.data) {
-            const department = response.data.department?.name || response.data.department;
-            const semester = response.data.semester?.number || response.data.semester;
+          if (response.data && response.data.student) {
+            const department = response.data.student.department?.name || response.data.student.department;
+            const semester = response.data.student.semester?.number || response.data.student.semester;
             
             if (department && !userDepartment) {
               setUserDepartment(department);

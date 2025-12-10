@@ -25,12 +25,13 @@ const getMonthlyStats = async (req, res) => {
       student: studentId,
       subject: subjectId,
       date: { $gte: start, $lt: end },
-    });
+    }).populate("subject", "name subjectCode");
     const total = records.length;
     const present = records.filter((r) => r.status === "present").length;
     const absent = records.filter((r) => r.status === "absent").length;
     const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-    res.json({ total, present, absent, percentage, records });
+    const subjectName = records[0]?.subject?.name || records[0]?.subject?.subjectCode || 'Unknown Subject';
+    res.json({ total, present, absent, percentage, subjectName, records });
   } catch (err) {
     console.error("[getMonthlyStats] Error:", err);
     res
@@ -54,12 +55,13 @@ const getOverallStats = async (req, res) => {
     const records = await AttendanceModel.find({
       student: studentId,
       subject: subjectId,
-    }).populate("student");
+    }).populate("student").populate("subject", "name subjectCode");
     const total = records.length;
     const present = records.filter((r) => r.status === "present").length;
     const absent = records.filter((r) => r.status === "absent").length;
     const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-    res.json({ total, present, absent, percentage, records });
+    const subjectName = records[0]?.subject?.name || records[0]?.subject?.subjectCode || 'Unknown Subject';
+    res.json({ total, present, absent, percentage, subjectName, records });
   } catch (err) {
     console.error("[getOverallStats] Error:", err);
     res

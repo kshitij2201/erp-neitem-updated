@@ -286,6 +286,7 @@ export default function MarkAttendance() {
     };
     if (queryType === "day") params.date = queryDate;
     if (queryType === "week") params.from = queryFrom;
+    if (queryType === "week") params.to = queryTo;
     if (queryType === "month") {
       params.month = queryMonth;
       params.year = queryYear;
@@ -295,6 +296,11 @@ export default function MarkAttendance() {
       params.to = queryTo;
     }
 
+    // For day filter, fetch all records without pagination
+    if (queryType === "day") {
+      params.limit = 10000;
+    }
+
     try {
       console.log("Sending attendance query with params:", params); // Debug log
       const res = await api.get("/faculty/attendance/query", { params });
@@ -302,11 +308,108 @@ export default function MarkAttendance() {
 
       if (res.data.success) {
         // Filter the results on frontend as backup to ensure only current students' data is shown
-        const filteredData = (res.data.data || []).filter(log => 
+        let filteredData = (res.data.data || []).filter(log => 
           currentStudentIds.includes(log.studentId || log.student?._id)
         );
+
+        // If week filter, aggregate data by student
+        if (queryType === "week") {
+          const aggregatedData = {};
+          
+          // Initialize all students with 0 counts
+          students.forEach(student => {
+            aggregatedData[student._id] = {
+              student: student,
+              studentId: student._id,
+              presentCount: 0,
+              totalDays: 0
+            };
+          });
+          
+          // Update counts from actual attendance records
+          filteredData.forEach(log => {
+            const studentId = log.studentId || log.student?._id;
+            if (aggregatedData[studentId]) {
+              if (log.status === "present") {
+                aggregatedData[studentId].presentCount += 1;
+              }
+              aggregatedData[studentId].totalDays += 1;
+            }
+          });
+
+          // Convert to array and add start/end dates
+          filteredData = Object.values(aggregatedData).map(item => ({
+            ...item,
+            startDate: queryFrom,
+            endDate: queryTo
+          }));
+        }
+
+        // If month filter, aggregate data by student
+        if (queryType === "month") {
+          const aggregatedData = {};
+          
+          // Initialize all students with 0 counts
+          students.forEach(student => {
+            aggregatedData[student._id] = {
+              student: student,
+              studentId: student._id,
+              presentCount: 0,
+              totalDays: 0
+            };
+          });
+          
+          // Update counts from actual attendance records
+          filteredData.forEach(log => {
+            const studentId = log.studentId || log.student?._id;
+            if (aggregatedData[studentId]) {
+              if (log.status === "present") {
+                aggregatedData[studentId].presentCount += 1;
+              }
+              aggregatedData[studentId].totalDays += 1;
+            }
+          });
+
+          // Convert to array and add month/year
+          filteredData = Object.values(aggregatedData).map(item => ({
+            ...item,
+            month: queryMonth,
+            year: queryYear
+          }));
+        }
+
+        // If day filter, aggregate data by student
+        if (queryType === "day") {
+          const aggregatedData = {};
+          
+          // Initialize all students with "Not Marked"
+          students.forEach(student => {
+            aggregatedData[student._id] = {
+              student: student,
+              studentId: student._id,
+              status: "Not Marked",
+              date: queryDate
+            };
+          });
+          
+          // Update status from actual attendance records
+          filteredData.forEach(log => {
+            const studentId = log.studentId || log.student?._id;
+            if (aggregatedData[studentId]) {
+              aggregatedData[studentId].status = log.status;
+            }
+          });
+          
+          // Convert to array
+          filteredData = Object.values(aggregatedData);
+        }
+
         setFilteredAttendance(filteredData);
         setFilteredTotalPages(res.data.pages || 1);
+
+        if (queryType === "day") {
+          setFilteredTotalPages(1);
+        }
 
         if (filteredData.length === 0) {
           console.log("No attendance records found for the current enrolled students with selected filters.");
@@ -357,7 +460,10 @@ export default function MarkAttendance() {
         studentIds: currentStudentIds.join(','), // Add student IDs filter
       };
       if (queryType === "day") params.date = queryDate;
-      if (queryType === "week") params.from = queryFrom;
+      if (queryType === "week") {
+        params.from = queryFrom;
+        params.to = queryTo;
+      }
       if (queryType === "month") {
         params.month = queryMonth;
         params.year = queryYear;
@@ -371,9 +477,112 @@ export default function MarkAttendance() {
         const res = await api.get("/faculty/attendance/query", { params });
         if (res.data.success) {
           // Filter the results on frontend as backup
-          const filteredData = (res.data.data || []).filter(log => 
+          let filteredData = (res.data.data || []).filter(log => 
             currentStudentIds.includes(log.studentId || log.student?._id)
           );
+
+          // If week filter, aggregate data by student
+          if (queryType === "week") {
+            const aggregatedData = {};
+            
+            // Initialize all enrolled students with zero counts
+            currentStudentIds.forEach(studentId => {
+              const student = students.find(s => s._id === studentId);
+              aggregatedData[studentId] = {
+                student: student,
+                studentId: studentId,
+                presentCount: 0,
+                totalDays: 0
+              };
+            });
+            
+            // Update counts from actual attendance records
+            filteredData.forEach(log => {
+              const studentId = log.studentId || log.student?._id;
+              if (aggregatedData[studentId]) {
+                if (log.status === "present") {
+                  aggregatedData[studentId].presentCount += 1;
+                }
+                aggregatedData[studentId].totalDays += 1;
+              }
+            });
+
+            // Convert to array and add start/end dates
+            filteredData = Object.values(aggregatedData).map(item => ({
+              ...item,
+              startDate: queryFrom,
+              endDate: queryTo
+            }));
+          }
+
+          // If month filter, aggregate data by student
+          if (queryType === "month") {
+            const aggregatedData = {};
+            
+            // Initialize all enrolled students with zero counts
+            currentStudentIds.forEach(studentId => {
+              const student = students.find(s => s._id === studentId);
+              aggregatedData[studentId] = {
+                student: student,
+                studentId: studentId,
+                presentCount: 0,
+                totalDays: 0
+              };
+            });
+            
+            // Update counts from actual attendance records
+            filteredData.forEach(log => {
+              const studentId = log.studentId || log.student?._id;
+              if (aggregatedData[studentId]) {
+                if (log.status === "present") {
+                  aggregatedData[studentId].presentCount += 1;
+                }
+                aggregatedData[studentId].totalDays += 1;
+              }
+            });
+
+            // Convert to array and add month/year
+            filteredData = Object.values(aggregatedData).map(item => ({
+              ...item,
+              month: queryMonth,
+              year: queryYear
+            }));
+          }
+
+          // If range filter, aggregate data by student
+          if (queryType === "range") {
+            const aggregatedData = {};
+            
+            // Initialize all enrolled students with zero counts
+            currentStudentIds.forEach(studentId => {
+              const student = students.find(s => s._id === studentId);
+              aggregatedData[studentId] = {
+                student: student,
+                studentId: studentId,
+                presentCount: 0,
+                totalDays: 0
+              };
+            });
+            
+            // Update counts from actual attendance records
+            filteredData.forEach(log => {
+              const studentId = log.studentId || log.student?._id;
+              if (aggregatedData[studentId]) {
+                if (log.status === "present") {
+                  aggregatedData[studentId].presentCount += 1;
+                }
+                aggregatedData[studentId].totalDays += 1;
+              }
+            });
+
+            // Convert to array and add start/end dates
+            filteredData = Object.values(aggregatedData).map(item => ({
+              ...item,
+              startDate: queryFrom,
+              endDate: queryTo
+            }));
+          }
+
           setFilteredAttendance(filteredData);
           setFilteredPage(filteredPage - 1);
         }
@@ -406,7 +615,10 @@ export default function MarkAttendance() {
         studentIds: currentStudentIds.join(','), // Add student IDs filter
       };
       if (queryType === "day") params.date = queryDate;
-      if (queryType === "week") params.from = queryFrom;
+      if (queryType === "week") {
+        params.from = queryFrom;
+        params.to = queryTo;
+      }
       if (queryType === "month") {
         params.month = queryMonth;
         params.year = queryYear;
@@ -420,9 +632,112 @@ export default function MarkAttendance() {
         const res = await api.get("/faculty/attendance/query", { params });
         if (res.data.success) {
           // Filter the results on frontend as backup
-          const filteredData = (res.data.data || []).filter(log => 
+          let filteredData = (res.data.data || []).filter(log => 
             currentStudentIds.includes(log.studentId || log.student?._id)
           );
+
+          // If week filter, aggregate data by student
+          if (queryType === "week") {
+            const aggregatedData = {};
+            
+            // Initialize all enrolled students with zero counts
+            currentStudentIds.forEach(studentId => {
+              const student = students.find(s => s._id === studentId);
+              aggregatedData[studentId] = {
+                student: student,
+                studentId: studentId,
+                presentCount: 0,
+                totalDays: 0
+              };
+            });
+            
+            // Update counts from actual attendance records
+            filteredData.forEach(log => {
+              const studentId = log.studentId || log.student?._id;
+              if (aggregatedData[studentId]) {
+                if (log.status === "present") {
+                  aggregatedData[studentId].presentCount += 1;
+                }
+                aggregatedData[studentId].totalDays += 1;
+              }
+            });
+
+            // Convert to array and add start/end dates
+            filteredData = Object.values(aggregatedData).map(item => ({
+              ...item,
+              startDate: queryFrom,
+              endDate: queryTo
+            }));
+          }
+
+          // If month filter, aggregate data by student
+          if (queryType === "month") {
+            const aggregatedData = {};
+            
+            // Initialize all enrolled students with zero counts
+            currentStudentIds.forEach(studentId => {
+              const student = students.find(s => s._id === studentId);
+              aggregatedData[studentId] = {
+                student: student,
+                studentId: studentId,
+                presentCount: 0,
+                totalDays: 0
+              };
+            });
+            
+            // Update counts from actual attendance records
+            filteredData.forEach(log => {
+              const studentId = log.studentId || log.student?._id;
+              if (aggregatedData[studentId]) {
+                if (log.status === "present") {
+                  aggregatedData[studentId].presentCount += 1;
+                }
+                aggregatedData[studentId].totalDays += 1;
+              }
+            });
+
+            // Convert to array and add month/year
+            filteredData = Object.values(aggregatedData).map(item => ({
+              ...item,
+              month: queryMonth,
+              year: queryYear
+            }));
+          }
+
+          // If range filter, aggregate data by student
+          if (queryType === "range") {
+            const aggregatedData = {};
+            
+            // Initialize all enrolled students with zero counts
+            currentStudentIds.forEach(studentId => {
+              const student = students.find(s => s._id === studentId);
+              aggregatedData[studentId] = {
+                student: student,
+                studentId: studentId,
+                presentCount: 0,
+                totalDays: 0
+              };
+            });
+            
+            // Update counts from actual attendance records
+            filteredData.forEach(log => {
+              const studentId = log.studentId || log.student?._id;
+              if (aggregatedData[studentId]) {
+                if (log.status === "present") {
+                  aggregatedData[studentId].presentCount += 1;
+                }
+                aggregatedData[studentId].totalDays += 1;
+              }
+            });
+
+            // Convert to array and add start/end dates
+            filteredData = Object.values(aggregatedData).map(item => ({
+              ...item,
+              startDate: queryFrom,
+              endDate: queryTo
+            }));
+          }
+
           setFilteredAttendance(filteredData);
           setFilteredPage(filteredPage + 1);
         }
@@ -637,6 +952,17 @@ export default function MarkAttendance() {
         fetchAttendanceStats(students, expandedSubject);
         // Recalculate monthly attendance after marking today's attendance
         calculateMonthlyClassAttendance(expandedSubject);
+        try {
+          // Notify other parts of the app (e.g., Profile page) that attendance changed
+          const eventDetail = {
+            studentIds: studentsToMarkPresent,
+            subjectId: expandedSubject,
+            date: attendanceData.date,
+          };
+          window.dispatchEvent(new CustomEvent("attendanceMarked", { detail: eventDetail }));
+        } catch (e) {
+          console.warn("Could not dispatch attendanceMarked event:", e);
+        }
       } else {
         // Check if attendance was already marked
         if (response.data.alreadyMarked) {
@@ -686,46 +1012,93 @@ export default function MarkAttendance() {
       // Import xlsx library
       const XLSX = await import('xlsx');
 
-      // Prepare data for Excel
-      const excelData = filteredAttendance.map(log => ({
-        'Student Name': log.student?.firstName && log.student?.lastName
-          ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
-          : log.student?.name || log.studentId || "Unknown Student",
-        'Date': log.date ? new Date(log.date).toLocaleDateString() : "N/A",
-        'Time': log.createdAt
-          ? new Date(log.createdAt).toLocaleTimeString()
-          : log.markedAt
-          ? new Date(log.markedAt).toLocaleTimeString()
-          : "N/A",
-        'Status': log.status || "N/A",
-        'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
-        'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
-        'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
-        'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
-      }));
+      // Prepare data for Excel based on queryType
+      let excelData;
+      let colWidths;
+
+      if (queryType === "week" || queryType === "range") {
+        excelData = filteredAttendance.map(log => ({
+          'Student Name': log.student?.firstName && log.student?.lastName
+            ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+            : log.student?.name || log.studentId || "Unknown Student",
+          'Start Date': log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A",
+          'End Date': log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A",
+          'Present Days': `${log.presentCount || 0} / ${log.totalDays || 0}`,
+          'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
+          'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
+          'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
+          'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+        }));
+
+        colWidths = [
+          { wch: 25 }, // Student Name
+          { wch: 12 }, // Start Date
+          { wch: 12 }, // End Date
+          { wch: 15 }, // Present Days
+          { wch: 20 }, // Subject
+          { wch: 15 }, // Department
+          { wch: 10 }, // Semester
+          { wch: 8 }   // Section
+        ];
+      } else if (queryType === "month") {
+        excelData = filteredAttendance.map(log => ({
+          'Student Name': log.student?.firstName && log.student?.lastName
+            ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+            : log.student?.name || log.studentId || "Unknown Student",
+          'Month': log.month && log.year ? `${new Date(log.year, log.month - 1).toLocaleString("default", { month: "long" })} ${log.year}` : "N/A",
+          'Present Days': `${log.presentCount || 0} / ${log.totalDays || 0}`,
+          'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
+          'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
+          'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
+          'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+        }));
+
+        colWidths = [
+          { wch: 25 }, // Student Name
+          { wch: 15 }, // Month
+          { wch: 15 }, // Present Days
+          { wch: 20 }, // Subject
+          { wch: 15 }, // Department
+          { wch: 10 }, // Semester
+          { wch: 8 }   // Section
+        ];
+      } else {
+        // Default format for day
+        excelData = filteredAttendance.map(log => ({
+          'Student Name': log.student?.firstName && log.student?.lastName
+            ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+            : log.student?.name || log.studentId || "Unknown Student",
+          'Date': log.date ? new Date(log.date).toLocaleDateString() : "N/A",
+          'Status': log.status || "N/A",
+          'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
+          'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
+          'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
+          'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+        }));
+
+        colWidths = [
+          { wch: 25 }, // Student Name
+          { wch: 12 }, // Date
+          { wch: 10 }, // Status
+          { wch: 20 }, // Subject
+          { wch: 15 }, // Department
+          { wch: 10 }, // Semester
+          { wch: 8 }   // Section
+        ];
+      }
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(excelData);
 
       // Set column widths
-      const colWidths = [
-        { wch: 25 }, // Student Name
-        { wch: 12 }, // Date
-        { wch: 10 }, // Time
-        { wch: 8 },  // Status
-        { wch: 20 }, // Subject
-        { wch: 15 }, // Department
-        { wch: 10 }, // Semester
-        { wch: 8 }   // Section
-      ];
       ws['!cols'] = colWidths;
 
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
 
-      // Generate filename with current date
-      const fileName = `Attendance_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      // Generate filename with current date and filter type
+      const fileName = `Attendance_Report_${queryType}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
       // Write file and trigger download
       XLSX.writeFile(wb, fileName);
@@ -1463,13 +1836,22 @@ export default function MarkAttendance() {
                 )}
 
                 {queryType === "week" && (
-                  <input
-                    type="date"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={queryFrom}
-                    onChange={(e) => setQueryFrom(e.target.value)}
-                    placeholder="Week Start"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={queryFrom}
+                      onChange={(e) => setQueryFrom(e.target.value)}
+                      placeholder="Start Date"
+                    />
+                    <input
+                      type="date"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={queryTo}
+                      onChange={(e) => setQueryTo(e.target.value)}
+                      placeholder="End Date"
+                    />
+                  </div>
                 )}
 
                 {queryType === "month" && (
@@ -1526,7 +1908,7 @@ export default function MarkAttendance() {
                     !students ||
                     students.length === 0 ||
                     (queryType === "day" && !queryDate) ||
-                    (queryType === "week" && !queryFrom) ||
+                    (queryType === "week" && (!queryFrom || !queryTo)) ||
                     (queryType === "month" && (!queryMonth || !queryYear)) ||
                     (queryType === "range" && (!queryFrom || !queryTo))
                   }
@@ -1545,21 +1927,43 @@ export default function MarkAttendance() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Student
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Time
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
+                      {queryType === "week" || queryType === "range" ? (
+                        <>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Start Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            End Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Present Days
+                          </th>
+                        </>
+                      ) : queryType === "month" ? (
+                        <>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Month
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Present Days
+                          </th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAttendance.map((log, index) => (
                       <tr
-                        key={`${log._id || index}-${log.date}`}
+                        key={`${log._id || log.studentId || index}-${queryType === "week" ? log.startDate : log.date}`}
                         className="hover:bg-gray-50"
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1571,29 +1975,49 @@ export default function MarkAttendance() {
                               log.studentId ||
                               "Unknown Student"}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {log.date
-                            ? new Date(log.date).toLocaleDateString()
-                            : "N/A"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {log.createdAt
-                            ? new Date(log.createdAt).toLocaleTimeString()
-                            : log.markedAt
-                            ? new Date(log.markedAt).toLocaleTimeString()
-                            : "N/A"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              log.status === "present"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {log.status}
-                          </span>
-                        </td>
+                        {queryType === "week" || queryType === "range" ? (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {log.presentCount || 0} / {log.totalDays || 0}
+                            </td>
+                          </>
+                        ) : queryType === "month" ? (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {log.month && log.year ? `${new Date(log.year, log.month - 1).toLocaleString("default", { month: "long" })} ${log.year}` : "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {log.presentCount || 0} / {log.totalDays || 0}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {log.date
+                                ? new Date(log.date).toLocaleDateString()
+                                : "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  log.status === "present"
+                                    ? "bg-green-100 text-green-800"
+                                    : log.status === "absent"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {log.status}
+                              </span>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -1639,7 +2063,7 @@ export default function MarkAttendance() {
             </div>
 
             {/* Pagination */}
-            {filteredAttendance.length > 0 && filteredTotalPages > 1 && (
+            {filteredAttendance.length > 0 && filteredTotalPages > 1 && queryType !== "week" && queryType !== "month" && queryType !== "range" && queryType !== "day" && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-700">
                   Showing page {filteredPage} of {filteredTotalPages}
@@ -1673,13 +2097,6 @@ export default function MarkAttendance() {
               >
                 <Download className="h-4 w-4" />
                 Download Excel
-              </button>
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-                onClick={handleDownloadPDF}
-              >
-                <FileText className="h-4 w-4" />
-                Download PDF
               </button>
             </div>
           </div>

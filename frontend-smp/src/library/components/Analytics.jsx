@@ -142,6 +142,7 @@ const Analytics = () => {
   const [booksAddedByMonth, setBooksAddedByMonth] = useState([]);
   const [issuedBooks, setIssuedBooks] = useState([]);
   const [totalBorrowedBooks, setTotalBorrowedBooks] = useState(0);
+  const [activeStudents, setActiveStudents] = useState([]);
 
   if (!allowAccess) {
     return <Navigate to="/" />;
@@ -162,6 +163,30 @@ const Analytics = () => {
 
         // Fetch real book data from MongoDB
         const response = await fetch(API_URL);
+
+        // Fetch active students to validate borrowed books
+        const studentsResponse = await fetch("https://backenderp.tarstech.in/api/students", {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        let activeStudentIds = [];
+        if (studentsResponse.ok) {
+          const studentsData = await studentsResponse.json();
+          let students = [];
+          if (studentsData.data && Array.isArray(studentsData.data)) {
+            students = studentsData.data;
+          } else if (Array.isArray(studentsData)) {
+            students = studentsData;
+          }
+          activeStudentIds = students.map(student => student.studentId || student._id).filter(Boolean);
+          setActiveStudents(students);
+          console.log(`Found ${activeStudentIds.length} active students for validation`);
+        } else {
+          console.warn("Failed to fetch students for validation");
+        }
 
         // Also fetch issued books data
         const issuesResponse = await fetch(
@@ -205,21 +230,53 @@ const Analytics = () => {
 
           if (issuesResponse.ok) {
             const issuesData = await issuesResponse.json();
-            issuedBooksData = issuesData.data || issuesData || [];
+            console.log("Raw issues response:", issuesData);
+            
+            // Handle different response structures
+            if (issuesData.success && issuesData.data) {
+              issuedBooksData = Array.isArray(issuesData.data) ? issuesData.data : [];
+            } else if (issuesData.borrowedBooks) {
+              issuedBooksData = Array.isArray(issuesData.borrowedBooks) ? issuesData.borrowedBooks : [];
+            } else if (Array.isArray(issuesData)) {
+              issuedBooksData = issuesData;
+            } else {
+              issuedBooksData = [];
+            }
 
-            // Filter active issues only
+            // Filter active issues only - more strict filtering and validate student exists
             const activeIssues = issuedBooksData.filter(
-              (issue) =>
-                issue.status === "active" && issue.transactionType === "issue"
+              (issue) => {
+                const isActiveIssue = issue && 
+                  issue.status === "active" && 
+                  (issue.transactionType === "issue" || issue.transactionType === "renew") &&
+                  !issue.returnDate; // Make sure it's not returned
+                
+                if (!isActiveIssue) return false;
+                
+                // Validate that the student/borrower still exists in the database
+                const borrowerId = issue.borrowerId || issue.studentId;
+                const studentExists = activeStudentIds.includes(borrowerId);
+                
+                if (!studentExists && borrowerId) {
+                  console.log(`Filtering out borrowed book for deleted student: ${borrowerId}`);
+                  return false;
+                }
+                
+                return true;
+              }
             );
 
             totalBorrowedCount = activeIssues.length;
             setIssuedBooks(activeIssues);
             setTotalBorrowedBooks(totalBorrowedCount);
 
-            console.log(`Found ${totalBorrowedCount} active borrowed books`);
+            console.log(`Found ${totalBorrowedCount} active borrowed books from ${issuedBooksData.length} total issues`);
+            console.log("Active issues:", activeIssues);
           } else {
-            console.warn("Failed to fetch issued books data");
+            console.warn("Failed to fetch issued books data - response not ok");
+            // Set to 0 if API call fails
+            setIssuedBooks([]);
+            setTotalBorrowedBooks(0);
           }
 
           // Calculate real-time analytics from fetched data
@@ -314,6 +371,9 @@ const Analytics = () => {
         setBooks([]);
         setBooksBorrowedByMonth([]);
         setBooksAddedByMonth([]);
+        // Also reset issued books to 0 on error
+        setIssuedBooks([]);
+        setTotalBorrowedBooks(0);
       } finally {
         setLoading(false);
         setUpdating(false);
@@ -415,10 +475,10 @@ const Analytics = () => {
         bookId,
       });
 
-      // Update total borrowed books count
-      setTotalBorrowedBooks((prev) => prev + 1);
+      // Don't increment manually, just refresh data to get accurate count
+      console.log("Analytics: Book issued, refreshing data...");
 
-      // Optionally refetch issue data for accuracy
+      // Refetch issue data for accuracy
       const refreshIssueData = async () => {
         try {
           const response = await fetch(
@@ -426,12 +486,43 @@ const Analytics = () => {
           );
           if (response.ok) {
             const data = await response.json();
-            const activeIssues = data.data || data.borrowedBooks || data || [];
+            console.log("Refreshed issues data after book issue:", data);
+            
+            let issuedBooksData = [];
+            if (data.success && data.data) {
+              issuedBooksData = Array.isArray(data.data) ? data.data : [];
+            } else if (data.borrowedBooks) {
+              issuedBooksData = Array.isArray(data.borrowedBooks) ? data.borrowedBooks : [];
+            } else if (Array.isArray(data)) {
+              issuedBooksData = data;
+            }
+            
+            // Filter active issues only and validate student exists
+            const activeIssues = issuedBooksData.filter(
+              (issue) => {
+                const isActiveIssue = issue && 
+                  issue.status === "active" && 
+                  (issue.transactionType === "issue" || issue.transactionType === "renew") &&
+                  !issue.returnDate;
+                
+                if (!isActiveIssue) return false;
+                
+                // Validate that the student/borrower still exists
+                const borrowerId = issue.borrowerId || issue.studentId;
+                return activeStudents.some(student => 
+                  (student.studentId || student._id) === borrowerId
+                );
+              }
+            );
+            
             setTotalBorrowedBooks(activeIssues.length);
             setIssuedBooks(activeIssues);
+            console.log(`Analytics: After book issue - found ${activeIssues.length} active issues (validated students exist)`);
+          } else {
+            console.warn("Analytics: Failed to refresh issue data after book issue");
           }
         } catch (error) {
-          console.error("Analytics: Error refreshing issue data:", error);
+          console.error("Analytics: Error refreshing issue data after book issue:", error);
         }
       };
 
@@ -446,10 +537,10 @@ const Analytics = () => {
         bookId,
       });
 
-      // Update total borrowed books count
-      setTotalBorrowedBooks((prev) => Math.max(0, prev - 1));
+      // Don't decrement manually, just refresh data to get accurate count
+      console.log("Analytics: Book returned, refreshing data...");
 
-      // Optionally refetch issue data for accuracy
+      // Refetch issue data for accuracy
       const refreshIssueData = async () => {
         try {
           const response = await fetch(
@@ -457,12 +548,43 @@ const Analytics = () => {
           );
           if (response.ok) {
             const data = await response.json();
-            const activeIssues = data.data || data.borrowedBooks || data || [];
+            console.log("Refreshed issues data after book return:", data);
+            
+            let issuedBooksData = [];
+            if (data.success && data.data) {
+              issuedBooksData = Array.isArray(data.data) ? data.data : [];
+            } else if (data.borrowedBooks) {
+              issuedBooksData = Array.isArray(data.borrowedBooks) ? data.borrowedBooks : [];
+            } else if (Array.isArray(data)) {
+              issuedBooksData = data;
+            }
+            
+            // Filter active issues only and validate student exists
+            const activeIssues = issuedBooksData.filter(
+              (issue) => {
+                const isActiveIssue = issue && 
+                  issue.status === "active" && 
+                  (issue.transactionType === "issue" || issue.transactionType === "renew") &&
+                  !issue.returnDate;
+                
+                if (!isActiveIssue) return false;
+                
+                // Validate that the student/borrower still exists
+                const borrowerId = issue.borrowerId || issue.studentId;
+                return activeStudents.some(student => 
+                  (student.studentId || student._id) === borrowerId
+                );
+              }
+            );
+            
             setTotalBorrowedBooks(activeIssues.length);
             setIssuedBooks(activeIssues);
+            console.log(`Analytics: After book return - found ${activeIssues.length} active issues (validated students exist)`);
+          } else {
+            console.warn("Analytics: Failed to refresh issue data after book return");
           }
         } catch (error) {
-          console.error("Analytics: Error refreshing issue data:", error);
+          console.error("Analytics: Error refreshing issue data after book return:", error);
         }
       };
 

@@ -66,19 +66,23 @@ const FacultyList = () => {
       
       console.log(`🔄 Fetching faculties from API (Page: ${page}, Limit: ${limit})...`);
       
+      // Always fetch all data for local search functionality
+      const actualLimit = 1000; // Always fetch all data for local filtering
+      const actualPage = 1; // Always fetch from page 1
+      
       // First get the total count
       const totalCount = await getTotalFacultyCount();
       const totalPagesCalculated = Math.ceil(totalCount / limit);
       
       console.log(`📊 Total faculty: ${totalCount}, Total pages: ${totalPagesCalculated}`);
       
-      // Now fetch the paginated data
+      // Now fetch all the data
       const response = await axios.get(
         "https://backenderp.tarstech.in/api/faculty/faculties",
         {
           params: {
-            page: page,
-            limit: limit,
+            page: actualPage,
+            limit: actualLimit,
           },
           timeout: 10000, // 10 second timeout
           headers: {
@@ -133,7 +137,7 @@ const FacultyList = () => {
         return;
       }
 
-      // Update pagination state with the accurate totals we calculated
+      // Update pagination state
       console.log("📊 Setting pagination state:", {
         currentPage: paginationInfo.currentPage,
         totalPages: paginationInfo.totalPages,
@@ -539,6 +543,13 @@ const FacultyList = () => {
     fetchFaculties(currentPage, itemsPerPage);
   }, [currentPage, itemsPerPage]);
 
+  // Reset to page 1 when starting a search
+  useEffect(() => {
+    if (searchTerm.trim() !== "") {
+      setCurrentPage(1);
+    }
+  }, [searchTerm]);
+
   // Handle search and filter changes - reset to page 1
   useEffect(() => {
     setCurrentPage(1);
@@ -559,8 +570,8 @@ const FacultyList = () => {
 
   const getFacultyStats = () => {
     const stats = {
-      total: totalFaculties, // Use total from pagination instead of current page length
-      byDepartment: faculties.reduce((acc, faculty) => {
+      total: searchTerm.trim() !== "" ? allFilteredFaculties.length : totalFaculties, // Use filtered count when searching
+      byDepartment: (searchTerm.trim() !== "" ? allFilteredFaculties : faculties).reduce((acc, faculty) => {
         const dept = faculty.department || "Unknown Department";
         acc[dept] = (acc[dept] || 0) + 1;
         return acc;
@@ -572,19 +583,26 @@ const FacultyList = () => {
   };
 
   // Add safety check to prevent the error
-  const filteredFaculties = (faculties || []).filter((faculty) => {
+  const allFilteredFaculties = (faculties || []).filter((faculty) => {
     const matchesSearch =
-      (faculty.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (faculty.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (faculty.designation?.toLowerCase() || "").includes(
-        searchTerm.toLowerCase()
-      );
+      searchTerm.trim() === "" ||
+      (faculty.firstName?.toLowerCase() || "").startsWith(searchTerm.toLowerCase());
 
     const matchesDepartment =
       filterDepartment === "all" || faculty.department === filterDepartment;
 
     return matchesSearch && matchesDepartment;
+  }).sort((a, b) => {
+    // Sort alphabetically by firstName
+    const nameA = (a.firstName || a.name || "").toLowerCase();
+    const nameB = (b.firstName || b.name || "").toLowerCase();
+    return nameA.localeCompare(nameB);
   });
+
+  // Apply pagination only when not searching
+  const filteredFaculties = searchTerm.trim() === ""
+    ? allFilteredFaculties.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : allFilteredFaculties;
 
   if (loading) {
     return (
@@ -683,16 +701,23 @@ const FacultyList = () => {
         </div>
 
         <div className="mb-4 text-gray-600">
-          Showing {filteredFaculties.length} of {totalFaculties} faculty members (Page {currentPage} of {totalPages})
+          {searchTerm.trim() !== "" ? (
+            `Found ${allFilteredFaculties.length} faculty member${allFilteredFaculties.length !== 1 ? 's' : ''} matching "${searchTerm}"`
+          ) : (
+            `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, totalFaculties)} of ${totalFaculties} faculty members (Page ${currentPage} of ${totalPages})`
+          )}
         </div>
 
         {filteredFaculties.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-xl border border-purple-100 p-12 text-center">
             <h3 className="text-xl font-medium text-gray-700 mb-2">
-              No Faculty Found
+              {searchTerm.trim() !== "" ? "No Matching Faculty Found" : "No Faculty Found"}
             </h3>
             <p className="text-gray-500">
-              There are currently no faculty members in the database.
+              {searchTerm.trim() !== "" 
+                ? `No faculty members match your search for "${searchTerm}". Try a different search term.`
+                : "There are currently no faculty members in the database."
+              }
             </p>
           </div>
         ) : (
@@ -860,7 +885,7 @@ const FacultyList = () => {
         )}
 
         {/* Pagination Controls */}
-        {totalPages > 1 && (
+        {totalPages > 1 && searchTerm.trim() === "" && (
           <div className="bg-white rounded-xl shadow-md p-4 mt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600">

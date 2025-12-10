@@ -50,14 +50,7 @@ export default function FacultyDashboard() {
   const [facultyToDelete, setFacultyToDelete] = useState(null);
   const [academicDepartments, setAcademicDepartments] = useState([]);
 
-  const [selectedFaculties, setSelectedFaculties] = useState(() => {
-    const saved = localStorage.getItem('selectedFaculties');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('selectedFaculties', JSON.stringify(selectedFaculties));
-  }, [selectedFaculties]);
+  const [selectedFaculties, setSelectedFaculties] = useState([]);
 
   useEffect(() => {
     const fetchFaculties = async () => {
@@ -154,6 +147,41 @@ export default function FacultyDashboard() {
     loadAcademicDepartments();
   }, []);
 
+  // Load selected faculties from database on component mount
+  useEffect(() => {
+    const loadSelectedFaculties = async () => {
+      try {
+        const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+        const token = localStorage.getItem("authToken");
+
+        console.log('Loading selected faculties from database...');
+        const response = await fetch(`${API_URL}/api/superadmin/faculties/all-departments/faculty`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        console.log('Response status:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Response data:', data);
+          if (data.success && data.data) {
+            // Extract faculty IDs from the response
+            const facultyIds = data.data.map(item => item.facultyId._id);
+            console.log('Extracted faculty IDs:', facultyIds);
+            setSelectedFaculties(facultyIds);
+          }
+        } else {
+          console.error('Failed to load selected faculties:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error loading selected faculties:', error);
+      }
+    };
+
+    loadSelectedFaculties();
+  }, []);
+
   const departments = [
     ...new Set(faculties.map((faculty) => faculty.department)),
   ].filter(Boolean);
@@ -175,16 +203,66 @@ export default function FacultyDashboard() {
     return matchesSearch && matchesType && matchesDepartment;
   });
 
-  const handleSelectFaculty = (facultyId) => {
+  const handleSelectFaculty = async (facultyId) => {
     const isChecked = selectedFaculties.includes(facultyId);
     const action = isChecked ? 'uncheck' : 'check';
     const confirmed = window.confirm(`Are you sure you want to ${action} this faculty for showing in all departments?`);
-    if (confirmed) {
-      setSelectedFaculties(prev =>
-        prev.includes(facultyId)
-          ? prev.filter(id => id !== facultyId)
-          : [...prev, facultyId]
-      );
+    
+    if (!confirmed) return;
+
+    try {
+      const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+      const token = localStorage.getItem("authToken");
+
+      if (isChecked) {
+        // Remove from all departments
+        const response = await fetch(`${API_URL}/api/superadmin/faculties/all-departments/faculty/${facultyId}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          setSelectedFaculties(prev => prev.filter(id => id !== facultyId));
+          alert('Faculty removed from all departments successfully');
+        } else {
+          const errorData = await response.json();
+          alert(`Failed to remove faculty: ${errorData.error || 'Unknown error'}`);
+        }
+      } else {
+        // Add to all departments
+        const faculty = faculties.find(f => f._id === facultyId);
+        if (!faculty) {
+          alert('Faculty not found');
+          return;
+        }
+
+        const response = await fetch(`${API_URL}/api/superadmin/faculties/all-departments/faculty`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            facultyId: faculty._id,
+            facultyName: faculty.firstName,
+            employeeId: faculty.employeeId,
+            department: faculty.department
+          }),
+        });
+
+        if (response.ok) {
+          setSelectedFaculties(prev => [...prev, facultyId]);
+          alert('Faculty added to all departments successfully');
+        } else {
+          const errorData = await response.json();
+          alert(`Failed to add faculty: ${errorData.error || 'Unknown error'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating faculty all departments:', error);
+      alert(`Error: ${error.message}`);
     }
   };
 
