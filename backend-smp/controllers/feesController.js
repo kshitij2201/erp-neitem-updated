@@ -3,10 +3,14 @@ import FeeHead from '../models/FeeHead.js';
 export const getFees = async (req, res) => {
   try {
     const { stream, branch, batch } = req.query;
-    if (!stream || !branch || !batch) {
-      return res.status(400).json({ message: 'stream, branch, and batch are required' });
+    if (!stream || !branch) {
+      return res.status(400).json({ message: 'stream and branch are required' });
     }
-    const fees = await FeeHead.find({ stream, branch, batch });
+    const query = { stream, branch };
+    if (batch) {
+      query.batch = batch;
+    }
+    const fees = await FeeHead.find(query);
     res.json(fees);
   } catch (error) {
     console.error('Error fetching fees:', error);
@@ -17,12 +21,15 @@ export const getFees = async (req, res) => {
 export const updateFee = async (req, res) => {
   try {
     const { stream, branch, batch, head, amount } = req.body;
-    if (!stream || !branch || !batch || !head || amount === undefined) {
-      return res.status(400).json({ message: 'All fields are required' });
+    if (!stream || !branch || !batch || !head || amount === undefined || amount === null) {
+      return res.status(400).json({ message: 'All fields are required and amount must be provided' });
+    }
+    if (isNaN(amount) || amount < 0) {
+      return res.status(400).json({ message: 'Amount must be a valid non-negative number' });
     }
     const fee = await FeeHead.findOneAndUpdate(
       { stream, branch, batch, head },
-      { amount },
+      { amount: Number(amount) },
       { new: true, upsert: true }
     );
     res.json(fee);

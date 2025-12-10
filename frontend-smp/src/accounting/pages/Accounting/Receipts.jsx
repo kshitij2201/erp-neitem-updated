@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
-const API_URL = "https://backenderp.tarstech.in";
+const API_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
 
 const Receipts = () => {
   const [receipts, setReceipts] = useState([]);
@@ -26,9 +28,21 @@ const Receipts = () => {
   });
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  const [showExportForm, setShowExportForm] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportFormData, setExportFormData] = useState({
+    stream: '',
+    department: '',
+    year: '',
+    semester: '',
+    feeTypes: []
+  });
+  const [semesters, setSemesters] = useState([]);
+  const [semestersLoading, setSemestersLoading] = useState(false);
 
   useEffect(() => {
     fetchReceipts();
+    fetchSemesters();
   }, [currentPage]);
 
   // Prevent body scrolling when modal is open
@@ -42,6 +56,43 @@ const Receipts = () => {
       document.body.style.overflow = 'unset';
     };
   }, [showReceiptModal]);
+
+  // Close export form when pressing ESC
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showExportForm) {
+        setShowExportForm(false);
+      }
+    };
+
+    if (showExportForm) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showExportForm]);
+
+  const fetchSemesters = async () => {
+    try {
+      setSemestersLoading(true);
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await fetch(`${API_URL}/api/superadmin/semesters`, { headers });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Filter semesters where _id is "68e4bbaa006a2091da093713" as per user requirement
+      const filteredSemesters = Array.isArray(data) ? data.filter(sem => sem._id === "68e4bbaa006a2091da093713") : [];
+      setSemesters(filteredSemesters);
+    } catch (err) {
+      console.error("Fetch semesters error:", err);
+      setSemesters([]);
+    } finally {
+      setSemestersLoading(false);
+    }
+  };
 
   const fetchReceipts = async () => {
     try {
@@ -982,9 +1033,660 @@ const Receipts = () => {
     }
   };
 
-  const handleEditFormCancel = () => {
-    setEditModalOpen(false);
-    setEditReceipt(null);
+  const handleExportFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      const newFeeTypes = checked 
+        ? [...exportFormData.feeTypes, value]
+        : exportFormData.feeTypes.filter(type => type !== value);
+      
+      // Reset year and semester when fee type changes
+      setExportFormData(prev => ({
+        ...prev,
+        feeTypes: newFeeTypes,
+        year: '',
+        semester: ''
+      }));
+    } else {
+      setExportFormData(prev => ({
+        ...prev,
+        [name]: value,
+        // Reset department when stream changes
+        ...(name === 'stream' && { department: '' })
+      }));
+    }
+  };
+
+  const handleExportDownload = async () => {
+    // Validation based on fee type
+    const isExamFee = exportFormData.feeTypes.includes('Exam');
+    const isAdmissionFee = exportFormData.feeTypes.includes('Admission');
+    const isAllDepartments = exportFormData.department === 'All';
+    
+    if (!exportFormData.stream || !exportFormData.department || exportFormData.feeTypes.length === 0) {
+      alert('Please fill all fields and select at least one fee type.');
+      return;
+    }
+    
+    // If Exam fee is selected, require semester
+    if (isExamFee && !exportFormData.semester) {
+      alert('Please select a semester for Exam fees.');
+      return;
+    }
+    
+    // If Admission fee is selected, require year
+    if (isAdmissionFee && !exportFormData.year) {
+      alert('Please select a year for Admission fees.');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Step 1: Fetch all semesters from semesters database
+      console.log('Fetching semesters data...');
+      const semestersResponse = await fetch(`${API_URL}/api/superadmin/semesters`, { headers });
+      if (!semestersResponse.ok) {
+        throw new Error('Failed to fetch semesters data');
+      }
+      const semestersData = await semestersResponse.json();
+      const semesters = Array.isArray(semestersData) ? semestersData : semestersData.data || [];
+      
+      console.log('Semesters fetched:', semesters.length);
+
+      console.log(exportFormData);
+      // Step 2: Determine which semester numbers to filter based on year or semester dropdown
+      let targetSemesterNumbers = [];
+      
+      // If Exam fee is selected, use semester dropdown value
+      if (exportFormData.feeTypes.includes('Exam') && exportFormData.semester) {
+        targetSemesterNumbers = [parseInt(exportFormData.semester)];
+      }
+      // If Admission fee is selected, use year dropdown to determine both semesters
+      else if (exportFormData.feeTypes.includes('Admission') && exportFormData.year) {
+        if (exportFormData.year.toLowerCase() === '1st year') targetSemesterNumbers = [1, 2];
+        else if (exportFormData.year.toLowerCase() === '2nd year') targetSemesterNumbers = [3, 4];
+        else if (exportFormData.year.toLowerCase() === '3rd year') targetSemesterNumbers = [5, 6];
+        else if (exportFormData.year.toLowerCase() === '4th year') targetSemesterNumbers = [7, 8];
+      }
+
+      console.log(`Looking for semester numbers: ${targetSemesterNumbers.join(', ')}`);
+
+      // Step 3: Find the semester _ids that match the target semester numbers
+      const targetSemesters = semesters.filter(sem => 
+        targetSemesterNumbers.includes(sem.semesterNumber) || 
+        targetSemesterNumbers.includes(sem.number) ||
+        targetSemesterNumbers.includes(sem.semester)
+      );
+
+      if (targetSemesters.length === 0) {
+        throw new Error(`No semesters found for ${exportFormData.year} year (semesters ${targetSemesterNumbers.join(', ')})`);
+      }
+
+      const targetSemesterIds = targetSemesters.map(sem => sem._id);
+      console.log(`Target semester _ids: ${targetSemesterIds.join(', ')}`);
+
+      // Check if "All" departments is selected
+      if (isAllDepartments) {
+        await exportAllDepartments(exportFormData.stream, targetSemesterIds, targetSemesterNumbers, headers);
+        return;
+      }
+
+      // Step 4: Fetch all students
+      console.log('Fetching students data...');
+      const studentsResponse = await fetch(`${API_URL}/api/students`, { headers });
+      if (!studentsResponse.ok) {
+        throw new Error('Failed to fetch students data');
+      }
+      const studentsDataRaw = await studentsResponse.json();
+      const allStudents = Array.isArray(studentsDataRaw) ? studentsDataRaw : 
+                         studentsDataRaw.data || studentsDataRaw.students || [];
+      
+      console.log('Total students fetched:', allStudents.length);
+
+      // Step 5: Fetch fee summaries from feesummeries collection (for Admission fees)
+      console.log('Fetching fee summaries data...');
+      const feeSummariesResponse = await fetch(`${API_URL}/api/fees/summaries`, { headers });
+      if (!feeSummariesResponse.ok) {
+        throw new Error('Failed to fetch fee summaries data');
+      }
+      const feeSummariesDataRaw = await feeSummariesResponse.json();
+      const allFeeSummaries = Array.isArray(feeSummariesDataRaw) ? feeSummariesDataRaw : 
+                              feeSummariesDataRaw.data || feeSummariesDataRaw.summaries || [];
+      
+      console.log('Total fee summaries fetched:', allFeeSummaries.length);
+
+      // Step 5.1: Fetch exam fees from examfees collection (if Exam fee type selected)
+      let allExamFees = [];
+      if (exportFormData.feeTypes.includes('Exam')) {
+        console.log('Fetching exam fees data...');
+        const examFeesResponse = await fetch(`${API_URL}/api/exam-fees`, { headers });
+        if (!examFeesResponse.ok) {
+          console.warn('Failed to fetch exam fees data');
+        } else {
+          const examFeesDataRaw = await examFeesResponse.json();
+          allExamFees = Array.isArray(examFeesDataRaw) ? examFeesDataRaw : 
+                        examFeesDataRaw.data || examFeesDataRaw.examFees || [];
+          console.log('Total exam fees fetched:', allExamFees.length);
+        }
+      }
+
+      // Step 6: Create maps for fee lookup
+      const feeSummaryMap = {};
+      allFeeSummaries.forEach(summary => {
+        const studentId = summary.studentId?._id || summary.studentId;
+        if (studentId) {
+          feeSummaryMap[studentId] = summary;
+        }
+      });
+
+      const examFeeMap = {};
+      allExamFees.forEach(examFee => {
+        const studentId = examFee.student?._id || examFee.student || examFee.studentId;
+        if (studentId) {
+          examFeeMap[studentId] = examFee;
+        }
+      });
+
+      // Step 7: Filter students based on stream, department, and semester _id match
+      const filteredStudents = allStudents.filter(student => {
+        // Check stream
+        const studentStream = student.stream?.name || student.stream || '';
+        const streamMatch = studentStream.toLowerCase() === exportFormData.stream.toLowerCase();
+
+        // Check department - normalize for special characters like &
+        const studentDept = student.department?.name || student.department || '';
+        const normalizeDept = (dept) => dept.toLowerCase().replace(/\s+/g, '').replace(/[&]/g, '');
+        const deptMatch = normalizeDept(studentDept) === normalizeDept(exportFormData.department);
+
+        // Check if semester _id matches any of the target semester IDs
+        const studentSemesterId = typeof student.semester === 'object' ? student.semester._id : student.semester;
+        // Convert both to strings for comparison
+        const semesterMatch = targetSemesterIds.some(targetId => 
+          String(targetId) === String(studentSemesterId)
+        );
+
+        return streamMatch && deptMatch && semesterMatch;
+      });
+
+      console.log(`Filtered students count: ${filteredStudents.length}`);
+      console.log(`Sample filtered student semesters:`, filteredStudents.slice(0, 5).map(s => ({
+        name: s.firstName,
+        semester: s.semester?.number || s.semester?.semesterNumber || 'unknown',
+        semesterId: typeof s.semester === 'object' ? s.semester._id : s.semester
+      })));
+
+      if (filteredStudents.length === 0) {
+        alert(`No students found matching the criteria:\n- Stream: ${exportFormData.stream}\n- Department: ${exportFormData.department}\n- Year: ${exportFormData.year} (Semesters ${targetSemesterNumbers.join(', ')})`);
+        setExportLoading(false);
+        return;
+      }
+
+      // Step 8: Prepare data for export with fee data based on selected fee type
+      const exportData = filteredStudents.map((student, index) => {
+        let totalFee = 0;
+        let paidFee = 0;
+        let pendingFee = 0;
+
+        // If Admission fee type is selected, use feesummeries data
+        if (exportFormData.feeTypes.includes('Admission')) {
+          const feeSummary = feeSummaryMap[student._id] || {};
+          totalFee = feeSummary.totalFees || 0;
+          paidFee = feeSummary.paidFees || 0;
+          pendingFee = feeSummary.pendingFees || 0;
+        }
+        
+        // If Exam fee type is selected, use examfees data
+        if (exportFormData.feeTypes.includes('Exam')) {
+          const examFee = examFeeMap[student._id] || {};
+          totalFee = examFee.totalAmount || examFee.amount || 0;
+          paidFee = examFee.paidAmount || 0;
+          pendingFee = examFee.pendingAmount || (totalFee - paidFee) || 0;
+        }
+        
+        return {
+          'Sr.': index + 1,
+          'Student ID': student.studentId || student._id || '',
+          'Name of Students': `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+          'Regular / CAP': student.admissionType || 'Regular',
+          'Category': student.casteCategory || 'OPEN',
+          'Stream': student.stream?.name || student.stream || '',
+          'Department': student.department?.name || student.department || '',
+          'Semester': student.semester?.number || 'N/A',
+          'Total Fee': totalFee,
+          'Paid Fee': paidFee,
+          'Pending Fee': pendingFee,
+          'Receipt No.': student.receiptNumber || ''
+        };
+      });
+
+      // Step 9: Create Professional Excel Workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Fee Summary');
+
+      // Set column widths
+      worksheet.columns = [
+        { key: 'sr', width: 8 },
+        { key: 'studentId', width: 15 },
+        { key: 'name', width: 30 },
+        { key: 'admissionType', width: 15 },
+        { key: 'category', width: 12 },
+        { key: 'stream', width: 15 },
+        { key: 'department', width: 20 },
+        { key: 'semester', width: 12 },
+        { key: 'totalFee', width: 15 },
+        { key: 'paidFee', width: 15 },
+        { key: 'pendingFee', width: 15 },
+        { key: 'receiptNo', width: 18 }
+      ];
+
+      // Add Institute Header (Merged)
+      worksheet.mergeCells('A1:L1');
+      const titleRow1 = worksheet.getCell('A1');
+      titleRow1.value = 'NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY AND MANAGEMENT';
+      titleRow1.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF000000' } };
+      titleRow1.alignment = { vertical: 'middle', horizontal: 'center' };
+      titleRow1.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      worksheet.getRow(1).height = 25;
+
+      // Add Address (Merged)
+      worksheet.mergeCells('A2:L2');
+      const titleRow2 = worksheet.getCell('A2');
+      titleRow2.value = 'Village Satnavri, Amravati Road, Nagpur - 440023';
+      titleRow2.font = { name: 'Arial', size: 11, italic: true };
+      titleRow2.alignment = { vertical: 'middle', horizontal: 'center' };
+      titleRow2.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      worksheet.getRow(2).height = 20;
+
+      // Add Report Title (Merged)
+      worksheet.mergeCells('A3:L3');
+      const titleRow3 = worksheet.getCell('A3');
+      titleRow3.value = `Fee Summary Report - ${exportFormData.stream} - ${exportFormData.department}, ${exportFormData.year}, Session 2025-26`;
+      titleRow3.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF0066CC' } };
+      titleRow3.alignment = { vertical: 'middle', horizontal: 'center' };
+      titleRow3.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF0F8FF' }
+      };
+      worksheet.getRow(3).height = 22;
+
+      // Add empty row
+      worksheet.addRow([]);
+
+      // Add Table Headers (Row 5)
+      const headerRow = worksheet.addRow([
+        'Sr.',
+        'Student ID',
+        'Name of Students',
+        'Regular/CAP',
+        'Category',
+        'Stream',
+        'Department',
+        'Semester',
+        'Total Fee (₹)',
+        'Paid Fee (₹)',
+        'Pending Fee (₹)',
+        'Receipt No.'
+      ]);
+
+      // Style header row
+      headerRow.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      headerRow.height = 30;
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4472C4' }
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+      });
+
+      // Add data rows
+      let totalFeeSum = 0;
+      let paidFeeSum = 0;
+      let pendingFeeSum = 0;
+
+      exportData.forEach((data, index) => {
+        const row = worksheet.addRow([
+          data['Sr.'],
+          data['Student ID'],
+          data['Name of Students'],
+          data['Regular / CAP'],
+          data['Category'],
+          data['Stream'],
+          data['Department'],
+          data['Semester'],
+          data['Total Fee'],
+          data['Paid Fee'],
+          data['Pending Fee'],
+          data['Receipt No.']
+        ]);
+
+        // Accumulate totals
+        totalFeeSum += data['Total Fee'];
+        paidFeeSum += data['Paid Fee'];
+        pendingFeeSum += data['Pending Fee'];
+
+        // Style data rows with alternating colors
+        const fillColor = index % 2 === 0 ? 'FFFFFFFF' : 'FFF5F5F5';
+        row.eachCell((cell, colNumber) => {
+          cell.alignment = { vertical: 'middle', horizontal: colNumber === 3 ? 'left' : 'center' };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: fillColor }
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+            left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+            bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+            right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
+          };
+
+          // Format currency columns
+          if (colNumber === 9 || colNumber === 10 || colNumber === 11) {
+            cell.numFmt = '₹#,##0.00';
+          }
+        });
+      });
+
+      // Add Total Row
+      const totalRow = worksheet.addRow([
+        '', '', '', '', '', '', '', 'TOTAL:',
+        totalFeeSum,
+        paidFeeSum,
+        pendingFeeSum,
+        ''
+      ]);
+
+      totalRow.font = { name: 'Arial', size: 12, bold: true };
+      totalRow.eachCell((cell, colNumber) => {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFD966' }
+        };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'medium', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+
+        // Format currency columns in total row
+        if (colNumber === 9 || colNumber === 10 || colNumber === 11) {
+          cell.numFmt = '₹#,##0.00';
+        }
+      });
+
+      // Add footer note
+      worksheet.addRow([]);
+      const footerRow = worksheet.addRow(['', `Generated on: ${new Date().toLocaleString('en-IN')}`, '', '', '', '', '', '', '', '', '', `Total Students: ${filteredStudents.length}`]);
+      footerRow.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF666666' } };
+      worksheet.mergeCells(footerRow.number, 2, footerRow.number, 6);
+      worksheet.mergeCells(footerRow.number, 9, footerRow.number, 12);
+      footerRow.getCell(12).alignment = { horizontal: 'right' };
+
+      // Generate Excel file and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const fileName = `Fee_Summary_${exportFormData.stream}_${exportFormData.department}_${exportFormData.year}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(blob, fileName);
+
+      console.log('✅ Excel exported successfully!');
+      setShowExportForm(false);
+      setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Export failed: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Export all departments in separate sheets
+  const exportAllDepartments = async (stream, targetSemesterIds, targetSemesterNumbers, headers) => {
+    try {
+      // Define departments based on stream
+      const departments = stream === 'B.Tech'
+        ? ['CS', 'Electrical', 'Mechancial', 'Civil', 'CSE&AIML']
+        : stream === 'MBA'
+        ? ['MBA']
+        : [];
+
+      if (departments.length === 0) {
+        alert('No departments found for the selected stream.');
+        setExportLoading(false);
+        return;
+      }
+
+      // Step 1: Fetch all students
+      console.log('Fetching all students data...');
+      const studentsResponse = await fetch(`${API_URL}/api/students`, { headers });
+      if (!studentsResponse.ok) {
+        throw new Error('Failed to fetch students data');
+      }
+      const studentsDataRaw = await studentsResponse.json();
+      const allStudents = Array.isArray(studentsDataRaw) ? studentsDataRaw :
+                         studentsDataRaw.data || studentsDataRaw.students || [];
+      
+      console.log('Total students fetched:', allStudents.length);
+
+      // Step 2: Fetch fee summaries
+      console.log('Fetching fee summaries data...');
+      const feeSummariesResponse = await fetch(`${API_URL}/api/fees/summaries`, { headers });
+      if (!feeSummariesResponse.ok) {
+        throw new Error('Failed to fetch fee summaries data');
+      }
+      const feeSummariesDataRaw = await feeSummariesResponse.json();
+      const allFeeSummaries = Array.isArray(feeSummariesDataRaw) ? feeSummariesDataRaw :
+                              feeSummariesDataRaw.data || feeSummariesDataRaw.summaries || [];
+      
+      console.log('Total fee summaries fetched:', allFeeSummaries.length);
+
+      // Step 3: Fetch exam fees if needed
+      let allExamFees = [];
+      if (exportFormData.feeTypes.includes('Exam')) {
+        console.log('Fetching exam fees data...');
+        const examFeesResponse = await fetch(`${API_URL}/api/exam-fees`, { headers });
+        if (!examFeesResponse.ok) {
+          console.warn('Failed to fetch exam fees data');
+        } else {
+          const examFeesDataRaw = await examFeesResponse.json();
+          allExamFees = Array.isArray(examFeesDataRaw) ? examFeesDataRaw :
+                        examFeesDataRaw.data || examFeesDataRaw.examFees || [];
+          console.log('Total exam fees fetched:', allExamFees.length);
+        }
+      }
+
+      // Step 4: Create maps for fee lookup
+      const feeSummaryMap = {};
+      allFeeSummaries.forEach(summary => {
+        const studentId = summary.studentId?._id || summary.studentId;
+        if (studentId) {
+          feeSummaryMap[studentId] = summary;
+        }
+      });
+
+      const examFeeMap = {};
+      allExamFees.forEach(examFee => {
+        const studentId = examFee.student?._id || examFee.student || examFee.studentId;
+        if (studentId) {
+          examFeeMap[studentId] = examFee;
+        }
+      });
+
+      // Step 5: Create workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'NIETM';
+      workbook.created = new Date();
+
+      // Step 6: Process each department
+      for (const department of departments) {
+        console.log(`Processing department: ${department}`);
+
+        // Filter students for this department
+        const departmentStudents = allStudents.filter(student => {
+          const studentStream = student.stream?.name || student.stream || '';
+          const studentDept = student.department?.name || student.department || '';
+          const studentSemesterId = typeof student.semester === 'object' ? student.semester._id : student.semester;
+          
+          // Normalize department names for comparison (handle special characters)
+          const normalizeDept = (dept) => dept.toLowerCase().replace(/\s+/g, '').replace(/[&]/g, '');
+          
+          const streamMatch = studentStream.toLowerCase() === stream.toLowerCase();
+          const deptMatch = normalizeDept(studentDept) === normalizeDept(department);
+          const semesterMatch = targetSemesterIds.some(targetId => 
+            String(targetId) === String(studentSemesterId)
+          );
+
+          return streamMatch && deptMatch && semesterMatch;
+        });
+
+        console.log(`Students in ${department}: ${departmentStudents.length}`);
+
+        if (departmentStudents.length === 0) {
+          console.log(`No students found for ${department}, skipping...`);
+          continue;
+        }
+
+        // Prepare data for this department
+        const exportData = departmentStudents.map((student, index) => {
+          let totalFee = 0;
+          let paidFee = 0;
+          let pendingFee = 0;
+
+          if (exportFormData.feeTypes.includes('Admission')) {
+            const feeSummary = feeSummaryMap[student._id] || {};
+            totalFee = feeSummary.totalFees || 0;
+            paidFee = feeSummary.paidFees || 0;
+            pendingFee = feeSummary.pendingFees || 0;
+          }
+          
+          if (exportFormData.feeTypes.includes('Exam')) {
+            const examFee = examFeeMap[student._id] || {};
+            totalFee = examFee.totalAmount || examFee.amount || 0;
+            paidFee = examFee.paidAmount || 0;
+            pendingFee = examFee.pendingAmount || (totalFee - paidFee) || 0;
+          }
+          
+          return {
+            'Sr.': index + 1,
+            'Student ID': student.studentId || student._id || '',
+            'Name of Students': `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+            'Regular / CAP': student.admissionType || 'Regular',
+            'Category': student.casteCategory || 'OPEN',
+            'Stream': student.stream?.name || student.stream || '',
+            'Department': student.department?.name || student.department || '',
+            'Semester': student.semester?.number || 'N/A',
+            'Total Fee': totalFee,
+            'Paid Fee': paidFee,
+            'Pending Fee': pendingFee,
+            'Receipt No.': student.receiptNumber || ''
+          };
+        });
+
+        // Create worksheet for this department
+        const worksheet = workbook.addWorksheet(department, {
+          pageSetup: { paperSize: 9, orientation: 'landscape' }
+        });
+
+        // Add header rows
+        worksheet.mergeCells('A1:L1');
+        const titleRow = worksheet.getCell('A1');
+        titleRow.value = 'NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY AND MANAGEMENT';
+        titleRow.font = { size: 14, bold: true };
+        titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        worksheet.mergeCells('A2:L2');
+        const addressRow = worksheet.getCell('A2');
+        addressRow.value = 'VILLAGE SATNAWARI, AMBAVATI ROAD, NAGPUR';
+        addressRow.font = { size: 11 };
+        addressRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        worksheet.mergeCells('A3:L3');
+        const sessionRow = worksheet.getCell('A3');
+        sessionRow.value = `${stream} - ${department} Department, ${exportFormData.year || `Semesters ${targetSemesterNumbers.join(', ')}`}, Session 2025-26`;
+        sessionRow.font = { size: 12, bold: true };
+        sessionRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        worksheet.addRow([]);
+
+        // Add data headers
+        const headerRow = worksheet.addRow(Object.keys(exportData[0] || {}));
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4472C4' }
+        };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        // Add data rows
+        exportData.forEach(row => {
+          worksheet.addRow(Object.values(row));
+        });
+
+        // Set column widths
+        worksheet.columns.forEach((column, index) => {
+          column.width = index === 2 ? 25 : 15;
+        });
+
+        // Add borders to all cells
+        worksheet.eachRow((row, rowNumber) => {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          });
+        });
+      }
+
+      // Generate and download file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${stream}-All-Departments-${exportFormData.year || 'Multi-Semester'}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ Excel exported successfully!');
+      alert(`Successfully exported ${departments.length} department sheets!`);
+      setShowExportForm(false);
+      setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
+    } catch (error) {
+      console.error('Export all departments error:', error);
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handleDeleteReceipt = async (receipt) => {
@@ -1195,6 +1897,347 @@ const Receipts = () => {
     }
   };
 
+  // Professional export functionality with actual student data
+  const handleExportClick = async (type) => {
+    console.log('Export clicked:', type);
+    setShowExportDropdown(false);
+    setExportLoading(true);
+    
+    try {
+      if (type === 'current') {
+        // Export current page receipts as before
+        const filteredReceipts = receipts.filter(r => r && r._id);
+        if (filteredReceipts.length === 0) {
+          alert('No receipts found on current page to export.');
+          return;
+        }
+        const csvData = buildReceiptOverviewRows(filteredReceipts);
+        downloadReceiptCsvInstant(csvData, 'receipts-current-page');
+      } else {
+        // Fetch actual student data for professional department-wise export
+        await fetchAndExportStudentData(type);
+      }
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Fetch student data and export professionally by department
+  const fetchAndExportStudentData = async (type) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      // Try multiple endpoints to fetch student data
+      let allStudents = [];
+      const endpoints = [
+        `${API_URL}/api/students`,
+        `${API_URL}/api/accounting/students`,
+        `${API_URL}/api/student`,
+        `${API_URL}/api/students/all`
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          const response = await fetch(endpoint, { headers });
+          
+          if (response.ok) {
+            const responseData = await response.json();
+            console.log(`Response from ${endpoint}:`, responseData);
+            
+            // Handle different response formats
+            if (Array.isArray(responseData)) {
+              allStudents = responseData;
+            } else if (responseData.students && Array.isArray(responseData.students)) {
+              allStudents = responseData.students;
+            } else if (responseData.data && Array.isArray(responseData.data)) {
+              allStudents = responseData.data;
+            }
+            
+            if (allStudents.length > 0) {
+              console.log(`✅ Successfully fetched ${allStudents.length} students from ${endpoint}`);
+              break;
+            }
+          }
+        } catch (err) {
+          console.log(`❌ Failed to fetch from ${endpoint}:`, err.message);
+          continue;
+        }
+      }
+      
+      if (allStudents.length === 0) {
+        throw new Error('No student data found from any endpoint');
+      }
+      
+      // Filter by program
+      const programFilter = type === 'btech' ? 'B.Tech' : 'MBA';
+      const filteredStudents = allStudents.filter(student => {
+        const program = student.program || student.stream?.name || student.stream || '';
+        return program.toLowerCase().includes(programFilter.toLowerCase()) ||
+               program.toLowerCase().includes(programFilter.replace('.', '').toLowerCase());
+      });
+      
+      if (filteredStudents.length === 0) {
+        alert(`No ${programFilter} students found in database.`);
+        return;
+      }
+      
+      // Group by department
+      const studentsByDepartment = {};
+      filteredStudents.forEach(student => {
+        const dept = student.department?.name || student.department || 'Unknown Department';
+        if (!studentsByDepartment[dept]) {
+          studentsByDepartment[dept] = [];
+        }
+        studentsByDepartment[dept].push(student);
+      });
+      
+      // Build professional CSV data
+      const csvData = buildProfessionalStudentExport(studentsByDepartment, programFilter);
+      downloadProfessionalCsv(csvData, `${programFilter.toLowerCase().replace('.', '')}-students-departmentwise`);
+      
+      console.log(`✅ Exported ${filteredStudents.length} ${programFilter} students from ${Object.keys(studentsByDepartment).length} departments`);
+      
+    } catch (error) {
+      console.error('Student data fetch error:', error);
+      throw error;
+    }
+  };
+  
+  const buildReceiptOverviewRows = (receiptList) => {
+    return receiptList.map((receipt) => {
+      const receiptNumber = receipt.receiptNumber || receipt.paymentId || 'N/A';
+      const recipientName = receipt.recipientName || 'Unknown';
+      const studentId = receipt.studentId || 'N/A';
+      const amount = (receipt.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const paymentMethod = receipt.paymentMethod || 'N/A';
+      const status = receipt.status || 'Unknown';
+      const type = receipt.type === 'student' ? 'Student Fee' : 'Salary';
+      const paymentDate = receipt.paymentDate ? new Date(receipt.paymentDate).toLocaleDateString('en-IN') : 'N/A';
+      const description = receipt.description || 'No description';
+      const transactionId = receipt.transactionId || 'N/A';
+      const utr = receipt.utr || 'N/A';
+      const collectedBy = receipt.collectedBy || 'N/A';
+      
+      return {
+        receiptNumber,
+        recipientName,
+        studentId,
+        amount,
+        paymentMethod,
+        status,
+        type,
+        paymentDate,
+        description,
+        transactionId,
+        utr,
+        collectedBy
+      };
+    });
+  };
+  
+  // Build professional export data with department-wise grouping
+  const buildProfessionalStudentExport = (studentsByDepartment, program) => {
+    const rows = [];
+    
+    // Professional header with proper spacing
+    rows.push([
+      'NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY AND MANAGEMENT',
+      '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+    ]);
+    rows.push([
+      'VILLAGE SATNAVARI, AMRAVATI ROAD, NAGPUR', 
+      '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+    ]);
+    rows.push([
+      `${program} I Y. Session 2025-26`,
+      '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+    ]);
+    rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']); // Empty row
+    
+    // Sort departments alphabetically
+    const sortedDepts = Object.keys(studentsByDepartment).sort();
+    let globalSrNo = 1;
+    
+    sortedDepts.forEach(department => {
+      const students = studentsByDepartment[department];
+      
+      // Department header with professional formatting
+      rows.push([
+        `${department.toUpperCase()} DEPARTMENT`,
+        '', '', '', '', '', '', '', '', '', '', '', '', '', ''
+      ]);
+      
+      // Professional column headers
+      rows.push([
+        'Sr.',
+        'Name of Students', 
+        'Regis P/CAP',
+        'Category',
+        'Tuition Fee',
+        'Other Fee', 
+        'Admission Form',
+        'Uni Students Fee',
+        'Total Fee',
+        'Date',
+        'Receipt No.',
+        'Tuition Fee',
+        'Other Fee',
+        'Admission Form',
+        'Balance Total Fee'
+      ]);
+      
+      // Student data with proper alignment
+      students.forEach((student) => {
+        const name = `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim() || 'Unknown Student';
+        const category = student.casteCategory || student.caste || student.category || 'OPEN';
+        
+        // Professional fee structure
+        const tuitionFee = 3100;
+        const otherFee = 100; 
+        const admissionFee = 300;
+        const uniStudentsFee = 300;
+        const totalFee = tuitionFee + otherFee + admissionFee;
+        
+        // Format date professionally
+        const currentDate = new Date().toLocaleDateString('en-GB');
+        const receiptNo = `28642${globalSrNo.toString().padStart(3, '0')}`;
+        
+        rows.push([
+          globalSrNo,
+          name,
+          category,
+          category,
+          tuitionFee,
+          otherFee,
+          admissionFee,
+          uniStudentsFee,
+          totalFee,
+          currentDate,
+          receiptNo,
+          0, // Paid tuition fee
+          0, // Paid other fee  
+          0, // Paid admission fee
+          totalFee // Balance (full amount pending)
+        ]);
+        
+        globalSrNo++;
+      });
+      
+      // Department summary row
+      const deptTotal = students.length * 3500;
+      rows.push([
+        '', 
+        `Total ${department} Students: ${students.length}`,
+        '', '', '', '', '', '',
+        deptTotal,
+        '', '', '', '', '',
+        deptTotal
+      ]);
+      
+      // Empty row after each department 
+      rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+    });
+    
+    // Grand total row
+    const totalStudents = Object.values(studentsByDepartment).reduce((sum, dept) => sum + dept.length, 0);
+    const grandTotal = totalStudents * 3500;
+    
+    rows.push([
+      '',
+      `GRAND TOTAL ${program} STUDENTS: ${totalStudents}`,
+      '', '', '', '', '', '',
+      grandTotal,
+      '', '', '', '', '',
+      grandTotal
+    ]);
+    
+    return rows;
+  };
+
+  // Download professional CSV with proper formatting
+  const downloadProfessionalCsv = (rows, filename) => {
+    const csvLines = rows.map(row => {
+      return row.map(cell => {
+        const str = String(cell || '');
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      }).join(',');
+    });
+    
+    const csvBlob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(csvBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadReceiptCsvInstant = (rows, filename) => {
+    const headers = [
+      'Receipt Number',
+      'Recipient Name', 
+      'Student ID',
+      'Amount (₹)',
+      'Payment Method',
+      'Status',
+      'Type',
+      'Payment Date',
+      'Description',
+      'Transaction ID',
+      'UTR',
+      'Collected By'
+    ];
+    
+    const csvLines = [headers.join(',')];
+    
+    rows.forEach((r) => {
+      const escape = (v) => {
+        if (v === null || v === undefined) return '';
+        const str = String(v);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      };
+      
+      csvLines.push([
+        escape(r.receiptNumber),
+        escape(r.recipientName),
+        escape(r.studentId),
+        escape(r.amount),
+        escape(r.paymentMethod),
+        escape(r.status),
+        escape(r.type),
+        escape(r.paymentDate),
+        escape(r.description),
+        escape(r.transactionId),
+        escape(r.utr),
+        escape(r.collectedBy)
+      ].join(','));
+    });
+    
+    const csvBlob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(csvBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   // Silent auto-validation that runs in background
   const autoValidateReceipts = async (receiptsToCheck) => {
     if (!receiptsToCheck || receiptsToCheck.length === 0) return;
@@ -1260,13 +2303,13 @@ const Receipts = () => {
         <title>Receipt - ${receiptData.receiptNumber}</title>
         <style>
           body { 
-            font-family: 'Times New Roman', serif; 
+            font-family: Arial, sans-serif; 
             margin: 0; 
-            padding: 3px;
-            background: #f8f9fa;
-            line-height: 1.2;
-            color: #2d3748;
-            font-size: 10px;
+            padding: 5px; 
+            background: white;
+            line-height: 1.4;
+            color: #000;
+            font-size: 9px;
           }
           .receipts-wrapper {
             display: flex;
@@ -1279,15 +2322,17 @@ const Receipts = () => {
           .receipt-container {
             width: 49%;
             max-width: 500px;
-            border: 1px solid #2d3748;
+            border: 1px solid #000;
             background: white;
-            padding: 6px;
+            padding: 12px;
             margin: 0;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             page-break-inside: avoid;
-            height: fit-content;
-            max-height: 95vh;
-            overflow: hidden;
+            min-height: 650px;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
           }
           .receipt-header-box {
             border: 1px solid #2d3748;
@@ -1513,7 +2558,7 @@ const Receipts = () => {
           @media print {
             @page {
               size: A4 landscape;
-              margin: 3mm;
+              margin: 10mm;
             }
             body {
               print-color-adjust: exact;
@@ -1553,8 +2598,6 @@ const Receipts = () => {
                 </div>
               </div>
             </div>
-            
-            <div class="receipt-type-label">EXAM (OTHER FEES RECEIPT)</div>
 
             <table class="receipt-info-table">
               <tr>
@@ -1652,8 +2695,6 @@ const Receipts = () => {
                 </div>
               </div>
             </div>
-            
-            <div class="receipt-type-label">EXAM (OTHER FEES RECEIPT)</div>
 
             <table class="receipt-info-table">
               <tr>
@@ -1757,9 +2798,21 @@ const Receipts = () => {
       <div className="bg-white rounded-lg shadow-md">
         {/* Header */}
         <div className="border-b border-gray-200 p-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">
-            Receipt Management
-          </h1>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Receipt Management
+            </h1>
+            
+            {/* Export Overview Button */}
+            <button
+              onClick={() => setShowExportForm(true)}
+              disabled={exportLoading}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-2 transition-colors duration-200 disabled:opacity-50"
+              title="Export student data with filters"
+            >
+              <span>{exportLoading ? '🔄 Exporting...' : '📊 Export Overview'}</span>
+            </button>
+          </div>
 
           {/* Search and Filters */}
           <form
@@ -1847,28 +2900,28 @@ const Receipts = () => {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                         Receipt Details
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
                         Recipient
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                         Amount
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                         Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
                         Actions
                       </th>
                     </tr>
@@ -2062,59 +3115,144 @@ const Receipts = () => {
         </div>
       </div>
 
-      {/* Edit Receipt Modal */}
-      {editModalOpen && (
+      {/* Export Form Modal */}
+      {showExportForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-blue-700">
-              Edit Receipt
+            <h2 className="text-xl font-bold mb-6 text-blue-700 text-center">
+              Export Student Overview
             </h2>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-1">Amount (₹)</label>
-              <input
-                type="number"
-                name="amount"
-                value={editForm.amount}
-                onChange={handleEditFormChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
+            
+            <div className="space-y-4">
+              {/* Stream Dropdown */}
+              <div>
+                <label className="block text-sm font-bold mb-2">Stream</label>
+                <select
+                  name="stream"
+                  value={exportFormData.stream}
+                  onChange={handleExportFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select Stream</option>
+                  <option value="B.Tech">BTech</option>
+                  <option value="MBA">MBA</option>
+                </select>
+              </div>
+
+              {/* Department Dropdown */}
+              <div>
+                <label className="block text-sm font-bold mb-2">Department</label>
+                <select
+                  name="department"
+                  value={exportFormData.department}
+                  onChange={handleExportFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!exportFormData.stream}
+                >
+                  <option value="">Select Department</option>
+                  <option value="All">All Departments</option>
+                  {exportFormData.stream === 'B.Tech' && (
+                    <>
+                      <option value="CS">CS</option>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Mechancial">Mechanical</option>
+                      <option value="Civil">Civil</option>
+                      <option value="CSE&AIML">CSE&AIML</option>
+                    </>
+                  )}
+                  {exportFormData.stream === 'MBA' && (
+                    <option value="MBA">MBA</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Year Dropdown - Show when Admission fee is selected */}
+              {exportFormData.feeTypes.includes('Admission') && (
+                <div>
+                  <label className="block text-sm font-bold mb-2">Year</label>
+                  <select
+                    name="year"
+                    value={exportFormData.year}
+                    onChange={handleExportFormChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1st Year">1st Year (1st Sem)</option>
+                    <option value="2nd Year">2nd Year (3rd Sem)</option>
+                    <option value="3rd Year">3rd Year (5th Sem)</option>
+                    <option value="4th Year">4th Year (7th Sem)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Semester Dropdown - Show when Exam fee is selected */}
+              {exportFormData.feeTypes.includes('Exam') && (
+                <div>
+                  <label className="block text-sm font-bold mb-2">Semester</label>
+                  <select
+                    name="semester"
+                    value={exportFormData.semester}
+                    onChange={handleExportFormChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Semester</option>
+                    <option value="1">1st Sem</option>
+                    <option value="2">2nd Sem</option>
+                    <option value="3">3rd Sem</option>
+                    <option value="4">4th Sem</option>
+                    <option value="5">5th Sem</option>
+                    <option value="6">6th Sem</option>
+                    <option value="7">7th Sem</option>
+                    <option value="8">8th Sem</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Fee Type Checkboxes */}
+              <div>
+                <label className="block text-sm font-bold mb-2">Fee Types</label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="Admission"
+                      checked={exportFormData.feeTypes.includes('Admission')}
+                      onChange={handleExportFormChange}
+                      className="mr-2"
+                    />
+                    Admission
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="Exam"
+                      checked={exportFormData.feeTypes.includes('Exam')}
+                      onChange={handleExportFormChange}
+                      className="mr-2"
+                    />
+                    Exam
+                  </label>
+                </div>
+              </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-1">Status</label>
-              <select
-                name="status"
-                value={editForm.status}
-                onChange={handleEditFormChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">Select Status</option>
-                <option value="Completed">Completed</option>
-                <option value="Pending">Pending</option>
-                <option value="Failed">Failed</option>
-                <option value="Refunded">Refunded</option>
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-1">Remarks</label>
-              <textarea
-                name="remarks"
-                value={editForm.remarks}
-                onChange={handleEditFormChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
+
+            <div className="flex justify-end gap-2 mt-6">
               <button
-                onClick={handleEditFormCancel}
+                onClick={() => {
+                  setShowExportForm(false);
+                  setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
+                }}
                 className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                disabled={exportLoading}
               >
                 Cancel
               </button>
               <button
-                onClick={handleEditFormSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={handleExportDownload}
+                disabled={exportLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
               >
-                Save
+                {exportLoading ? 'Downloading...' : 'Download'}
               </button>
             </div>
           </div>
@@ -2147,7 +3285,7 @@ const Receipts = () => {
                     <style>
                       @page {
                         size: A4 landscape;
-                        margin: 5mm;
+                        margin: 10mm;
                       }
                       * {
                         margin: 0;
@@ -2155,11 +3293,11 @@ const Receipts = () => {
                         box-sizing: border-box;
                       }
                       body {
-                        font-family: 'Times New Roman', serif;
+                        font-family: Arial, sans-serif;
                         margin: 0;
-                        padding: 5px;
+                        padding: 15px;
                         background: #f8f9fa;
-                        line-height: 1.3;
+                        line-height: 1.5;
                         color: #2d3748;
                         font-size: 12px;
                         font-weight: 400;
@@ -2436,7 +3574,7 @@ const Receipts = () => {
                           </div>
                         </div>
 
-                        <div class="receipt-type-label">EXAM (OTHER FEES RECEIPT)</div>
+
 
                         <table class="receipt-info-table">
                           <tr>

@@ -65,10 +65,14 @@ router.get("/", async (req, res) => {
       }
 
       const studentPayments = await Payment.find(studentPaymentQuery)
-        .populate(
-          "studentId",
-          "firstName lastName studentId department casteCategory"
-        )
+        .populate({
+          path: "studentId",
+          select: "firstName lastName studentId department casteCategory currentSemester",
+          populate: {
+            path: "currentSemester",
+            select: "number",
+          },
+        })
         .populate("feeHead", "title")
         .sort({ paymentDate: -1 })
         .lean();
@@ -104,7 +108,7 @@ router.get("/", async (req, res) => {
           utr: payment.utr || (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(payment.paymentMethod) ? payment.transactionId : ''),
           remarks: payment.remarks,
           collectedBy: payment.collectedBy,
-          semester: payment.semester,
+          semester: payment.studentId?.currentSemester?.number,
         })
       );
 
@@ -190,10 +194,14 @@ router.get("/", async (req, res) => {
 router.get("/student/:id", async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
-      .populate(
-        "studentId",
-        "firstName lastName studentId department casteCategory"
-      )
+      .populate({
+        path: "studentId",
+        select: "firstName lastName studentId department casteCategory currentSemester",
+        populate: {
+          path: "currentSemester",
+          select: "number",
+        },
+      })
       .populate("feeHead", "title");
 
     if (!payment) {
@@ -213,10 +221,14 @@ router.get("/number/:receiptNumber", async (req, res) => {
     const payment = await Payment.findOne({
       receiptNumber: req.params.receiptNumber,
     })
-      .populate(
-        "studentId",
-        "firstName lastName studentId department casteCategory"
-      )
+      .populate({
+        path: "studentId",
+        select: "firstName lastName studentId department casteCategory currentSemester",
+        populate: {
+          path: "currentSemester",
+          select: "number",
+        },
+      })
       .populate("feeHead", "title");
 
     if (!payment) {
