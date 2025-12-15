@@ -62,7 +62,7 @@ export default function ApplyChargeHandoverForm() {
     const fetchFacultyList = async () => {
       try {
         const res = await fetch(
-          "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000"
+          "http://localhost:4000/api/faculty/faculties?limit=1000"
         );
         const data = await res.json();
         setFacultyList(
@@ -88,7 +88,7 @@ export default function ApplyChargeHandoverForm() {
         }
 
         const response = await fetch(
-          "https://backenderp.tarstech.in/api/auth/profile",
+          "http://localhost:4000/api/auth/profile",
           {
             method: "GET",
             headers: {
@@ -224,7 +224,7 @@ export default function ApplyChargeHandoverForm() {
       delete payload.handoverReason;
       console.log("Payload being submitted:", payload);
 
-      await axios.post("https://backenderp.tarstech.in/api/tasks", payload, {
+      await axios.post("http://localhost:4000/api/tasks", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuccess(true);
@@ -528,7 +528,7 @@ export default function ApplyChargeHandoverForm() {
                             setReceiverId(id);
                             if (id) {
                               const res = await fetch(
-                                `https://backenderp.tarstech.in/api/faculty/faculties?facultyId=${id}`
+                                `http://localhost:4000/api/faculty/faculties?facultyId=${id}`
                               );
                               const data = await res.json();
                               const faculty = Array.isArray(

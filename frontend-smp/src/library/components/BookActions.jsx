@@ -258,7 +258,7 @@ const BookActions = () => {
 
       if (type === "faculty") {
         const response = await axios.get(
-          "https://backenderp.tarstech.in/api/faculty/faculties",
+          "http://localhost:4000/api/faculty/faculties",
           { headers: getAuthHeaders() }
         );
         const facultyMember = response.data.find((f) => f.employeeId === id);
@@ -297,7 +297,7 @@ const BookActions = () => {
 
           try {
             const response = await axios.get(
-              `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+              `http://localhost:4000/api/students/enrollment/${encodeURIComponent(
                 studentId
               )}`,
               { headers: getAuthHeaders() }
@@ -430,7 +430,7 @@ const BookActions = () => {
       try {
         // First try the accno endpoint
         const response = await axios.get(
-          `https://backenderp.tarstech.in/api/books/accno/${accno}`,
+          `http://localhost:4000/api/books/accno/${accno}`,
           { headers: getAuthHeaders() }
         );
         bookData = response.data;
@@ -442,7 +442,7 @@ const BookActions = () => {
       } catch (err) {
         try {
           // Try alternative endpoint
-          const response = await axios.get(`https://backenderp.tarstech.in/api/books/${accno}`);
+          const response = await axios.get(`http://localhost:4000/api/books/${accno}`);
           bookData = response.data;
 
           // Verify the ACCNO matches exactly
@@ -453,7 +453,7 @@ const BookActions = () => {
           try {
             // Try search endpoint
             const response = await axios.get(
-              `https://backenderp.tarstech.in/api/books?search=${encodeURIComponent(
+              `http://localhost:4000/api/books?search=${encodeURIComponent(
                 accno
               )}`
             );
@@ -471,7 +471,7 @@ const BookActions = () => {
           } catch (err3) {
             try {
               // Last attempt - get all books and filter
-              const response = await axios.get(`https://backenderp.tarstech.in/api/books`);
+              const response = await axios.get(`http://localhost:4000/api/books`);
               const allBooks =
                 response.data.data || response.data.books || response.data;
               if (Array.isArray(allBooks)) {
@@ -627,7 +627,7 @@ const BookActions = () => {
       };
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/books",
+        "http://localhost:4000/api/books",
         bookData
       );
 
@@ -635,7 +635,7 @@ const BookActions = () => {
         // Immediately update status and quantity in backend if not set
         try {
           await axios.patch(
-            `hhttps://backenderp.tarstech.in/api/books/accno/${formData.ACCNO}`,
+            `hhttp://localhost:4000/api/books/accno/${formData.ACCNO}`,
             {
               status: "available",
               QUANTITY: 1,
@@ -754,7 +754,7 @@ const BookActions = () => {
       };
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/issues/lost",
+        "http://localhost:4000/api/issues/lost",
         lostBookData
       );
 
@@ -861,7 +861,7 @@ const BookActions = () => {
       // Check how many books are already issued to this borrower (use correct endpoint)
       try {
         const borrowerResponse = await axios.get(
-          `https://backenderp.tarstech.in/api/issues/borrowed-books?borrowerId=${borrowerId}&borrowerType=${formData.borrowerType}`
+          `http://localhost:4000/api/issues/borrowed-books?borrowerId=${borrowerId}&borrowerType=${formData.borrowerType}`
         );
 
         // The backend should return an array of issued books in .data or .borrowedBooks
@@ -959,7 +959,7 @@ const BookActions = () => {
 
       // Use the issues endpoint instead of books endpoint
       const issueResponse = await axios.post(
-        "https://backenderp.tarstech.in/api/issues/issue",
+        "http://localhost:4000/api/issues/issue",
         issueData
       );
 
@@ -1113,7 +1113,7 @@ const BookActions = () => {
       setSuccess("");
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/issues/renew",
+        "http://localhost:4000/api/issues/renew",
         {
           bookId: selectedBookId,
           borrowerId,
@@ -1270,7 +1270,7 @@ const BookActions = () => {
 
       // Make real API call to fetch borrowed books - include all statuses
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+        `http://localhost:4000/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId.trim(),
@@ -1307,7 +1307,7 @@ const BookActions = () => {
                 };
 
           const historyResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/issues/history`,
+            `http://localhost:4000/api/issues/history`,
             {
               params: historyParams,
             }
@@ -1525,7 +1525,7 @@ const BookActions = () => {
       }
 
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/history?${params}`
+        `http://localhost:4000/api/issues/history?${params}`
       );
 
       if (response.data.data.records.length === 0) {
@@ -1533,7 +1533,7 @@ const BookActions = () => {
         if (filters.studentId && filters.borrowerType === "student") {
           try {
             await axios.get(
-              `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+              `http://localhost:4000/api/students/enrollment/${encodeURIComponent(
                 filters.studentId
               )}`,
               { headers: getAuthHeaders() }
@@ -1547,7 +1547,7 @@ const BookActions = () => {
         if (filters.employeeId && filters.borrowerType === "faculty") {
           try {
             const response = await axios.get(
-              "https://backenderp.tarstech.in/api/faculty/faculties",
+              "http://localhost:4000/api/faculty/faculties",
               { headers: getAuthHeaders() }
             );
             const facultyMember = response.data.find(
@@ -1564,7 +1564,7 @@ const BookActions = () => {
         }
         if (filters.ACCNO) {
           try {
-            await axios.get(`https://backenderp.tarstech.in/api/books/accno/${filters.ACCNO}`);
+            await axios.get(`http://localhost:4000/api/books/accno/${filters.ACCNO}`);
           } catch (err) {
             if (err.response?.status === 404) {
               specificError = `Book with ACCNO ${filters.ACCNO} not found.`;
@@ -1642,7 +1642,7 @@ const BookActions = () => {
         const studentId = value.trim();
 
         const response = await axios.get(
-          `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+          `http://localhost:4000/api/students/enrollment/${encodeURIComponent(
             studentId
           )}`,
           { headers: getAuthHeaders() }
@@ -1718,7 +1718,7 @@ const BookActions = () => {
         const employeeId = value.trim();
 
         const response = await axios.get(
-          "https://backenderp.tarstech.in/api/faculty/faculties",
+          "http://localhost:4000/api/faculty/faculties",
           { headers: getAuthHeaders() }
         );
 
@@ -1840,7 +1840,7 @@ const BookActions = () => {
 
       // Fetch issued books first - include all statuses and renewed books
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/issues/borrowed-books`,
+        `http://localhost:4000/api/issues/borrowed-books`,
         {
           params: {
             borrowerId: borrowerId,
@@ -1878,7 +1878,7 @@ const BookActions = () => {
                 };
 
           const historyResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/issues/history`,
+            `http://localhost:4000/api/issues/history`,
             {
               params: historyParams,
             }
@@ -2014,7 +2014,7 @@ const BookActions = () => {
       try {
         // Use the same base endpoint as issue functionality
         res = await axios.post(
-          "https://backenderp.tarstech.in/api/issues/return",
+          "http://localhost:4000/api/issues/return",
           returnData
         );
       } catch (endpointErr) {
@@ -2031,7 +2031,7 @@ const BookActions = () => {
 
           // Try again with the enhanced data
           res = await axios.post(
-            "https://backenderp.tarstech.in/api/issues/return",
+            "http://localhost:4000/api/issues/return",
             returnData
           );
         } else {
@@ -2063,7 +2063,7 @@ const BookActions = () => {
           try {
             // Use the same endpoint pattern as the successful return call
             await axios.post(
-              "https://backenderp.tarstech.in/api/issues/return/confirm-payment",
+              "http://localhost:4000/api/issues/return/confirm-payment",
               {
                 issueId: data._id,
                 ACCNO: selectedBookId,
@@ -2438,19 +2438,19 @@ const BookActions = () => {
   };
 
   const getAllBooks = async () => {
-    const response = await fetch("https://backenderp.tarstech.in/api/books");
+    const response = await fetch("http://localhost:4000/api/books");
     const books = await response.json();
     return books;
   };
 
   const searchBooksByACCNO = async (accno) => {
-    const response = await fetch(`https://backenderp.tarstech.in/api/books?accno=${accno}`);
+    const response = await fetch(`http://localhost:4000/api/books?accno=${accno}`);
     const books = await response.json();
     return books;
   };
 
   const getBookByACCNO = async (accno) => {
-    const response = await fetch(`https://backenderp.tarstech.in/api/books/accno/${accno}`);
+    const response = await fetch(`http://localhost:4000/api/books/accno/${accno}`);
     const book = await response.json();
     return book;
   };
@@ -2463,7 +2463,7 @@ const BookActions = () => {
       }
 
       const response = await axios.post(
-        `https://backenderp.tarstech.in/api/issues/return`,
+        `http://localhost:4000/api/issues/return`,
         {
           ACCNO,
           borrowerId: borrowerData.borrowerId,
@@ -4085,7 +4085,7 @@ const BookActions = () => {
           {/* Success Modal */}
           {showSuccessModal && issuedBookDetails && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform animate-pulse">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg
@@ -4241,7 +4241,7 @@ const BookActions = () => {
           {/* Return Success Modal */}
           {showReturnModal && returnBookDetails && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform animate-pulse">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg
@@ -4409,7 +4409,7 @@ const BookActions = () => {
           {/* Renewal Success Modal */}
           {showRenewSuccessModal && renewedBookDetails && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform animate-pulse">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg

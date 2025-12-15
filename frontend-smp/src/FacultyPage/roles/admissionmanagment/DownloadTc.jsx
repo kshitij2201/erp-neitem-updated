@@ -55,7 +55,7 @@ const DownloadTc = () => {
         try {
             setLoading(true);
             const response = await axios.get(
-                "https://backenderp.tarstech.in/api/superadmin/students",
+                "http://localhost:4000/api/superadmin/students",
                 { headers: getAuthHeaders() }
             );
             setStudents(response.data);

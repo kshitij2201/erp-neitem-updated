@@ -40,7 +40,7 @@ export default function AllFaculty() {
         }
 
         const response = await fetch(
-          "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000", // Get more records
+          "http://localhost:4000/api/faculty/faculties?limit=1000", // Get more records
           {
             headers: headers,
           }

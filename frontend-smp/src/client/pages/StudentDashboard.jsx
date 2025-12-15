@@ -173,7 +173,7 @@ const StudentDashboard = () => {
           try {
             const studentId = user._id || user.id;
             const studentResponse = await axios.get(
-              `https://backenderp.tarstech.in/api/students/${studentId}`,
+              `http://localhost:4000/api/students/${studentId}`,
               {
                 headers: {
                   Authorization: `Bearer ${getToken()}`,

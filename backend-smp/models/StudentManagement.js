@@ -172,7 +172,6 @@ const studentSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      unique: true,
       trim: true,
       validate: {
         validator: (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
@@ -198,6 +197,7 @@ const studentSchema = new mongoose.Schema(
     stream: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Stream",
+      required: false,
     },
     department: {
       type: mongoose.Schema.Types.ObjectId,
@@ -329,14 +329,21 @@ studentSchema.pre("save", async function (next) {
     // Generate studentId
     if (this.isNew && !this.studentId) {
       const department = await Department.findById(this.department);
-      const stream = await Stream.findById(this.stream);
-
-      if (!department || !stream) {
-        throw new Error("Invalid department or stream reference");
+      
+      if (!department) {
+        throw new Error("Invalid department reference");
       }
 
-      const deptName = department.name.replace(/\ enquetes+/g, "").toUpperCase();
-      const streamName = stream.name.replace(/\s+/g, "").toUpperCase();
+      // Stream is optional - if not provided, use department name as stream
+      let streamName = department.name.replace(/\s+/g, "").toUpperCase();
+      if (this.stream) {
+        const stream = await Stream.findById(this.stream);
+        if (stream) {
+          streamName = stream.name.replace(/\s+/g, "").toUpperCase();
+        }
+      }
+
+      const deptName = department.name.replace(/\s+/g, "").toUpperCase();
       const key = `${deptName}-${streamName}`;
 
       const counter = await StudentCounter.findOneAndUpdate(

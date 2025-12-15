@@ -65,6 +65,15 @@ export default function AddPayment() {
   const [studentSearchTerm, setStudentSearchTerm] = useState("");
   const [studentSearchTimeout, setStudentSearchTimeout] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [newStudentData, setNewStudentData] = useState({
+    firstName: "",
+    lastName: "",
+    className: "",
+    branch: "",
+    year: "",
+    semester: "1",
+  });
 
   // Fee categories data
   const feeCategories = {
@@ -87,9 +96,73 @@ export default function AddPayment() {
     ]
   };
 
-  // Handle student search with client-side filtering (no debouncing needed since all data is loaded)
-  const handleStudentSearch = (searchTerm) => {
-    setStudentSearchTerm(searchTerm);
+  // Add new student to backend
+  const handleAddStudent = async () => {
+    if (!newStudentData.firstName || !newStudentData.lastName) {
+      setError("First name and last name are required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Prepare student data for backend
+      const studentData = {
+        firstName: newStudentData.firstName,
+        middleName: "", // Required field, set to empty
+        lastName: newStudentData.lastName,
+        program: newStudentData.className || "B.Tech", // Default if not provided
+        department: newStudentData.branch || "Computer Science", // Default if not provided
+        currentSemester: parseInt(newStudentData.semester) || 1,
+        enrollmentYear: newStudentData.year || new Date().getFullYear().toString(),
+        academicStatus: "Active"
+      };
+
+      const response = await axios.post(
+        "http://localhost:4000/api/students",
+        studentData,
+        { headers }
+      );
+
+      if (response.data.success && response.data.data) {
+        const newStudent = response.data.data;
+        
+        // Add to local students list
+        setStudents(prev => [newStudent, ...prev]);
+        setSelectedStudent(newStudent);
+        setFormData(prev => ({ ...prev, studentId: newStudent._id }));
+        
+        // Close modal and reset form
+        setShowAddStudentModal(false);
+        setNewStudentData({ 
+          firstName: '', 
+          lastName: '', 
+          mobileNumber: '',
+          className: '', 
+          branch: '', 
+          year: '', 
+          semester: '1'
+        });
+        
+        setSuccess("Student added successfully!");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        throw new Error("Failed to add student");
+      }
+    } catch (err) {
+      console.error("Error adding student:", err);
+      setError(
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        "Failed to add student. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load initial students when dropdown opens (all students already loaded, just open dropdown)
@@ -220,7 +293,7 @@ export default function AddPayment() {
 
       // Fetch students with search and pagination
       const response = await axios.get(
-        `https://backenderp.tarstech.in/api/students?${params.toString()}`,
+        `http://localhost:4000/api/students?${params.toString()}`,
         { headers }
       );
 
@@ -312,7 +385,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/fee-heads",
+        "http://localhost:4000/api/fee-heads",
         {
           headers,
         }
@@ -347,7 +420,7 @@ export default function AddPayment() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const response = await axios.get(
-        "https://backenderp.tarstech.in/api/payments?limit=50",
+        "http://localhost:4000/api/payments?limit=50",
         { headers }
       );
       setRecentPayments(Array.isArray(response.data) ? response.data : []);
@@ -502,7 +575,7 @@ export default function AddPayment() {
       console.log("📤 Sending payment data to API:", JSON.stringify(paymentData, null, 2));
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/payments",
+        "http://localhost:4000/api/payments",
         paymentData,
         { headers }
       );
@@ -1712,6 +1785,8 @@ export default function AddPayment() {
                           
                           <div class="page-number">Page 1 of 1</div>
                         </div>
+
+                        
                       `;
                       return generateReceipt("ORIGINAL");
                     })()}
@@ -2188,6 +2263,15 @@ export default function AddPayment() {
                             )}
                             Refresh
                           </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowAddStudentModal(true)}
+                                    className="ml-2 px-3 py-1 text-white bg-green-600 hover:bg-green-700 rounded-full transition-all duration-200 flex items-center text-sm font-medium"
+                                    title="Add new student"
+                                  >
+                                    <span className="mr-2">＋</span>
+                                    Add Student
+                                  </button>
                         </label>
 
                         {/* Enhanced Custom Searchable Select */}
@@ -2234,7 +2318,10 @@ export default function AddPayment() {
                                 </span>
                                 <span className="flex items-center">
                                   <span className="mr-1">📚</span>
-                                  Sem {selectedStudent.currentSemester}
+                                  Sem {typeof selectedStudent.currentSemester === "object"
+                                    ? (selectedStudent.currentSemester?.number || selectedStudent.currentSemester?.name || "N/A")
+                                    : (selectedStudent.currentSemester || selectedStudent.semester?.number || "N/A")
+                                  }
                                 </span>
                                 <span className="flex items-center">
                                   <span className="mr-1">🏛️</span>
@@ -2315,7 +2402,10 @@ export default function AddPayment() {
                                           <div className="flex items-center space-x-4 text-sm text-gray-600">
                                             <span className="flex items-center bg-blue-100 px-2 py-1 rounded-full">
                                               <span className="mr-1">📚</span>
-                                              Sem {student.currentSemester}
+                                                Sem {typeof student.currentSemester === "object"
+                                                  ? (student.currentSemester?.number || student.currentSemester?.name || "N/A")
+                                                  : (student.currentSemester || student.semester?.number || "N/A")
+                                                }
                                             </span>
                                             <span className="flex items-center bg-green-100 px-2 py-1 rounded-full">
                                               <span className="mr-1">🏛️</span>
@@ -2396,6 +2486,118 @@ export default function AddPayment() {
                           />
                         )}
                       </div>
+
+                      {/* Add Student Modal (placed outside receipt template) */}
+                      {showAddStudentModal && (
+                        <div
+                          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm px-4"
+                          onClick={() => setShowAddStudentModal(false)}
+                        >
+                          <div
+                            className="bg-white rounded-2xl p-6 w-full max-w-xl mx-auto shadow-2xl ring-1 ring-gray-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-start justify-between">
+                              <h3 className="text-xl font-semibold">Add New Student</h3>
+                              <button
+                                type="button"
+                                onClick={() => setShowAddStudentModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                                aria-label="Close"
+                              >
+                                ✕
+                              </button>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                <input
+                                  type="text"
+                                  placeholder="Enter first name"
+                                  value={newStudentData.firstName}
+                                  onChange={(e) => setNewStudentData({ ...newStudentData, firstName: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                <input
+                                  type="text"
+                                  placeholder="Enter last name"
+                                  value={newStudentData.lastName}
+                                  onChange={(e) => setNewStudentData({ ...newStudentData, lastName: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                                <input
+                                  type="text"
+                                  placeholder="B.Tech / M.Com / etc."
+                                  value={newStudentData.className}
+                                  onChange={(e) => setNewStudentData({ ...newStudentData, className: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                                <input
+                                  type="text"
+                                  placeholder="Computer Science"
+                                  value={newStudentData.branch}
+                                  onChange={(e) => setNewStudentData({ ...newStudentData, branch: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 2025"
+                                  value={newStudentData.year}
+                                  onChange={(e) => setNewStudentData({ ...newStudentData, year: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={newStudentData.semester}
+                                  onChange={(e) => setNewStudentData({ ...newStudentData, semester: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                            </div>
+
+                            <div className="mt-6 flex justify-end items-center space-x-3">
+                              <button
+                                type="button"
+                                onClick={() => setShowAddStudentModal(false)}
+                                className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleAddStudent}
+                                disabled={loading || !newStudentData.firstName || !newStudentData.lastName}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {loading ? "Adding..." : "Add Student"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Enhanced Caste Category and TFWS */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2516,8 +2718,11 @@ export default function AddPayment() {
                                 <span className="mr-3 text-purple-600 text-lg">📈</span>
                                 <div className="flex-1">
                                   <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Semester</div>
-                                  <div className="font-bold text-purple-800 text-base">
-                                    Semester {selectedStudent.currentSemester}
+                                    <div className="font-bold text-purple-800 text-base">
+                                    Semester {typeof selectedStudent.currentSemester === "object"
+                                      ? (selectedStudent.currentSemester?.number || selectedStudent.currentSemester?.name || "N/A")
+                                      : (selectedStudent.currentSemester || selectedStudent.semester?.number || "N/A")
+                                    }
                                   </div>
                                 </div>
                               </div>

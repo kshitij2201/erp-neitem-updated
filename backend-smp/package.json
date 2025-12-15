@@ -16,6 +16,7 @@
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
+    "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "email-validator": "^2.0.4",

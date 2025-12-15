@@ -212,7 +212,7 @@ export default function DepartmentFaculty({ userData }) {
         
         // Fetch all faculties
         const facultyResponse = await fetch(
-          "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000",
+          "http://localhost:4000/api/faculty/faculties?limit=1000",
           {
             headers: { "Content-Type": "application/json" },
           }
@@ -234,7 +234,7 @@ export default function DepartmentFaculty({ userData }) {
         );
 
         // Fetch faculty from facultyalldepartment table
-        const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+        const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
         const token = localStorage.getItem("authToken");
         
         const allDeptResponse = await fetch(`${API_URL}/api/faculty/all-departments/faculty`, {
@@ -439,7 +439,7 @@ export default function DepartmentFaculty({ userData }) {
 
       console.log("[RefreshUserData] Fetching updated user profile...");
       const response = await fetch(
-        `https://backenderp.tarstech.in/api/auth/profile`,
+        `http://localhost:4000/api/auth/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -659,7 +659,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/assign-cc`,
         {
           method: "POST",
@@ -735,7 +735,7 @@ export default function DepartmentFaculty({ userData }) {
         try {
           const updatedAssignmentsResponse = await fetch(
             `${
-              import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+              import.meta.env.VITE_API_URL || "http://localhost:4000"
             }/api/faculty/cc-assignments?department=${encodeURIComponent(
               deptName
             )}`,
@@ -805,7 +805,7 @@ export default function DepartmentFaculty({ userData }) {
 
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty-subject/assign-faculty-subject`,
         {
           method: "POST",
@@ -895,7 +895,7 @@ export default function DepartmentFaculty({ userData }) {
       const department = userData?.department || assignment.department;
       const response = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/delete-cc-assignment`,
         {
           method: "POST",
@@ -926,7 +926,7 @@ export default function DepartmentFaculty({ userData }) {
       // Refresh CC assignments
       const updatedAssignmentsResponse = await fetch(
         `${
-          import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"
+          import.meta.env.VITE_API_URL || "http://localhost:4000"
         }/api/faculty/cc-assignments?department=${encodeURIComponent(
           department
         )}`,
@@ -1120,7 +1120,7 @@ export default function DepartmentFaculty({ userData }) {
 
       try {
         await fetch(
-          `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/faculty-subject/remove-faculty-subject`,
+          `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/faculty-subject/remove-faculty-subject`,
           {
             method: "DELETE",
             headers: {
@@ -1749,7 +1749,7 @@ export default function DepartmentFaculty({ userData }) {
                                           await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
+                                              "http://localhost:4000"
                                             }/api/faculty-subject/remove-faculty-subject`,
                                             {
                                               method: "DELETE",
@@ -1773,7 +1773,7 @@ export default function DepartmentFaculty({ userData }) {
                                           const response = await fetch(
                                             `${
                                               import.meta.env.VITE_API_URL ||
-                                              "https://backenderp.tarstech.in"
+                                              "http://localhost:4000"
                                             }/api/faculty/faculties?department=${encodeURIComponent(
                                               department
                                             )}`,
@@ -2306,7 +2306,7 @@ export default function DepartmentFaculty({ userData }) {
                                                     await fetch(
                                                       `${
                                                         import.meta.env.VITE_API_URL ||
-                                                        "https://backenderp.tarstech.in"
+                                                        "http://localhost:4000"
                                                       }/api/faculty-subject/remove-faculty-subject`,
                                                       {
                                                         method: "DELETE",
@@ -2356,7 +2356,7 @@ export default function DepartmentFaculty({ userData }) {
                                                     const response = await fetch(
                                                       `${
                                                         import.meta.env.VITE_API_URL ||
-                                                        "https://backenderp.tarstech.in"
+                                                        "http://localhost:4000"
                                                       }/api/faculty/faculties?department=${encodeURIComponent(
                                                         department
                                                       )}`,

@@ -70,7 +70,7 @@ const SuperAdminDashboard = () => {
     const fetchUser = async () => {
       try {
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/superadmin",
+          "http://localhost:4000/api/superadmin",
           {
             headers: {
               Authorization: `Bearer ${token}`,

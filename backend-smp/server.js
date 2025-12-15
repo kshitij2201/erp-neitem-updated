@@ -19,6 +19,9 @@ import { errorHandler } from "./utils/errorHandler.js";
 // Import Auth Middleware
 import { protect } from "./middleware/auth.js";
 
+// Import Database Connection
+import connectDB from "./config/db.js";
+
 // Import Routes
 /*
 // These imports are temporarily commented out to avoid conflicts
@@ -192,6 +195,9 @@ if (process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
+// Connect to Database
+connectDB();
+
 // Create Express App
 const app = express();
 
@@ -203,7 +209,7 @@ const corsOptions = {
 
     // Define allowed origins
     const allowedOrigins = [
-      "https://backenderp.tarstech.in",
+      "http://localhost:4000",
       "http://localhost:5173",
       "http://localhost:5174",
       "http://127.0.0.1:4000",
@@ -447,37 +453,6 @@ app.use("/api/pf", protect, pfRoutes);
 
 // Store Management Routes
 app.use("/api/store", storeRoutes);
-
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(async () => {
-    console.log("MongoDB connected ✅");
-    await initializeCounters();
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1);
-  });
-
-// Initialize Counters
-async function initializeCounters() {
-  try {
-    const teachingCounter = await Counter.findOne({ id: "teaching" });
-    if (!teachingCounter) {
-      await new Counter({ id: "teaching", seq: 1000 }).save();
-      console.log("Teaching counter initialized");
-    }
-
-    const nonTeachingCounter = await Counter.findOne({ id: "nonTeaching" });
-    if (!nonTeachingCounter) {
-      await new Counter({ id: "nonTeaching", seq: 1000 }).save();
-      console.log("Non-teaching counter initialized");
-    }
-  } catch (error) {
-    console.error("Error initializing counters:", error);
-  }
-}
 
 // Cron Job to delete expired announcements
 cron.schedule("0 0 * * *", async () => {

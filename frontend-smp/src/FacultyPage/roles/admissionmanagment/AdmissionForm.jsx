@@ -141,7 +141,7 @@ function AdmissionForm() {
         }
 
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/superadmin/castes",
+          "http://localhost:4000/api/superadmin/castes",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -175,25 +175,25 @@ function AdmissionForm() {
 
         const [streamRes, departmentRes, semesterRes, subjectRes] =
           await Promise.all([
-            axios.get("https://backenderp.tarstech.in/api/superadmin/streams", {
+            axios.get("http://localhost:4000/api/superadmin/streams", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
             axios.get(
-              "https://backenderp.tarstech.in/api/superadmin/departments/all",
+              "http://localhost:4000/api/superadmin/departments/all",
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
                 },
               }
             ),
-            axios.get("https://backenderp.tarstech.in/api/superadmin/semesters", {
+            axios.get("http://localhost:4000/api/superadmin/semesters", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }),
-            axios.get("https://backenderp.tarstech.in/api/superadmin/subjects", {
+            axios.get("http://localhost:4000/api/superadmin/subjects", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -276,7 +276,7 @@ function AdmissionForm() {
           }
 
           const res = await axios.get(
-            `https://backenderp.tarstech.in/api/superadmin/students/subjects/${formData.semester}/${formData.department}`,
+            `http://localhost:4000/api/superadmin/students/subjects/${formData.semester}/${formData.department}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -520,14 +520,14 @@ function AdmissionForm() {
 
       if (editingId) {
         await axios.put(
-          `https://backenderp.tarstech.in/api/superadmin/students/${editingId}`,
+          `http://localhost:4000/api/superadmin/students/${editingId}`,
           formPayload,
           { headers }
         );
         alert("Student updated successfully!");
       } else {
         await axios.post(
-          "https://backenderp.tarstech.in/api/students",
+          "http://localhost:4000/api/students",
           formPayload,
           {
             headers,
