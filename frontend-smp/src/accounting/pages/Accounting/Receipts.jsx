@@ -134,16 +134,33 @@ const Receipts = () => {
         console.warn("Found receipts with invalid structure:", invalidReceipts);
       }
 
-      // Log receipt IDs for debugging
-      const validReceipts = receiptsArray.filter(
-        (r) => r && typeof r === "object" && r._id
-      );
-      console.log(
-        "Valid receipt IDs loaded:",
-        validReceipts.map((r) => r._id)
-      );
+      // Remove duplicate receipts based on _id and receiptNumber
+      const uniqueReceipts = [];
+      const seenIds = new Set();
+      const seenReceiptNumbers = new Set();
+      
+      receiptsArray.forEach((receipt) => {
+        if (receipt && receipt._id) {
+          // Use both _id and receiptNumber to identify duplicates
+          const uniqueKey = receipt.receiptNumber || receipt._id;
+          
+          if (!seenIds.has(receipt._id) && !seenReceiptNumbers.has(uniqueKey)) {
+            seenIds.add(receipt._id);
+            if (receipt.receiptNumber) {
+              seenReceiptNumbers.add(receipt.receiptNumber);
+            }
+            uniqueReceipts.push(receipt);
+          }
+        }
+      });
 
-      setReceipts(receiptsArray);
+      console.log(`📊 Total receipts: ${receiptsArray.length}, Unique receipts: ${uniqueReceipts.length}, Duplicates removed: ${receiptsArray.length - uniqueReceipts.length}`);
+      
+      if (uniqueReceipts.length > 0) {
+        console.log("Sample receipt:", uniqueReceipts[0]);
+      }
+
+      setReceipts(uniqueReceipts);
       setPagination(
         data.pagination || {
           totalPages: 0,
