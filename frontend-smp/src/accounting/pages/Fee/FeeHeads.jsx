@@ -8,7 +8,7 @@ const API_EXAM_FEES = `${API_BASE}/api/exam-fees`;
 const streams = ['B.Tech', 'MBA'];
 
 const admissionFeeHeads = [
-  'Tuition fees',
+  'Tuition fees/Scholarship fees',
   'Caution money',
   'Development fund',
   'Admission form',

@@ -11,6 +11,10 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Student',
     required: true
   },
+  isExtraStudent: {
+    type: Boolean,
+    default: false
+  },
   studentName: {
     type: String,
     trim: true
