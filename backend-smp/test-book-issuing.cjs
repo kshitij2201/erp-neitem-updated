@@ -24,7 +24,7 @@ async function testBookIssuing() {
 
     console.log('Sending request with data:', JSON.stringify(issueData, null, 2));
 
-    const response = await axios.post('http://localhost:4000/api/issues/issue', issueData, {
+    const response = await axios.post('https://backenderp.tarstech.in/api/issues/issue', issueData, {
       headers: {
         'Content-Type': 'application/json'
       }

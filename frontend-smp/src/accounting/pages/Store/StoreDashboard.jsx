@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE_URL = "http://localhost:4000/api/store";
+const API_BASE_URL = "https://backenderp.tarstech.in/api/store";
 
 export default function StoreDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -1538,7 +1538,7 @@ function CreateItemModal({ onClose, onSuccess }) {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        "http://localhost:4000/api/store/items",
+        "https://backenderp.tarstech.in/api/store/items",
         {
           method: "POST",
           headers: {

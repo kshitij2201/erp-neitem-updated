@@ -37,7 +37,7 @@ const IncomeTaxSimple = () => {
   useEffect(() => {
     const loadEmployees = async () => {
       try {
-        const response = await fetch('http://localhost:4000/api/faculty');
+        const response = await fetch('https://backenderp.tarstech.in/api/faculty');
         if (response.ok) {
           const facultyData = await response.json();
           const employeeNames = facultyData.map(faculty => faculty.personalInfo?.fullName || 'Unknown');

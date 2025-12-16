@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       if (token && storedFaculty) {
         // Validate token by making a test API call
         try {
-          await axios.get("http://localhost:4000/api/dashboard/stats", {
+          await axios.get("https://backenderp.tarstech.in/api/dashboard/stats", {
             headers: { Authorization: `Bearer ${token}` },
             timeout: 5000
           });
@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (employeeId, password) => {
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/faculty/rolelogin",
+        "https://backenderp.tarstech.in/api/faculty/rolelogin",
         {
           employeeId,
           password,

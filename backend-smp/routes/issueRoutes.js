@@ -245,12 +245,14 @@ router.post('/issue', issueBookHandler);
 
 router.get('/overview', async (req, res) => {
   try {
+    // Aggregate historical borrow counts (includes 'issue' and 'renew') and last borrowed date
     const borrowedStats = await IssueRecord.aggregate([
-      { $match: { transactionType: 'issue', status: 'active' } },
+      { $match: { transactionType: { $in: ['issue', 'renew'] } } },
       {
         $group: {
           _id: '$bookId',
-          borrowCount: { $sum: 1 }
+          borrowCount: { $sum: 1 },
+          lastBorrowed: { $max: '$issueDate' }
         }
       },
       {
@@ -262,12 +264,16 @@ router.get('/overview', async (req, res) => {
         }
       },
       { $unwind: '$bookInfo' },
+      { $match: { 'bookInfo.TITLENAME': { $exists: true, $ne: null, $ne: '' } } },
       {
         $project: {
+          bookId: '$_id',
           title: '$bookInfo.TITLENAME',
-          borrowCount: 1
+          borrowCount: 1,
+          lastBorrowed: 1
         }
-      }
+      },
+      { $sort: { borrowCount: -1 } }
     ]);
 
     res.json({ books: borrowedStats });

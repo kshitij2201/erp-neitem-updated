@@ -206,7 +206,7 @@ const AddBook = ({ initialData }) => {
       // Submit each book individually
       for (const bookData of books) {
         const response = await axios.post(
-          "/api/books",
+          "https://backenderp.tarstech.in/api/books",
           bookData
         );
       }

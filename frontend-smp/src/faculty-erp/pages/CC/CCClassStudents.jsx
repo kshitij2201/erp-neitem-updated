@@ -73,7 +73,7 @@ const CCClassStudents = ({ userData }) => {
       });
 
       const ccResponse = await fetch(
-        `http://localhost:4000/api/cc/my-cc-assignments`,
+        `https://backenderp.tarstech.in/api/cc/my-cc-assignments`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -109,7 +109,7 @@ const CCClassStudents = ({ userData }) => {
         try {
           console.log("Trying Mechancial department with attendance endpoint");
           studentsResponse = await axios.get(
-            `http://localhost:4000/api/faculty/students-attendance/department/Mechancial`,
+            `https://backenderp.tarstech.in/api/faculty/students-attendance/department/Mechancial`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -120,7 +120,7 @@ const CCClassStudents = ({ userData }) => {
           
           // Fallback to regular department endpoint
           studentsResponse = await axios.get(
-            `http://localhost:4000/api/faculty/students/department/Mechancial`,
+            `https://backenderp.tarstech.in/api/faculty/students/department/Mechancial`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }

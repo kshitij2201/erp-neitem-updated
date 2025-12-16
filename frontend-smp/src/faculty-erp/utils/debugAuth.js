@@ -50,7 +50,7 @@ function debugAuth() {
   if (finalToken) {
     console.log("🧪 Testing token with API call...");
 
-    fetch("http://localhost:4000/api/students?limit=1", {
+    fetch("https://backenderp.tarstech.in/api/students?limit=1", {
       headers: {
         Authorization: `Bearer ${finalToken}`,
         "Content-Type": "application/json",
@@ -74,7 +74,7 @@ function debugAuth() {
       .catch((error) => {
         console.log("❌ Network error:", error.message);
         console.log(
-          "💡 Check if backend is running on http://localhost:4000"
+          "💡 Check if backend is running on https://backenderp.tarstech.in"
         );
       });
   } else {

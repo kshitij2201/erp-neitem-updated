@@ -31,7 +31,7 @@ const StreamManager = () => {
         if (!headers) return;
 
         const res = await fetch(
-          "http://localhost:4000/api/superadmin/streams",
+          "https://backenderp.tarstech.in/api/superadmin/streams",
           { headers }
         );
         
@@ -61,7 +61,7 @@ const StreamManager = () => {
       if (!headers) return;
 
       const res = await fetch(
-        "http://localhost:4000/api/superadmin/streams",
+        "https://backenderp.tarstech.in/api/superadmin/streams",
         {
           method: "POST",
           headers,
@@ -95,7 +95,7 @@ const StreamManager = () => {
       if (!headers) return;
 
       const res = await fetch(
-        `http://localhost:4000/api/superadmin/streams/${editingStream._id}`,
+        `https://backenderp.tarstech.in/api/superadmin/streams/${editingStream._id}`,
         {
           method: "PUT",
           headers,

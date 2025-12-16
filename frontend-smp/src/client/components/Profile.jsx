@@ -14,7 +14,7 @@ const Profile = () => {
   const fetchAttendance = async (student) => {
     try {
       setAttendanceLoading(true);
-      const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+      const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
       const token = localStorage.getItem("token") || localStorage.getItem("authToken");
       
       console.log("=== fetchAttendance Starting ===");
@@ -175,7 +175,7 @@ const Profile = () => {
 
   useEffect(() => {
     const API_URL =
-      import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+      import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
     const token = localStorage.getItem("token") || localStorage.getItem("authToken");
 
     console.log("Profile component mounting...");
@@ -332,7 +332,7 @@ const Profile = () => {
         // If the updated list includes this student (or no list provided), refresh
         if (!updatedIds.length || (myId && updatedIds.includes(myId))) {
           console.log("Received attendanceMarked event, refetching profile/attendance...");
-          const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+          const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
           const token = localStorage.getItem("token") || localStorage.getItem("authToken");
           axios
             .get(`${API_URL}/api/student/auth/profile`, {
@@ -469,7 +469,7 @@ const Profile = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+        import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
@@ -540,7 +540,7 @@ const Profile = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+        import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
       const token = localStorage.getItem("token");
 
       // Create FormData for file upload

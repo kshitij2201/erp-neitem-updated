@@ -78,7 +78,7 @@ export default function Dashboard() {
     };
 
     try {
-      const apiBase = "http://localhost:4000/api";
+      const apiBase = "https://backenderp.tarstech.in/api";
 
       // Try to read fresh cache
       try {
