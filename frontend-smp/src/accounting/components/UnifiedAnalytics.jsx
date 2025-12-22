@@ -85,7 +85,9 @@ export default function UnifiedAnalytics({ analyticsData = {}, revenueData = {} 
       
       const apiBase = import.meta.env.DEV ? "/api" : "https://backenderp.tarstech.in/api";
       
-      const studentsResponse = await fetch(`${apiBase}/students`, { headers }).catch(() => null);
+      const studentsResponse = await fetch(`${apiBase}/students`, { 
+        headers: headers 
+      }).catch(() => null);
       const studentData = studentsResponse && studentsResponse.ok ? await studentsResponse.json() : [];
       
       setAnalytics((prev) => ({

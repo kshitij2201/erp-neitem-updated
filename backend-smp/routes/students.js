@@ -382,8 +382,8 @@ router.get('/public', async (req, res) => {
     }
     
     // Filter by search term if specified
-    if (search) {
-      const searchLower = search.toLowerCase();
+    if (search && search.trim()) {
+      const searchLower = search.trim().toLowerCase();
       const searchNormalized = searchLower.replace(/[^a-z0-9]/g, '');
       console.log('Filtering by search term:', searchLower, 'normalized:', searchNormalized);
       
@@ -443,9 +443,9 @@ router.get('/public', async (req, res) => {
         } else {
           // Otherwise, do broad search across all fields
           allStudents = allStudents.filter(student => 
-            student.firstName?.toLowerCase().includes(searchLower) ||
-            student.middleName?.toLowerCase().includes(searchLower) ||
-            student.lastName?.toLowerCase().includes(searchLower) ||
+            student.firstName?.toLowerCase().startsWith(searchLower) ||
+            student.middleName?.toLowerCase().startsWith(searchLower) ||
+            student.lastName?.toLowerCase().startsWith(searchLower) ||
             student.studentId?.toLowerCase().includes(searchLower) ||
             student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
             student.casteCategory?.toLowerCase().includes(searchLower) ||
@@ -465,9 +465,9 @@ router.get('/public', async (req, res) => {
         console.error('Error during search:', searchError);
         // Fallback to basic search if advanced search fails
         allStudents = allStudents.filter(student => 
-          student.firstName?.toLowerCase().includes(searchLower) ||
-          student.middleName?.toLowerCase().includes(searchLower) ||
-          student.lastName?.toLowerCase().includes(searchLower) ||
+          student.firstName?.toLowerCase().startsWith(searchLower) ||
+          student.middleName?.toLowerCase().startsWith(searchLower) ||
+          student.lastName?.toLowerCase().startsWith(searchLower) ||
           student.studentId?.toLowerCase().includes(searchLower) ||
           student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
           student.casteCategory?.toLowerCase().includes(searchLower) ||

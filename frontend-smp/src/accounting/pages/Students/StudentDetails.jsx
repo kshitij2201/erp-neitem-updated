@@ -629,22 +629,54 @@ export default function StudentDetails() {
                       Fee Summary:
                     </p>
                     <p className="font-bold">
-                      <strong>Total Fees:</strong> ₹{fee.total}
+                      <strong>Total Fees:</strong> ₹{(() => {
+                        // Calculate total from displayed fee heads only
+                        const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
+                          selectedStudent.casteCategory?.toLowerCase().trim()
+                        );
+                        const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                        const filteredHeads = (isReservedCaste || isGirl)
+                          ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                          : fee.heads;
+                        return filteredHeads.reduce((sum, h) => sum + Number(h.amount), 0).toLocaleString();
+                      })()}
                     </p>
                     <p className="font-bold">
                       <strong>Fees Paid:</strong>{" "}
                       <span className="text-green-700 font-bold">
-                        ₹{fee.paid}
+                        ₹{fee.paid.toLocaleString()}
                       </span>
                     </p>
                     <p className="font-bold">
                       <strong>Pending Fees:</strong>{" "}
                       <span
                         className={`font-bold ${
-                          fee.pending > 0 ? "text-red-700" : "text-green-800"
+                          (() => {
+                            const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
+                              selectedStudent.casteCategory?.toLowerCase().trim()
+                            );
+                            const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                            const filteredHeads = (isReservedCaste || isGirl)
+                              ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                              : fee.heads;
+                            const displayTotal = filteredHeads.reduce((sum, h) => sum + Number(h.amount), 0);
+                            const balance = displayTotal - fee.paid;
+                            return balance > 0 ? "text-red-700" : "text-green-800";
+                          })()
                         }`}
                       >
-                        ₹{fee.pending}
+                        ₹{(() => {
+                          const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
+                            selectedStudent.casteCategory?.toLowerCase().trim()
+                          );
+                          const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                          const filteredHeads = (isReservedCaste || isGirl)
+                            ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                            : fee.heads;
+                          const displayTotal = filteredHeads.reduce((sum, h) => sum + Number(h.amount), 0);
+                          const balance = displayTotal - fee.paid;
+                          return balance.toLocaleString();
+                        })()}
                       </span>
                     </p>
                   </div>
@@ -672,11 +704,12 @@ export default function StudentDetails() {
                           💰 Department Fee Heads
                           <span className="ml-2 bg-blue-200 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
                             {(() => {
-                              // Filter out tuition fees for students from reserved castes
-                              const isReservedCaste = ['sc', 'st', 'obc', 'nt', 'vjnt', 'sbc','djnt'].includes(
+                              // Filter out tuition fees for reserved castes and female students
+                              const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
                                 selectedStudent.casteCategory?.toLowerCase().trim()
                               );
-                              const filteredHeads = isReservedCaste
+                              const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                              const filteredHeads = (isReservedCaste || isGirl)
                                 ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
                                 : fee.heads;
                               return filteredHeads.length;
@@ -685,11 +718,12 @@ export default function StudentDetails() {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {(() => {
-                            // Filter out tuition fees for students from reserved castes
-                            const isReservedCaste = ['sc', 'st', 'obc', 'nt', 'vjnt', 'sbc'].includes(
+                            // Filter out tuition fees for reserved castes and female students
+                            const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
                               selectedStudent.casteCategory?.toLowerCase().trim()
                             );
-                            const filteredHeads = isReservedCaste
+                            const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                            const filteredHeads = (isReservedCaste || isGirl)
                               ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
                               : fee.heads;
                             return filteredHeads;
@@ -767,7 +801,17 @@ export default function StudentDetails() {
                                 Total Amount
                               </div>
                               <div className="font-bold text-xl text-blue-700">
-                                ₹{fee.total}
+                                ₹{(() => {
+                                  // Calculate total from displayed fee heads only
+                                  const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
+                                    selectedStudent.casteCategory?.toLowerCase().trim()
+                                  );
+                                  const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                                  const filteredHeads = (isReservedCaste || isGirl)
+                                    ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                                    : fee.heads;
+                                  return filteredHeads.reduce((sum, h) => sum + Number(h.amount), 0).toLocaleString();
+                                })()}
                               </div>
                             </div>
                             <div>
@@ -775,7 +819,7 @@ export default function StudentDetails() {
                                 Amount Paid
                               </div>
                               <div className="font-bold text-xl text-green-700">
-                                ₹{fee.paid}
+                                ₹{fee.paid.toLocaleString()}
                               </div>
                             </div>
                             <div>
@@ -784,12 +828,32 @@ export default function StudentDetails() {
                               </div>
                               <div
                                 className={`font-bold text-xl ${
-                                  fee.pending > 0
-                                    ? "text-red-700"
-                                    : "text-green-700"
+                                  (() => {
+                                    const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
+                                      selectedStudent.casteCategory?.toLowerCase().trim()
+                                    );
+                                    const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                                    const filteredHeads = (isReservedCaste || isGirl)
+                                      ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                                      : fee.heads;
+                                    const displayTotal = filteredHeads.reduce((sum, h) => sum + Number(h.amount), 0);
+                                    const balance = displayTotal - fee.paid;
+                                    return balance > 0 ? "text-red-700" : "text-green-700";
+                                  })()
                                 }`}
                               >
-                                ₹{fee.pending}
+                                ₹{(() => {
+                                  const isReservedCaste = ['sc', 'st', 'nt', 'vjnt', 'sbc', 'dtvj'].includes(
+                                    selectedStudent.casteCategory?.toLowerCase().trim()
+                                  );
+                                  const isGirl = selectedStudent.gender?.toLowerCase() === 'female' || selectedStudent.gender?.toLowerCase() === 'f';
+                                  const filteredHeads = (isReservedCaste || isGirl)
+                                    ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                                    : fee.heads;
+                                  const displayTotal = filteredHeads.reduce((sum, h) => sum + Number(h.amount), 0);
+                                  const balance = displayTotal - fee.paid;
+                                  return balance.toLocaleString();
+                                })()}
                               </div>
                             </div>
                           </div>
