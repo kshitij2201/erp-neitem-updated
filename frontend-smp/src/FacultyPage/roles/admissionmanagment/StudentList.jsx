@@ -480,7 +480,7 @@ function StudentList() {
       const query = admissionTypeFilter
         ? `?admissionType=${admissionTypeFilter}`
         : "";
-      const res = await fetchWithRetry(`http://localhost:4000/api/superadmin/students${query}`, {
+      const res = await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students${query}`, {
         headers,
       });
 
@@ -512,7 +512,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("http://localhost:4000/api/superadmin/semesters", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/semesters", {
           headers,
         });
 
@@ -538,7 +538,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        const res = await fetchWithRetry("http://localhost:4000/api/superadmin/streams", {
+        const res = await fetchWithRetry("https://backenderp.tarstech.in/api/superadmin/streams", {
           headers,
         });
 
@@ -568,10 +568,10 @@ function StudentList() {
         
         // Try multiple endpoints to see which one works
         const endpoints = [
-          "http://localhost:4000/api/superadmin/departments/all",
-          "http://localhost:4000/api/superadmin/departments",
-          "http://localhost:4000/api/departments/all",
-          "http://localhost:4000/api/departments"
+          "https://backenderp.tarstech.in/api/superadmin/departments/all",
+          "https://backenderp.tarstech.in/api/superadmin/departments",
+          "https://backenderp.tarstech.in/api/departments/all",
+          "https://backenderp.tarstech.in/api/departments"
         ];
         
         let departmentData = [];
@@ -713,7 +713,7 @@ function StudentList() {
         const headers = getAuthHeaders();
         if (!headers) return;
 
-        await fetchWithRetry(`http://localhost:4000/api/superadmin/students/${id}`, {
+        await fetchWithRetry(`https://backenderp.tarstech.in/api/superadmin/students/${id}`, {
           method: "DELETE",
           headers,
         });
@@ -739,7 +739,7 @@ function StudentList() {
       if (!headers) return;
 
       const response = await fetchWithRetry(
-        `http://localhost:4000/api/superadmin/students/promote/${id}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/promote/${id}`,
         {
           method: "PUT",
           headers,
@@ -772,7 +772,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `http://localhost:4000/api/superadmin/students/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -942,7 +942,7 @@ function StudentList() {
       if (!headers) return;
 
       await fetchWithRetry(
-        `http://localhost:4000/api/superadmin/students/generate-certificate/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/generate-certificate/${studentId}`,
         {
           method: "POST",
           headers: {
@@ -1273,7 +1273,7 @@ function StudentList() {
       if (!headers) return;
 
       const res = await fetchWithRetry(
-        `http://localhost:4000/api/superadmin/students/${studentId}`,
+        `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
         {
           headers,
         }
@@ -1294,7 +1294,7 @@ function StudentList() {
           if (!headers) return;
 
           const subjectsRes = await fetchWithRetry(
-            `http://localhost:4000/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${student.department._id}`,
             { headers }
           );
 
@@ -1363,7 +1363,7 @@ function StudentList() {
         if (!headers) return;
 
         const res = await fetchWithRetry(
-          `http://localhost:4000/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
+          `https://backenderp.tarstech.in/api/superadmin/students/subjects/${semesterId}/${backlogModal.departmentId}`,
           { headers }
         );
 
@@ -1422,7 +1422,7 @@ function StudentList() {
         if (!headers) return;
 
         const response = await fetchWithRetry(
-          `http://localhost:4000/api/superadmin/students/${studentId}/add-backlog`,
+          `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/add-backlog`,
           {
             method: "POST",
             headers: {
@@ -1456,7 +1456,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `http://localhost:4000/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}/update-backlog/${backlog._id}`,
             {
               method: "PUT",
               headers: {
@@ -1516,7 +1516,7 @@ function StudentList() {
           if (!headers) return;
 
           const response = await fetchWithRetry(
-            `http://localhost:4000/api/superadmin/students/${studentId}`,
+            `https://backenderp.tarstech.in/api/superadmin/students/${studentId}`,
             {
               method: "PUT",
               headers: {

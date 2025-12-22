@@ -2,7 +2,7 @@ import axios from 'axios';
 
 async function testFeeSummary() {
   try {
-    const baseURL = 'http://localhost:4000/api';
+    const baseURL = 'https://backenderp.tarstech.in/api';
 
     // Test data - using one of the student IDs from the user's message
     const studentId = '68f09b78006a2091da09439e'; // ANUSHKA PATIL

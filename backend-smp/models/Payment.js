@@ -104,6 +104,15 @@ const paymentSchema = new mongoose.Schema({
     min: 1,
     max: 20
   },
+  selectedFeeCategories: [{
+    id: String,
+    name: String,
+    amount: Number
+  }],
+  multipleFees: [{
+    feeHead: String,
+    currentPayment: Number
+  }],
   createdAt: {
     type: Date,
     default: Date.now

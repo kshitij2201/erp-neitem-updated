@@ -37,7 +37,7 @@ import {
 } from "recharts";
 import axios from "axios";
 
-const API_URL = "http://localhost:4000/api/books";
+const API_URL = "https://backenderp.tarstech.in/api/books";
 
 const COLORS = [
   "#6366f1",
@@ -165,7 +165,7 @@ const Analytics = () => {
         const response = await fetch(API_URL);
 
         // Fetch active students to validate borrowed books
-        const studentsResponse = await fetch("http://localhost:4000/api/students", {
+        const studentsResponse = await fetch("https://backenderp.tarstech.in/api/students", {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json'
@@ -190,7 +190,7 @@ const Analytics = () => {
 
         // Also fetch issued books data
         const issuesResponse = await fetch(
-          "http://localhost:4000/api/issues/borrowed-books/all"
+          "https://backenderp.tarstech.in/api/issues/borrowed-books/all"
         );
 
         if (response.ok) {
@@ -482,7 +482,7 @@ const Analytics = () => {
       const refreshIssueData = async () => {
         try {
           const response = await fetch(
-            "http://localhost:4000/api/issues/borrowed-books/all"
+            "https://backenderp.tarstech.in/api/issues/borrowed-books/all"
           );
           if (response.ok) {
             const data = await response.json();
@@ -544,7 +544,7 @@ const Analytics = () => {
       const refreshIssueData = async () => {
         try {
           const response = await fetch(
-            "http://localhost:4000/api/issues/borrowed-books/all"
+            "https://backenderp.tarstech.in/api/issues/borrowed-books/all"
           );
           if (response.ok) {
             const data = await response.json();
