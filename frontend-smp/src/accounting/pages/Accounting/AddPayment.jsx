@@ -78,7 +78,7 @@ export default function AddPayment() {
   // Fee categories data
   const feeCategories = {
     admission: [
-      { id: 'tuition_fees', name: 'Tuition fees', amount: 0 },
+      { id: 'tuition_fees', name: 'Tuition fees/Scholarship fee', amount: 0 },
       { id: 'caution_money', name: 'Caution money', amount: 0 },
       { id: 'development_fund', name: 'Development fund', amount: 0 },
       { id: 'admission_form', name: 'Admission form', amount: 0 },
@@ -589,6 +589,10 @@ export default function AddPayment() {
         ) {
           paymentData.multipleFeeHeads = formData.selectedFeeHeads;
         }
+        // Add selected fee categories if any
+        if (formData.selectedFeeCategories && formData.selectedFeeCategories.length > 0) {
+          paymentData.selectedFeeCategories = formData.selectedFeeCategories;
+        }
       }
 
       const token = localStorage.getItem("token");
@@ -1035,6 +1039,7 @@ export default function AddPayment() {
                     ${
                       receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.length > 0
                         ? receiptData.selectedFeeCategories
+                            .filter(category => parseFloat(category.amount) > 0)
                             .map(
                               (category, index) => `
                         <tr>
@@ -1136,6 +1141,7 @@ export default function AddPayment() {
               width: 49%;
               border: 1px solid #000;
               background: white;
+              
               padding: 8px;
               page-break-inside: avoid;
               min-height: 700px;
@@ -1155,12 +1161,12 @@ export default function AddPayment() {
             }
             .duplicate-label {
               position: absolute;
-              top: 3px;
-              right: 8px;
+              top: -9.5px;
+              right: 9px;
               font-weight: bold;
-              font-size: 13px;
+              font-size: 7px;
               text-transform: uppercase;
-              margin-bottom: 10px;
+              margin-bottom: 0;
             }
             .institute-header-simple {
               display: flex;
@@ -1185,19 +1191,19 @@ export default function AddPayment() {
               padding: 8px 0;
             }
             .society-name-simple {
-              font-size: 12px;
+              font-size: 10px;
               margin-bottom: 1px;
               font-weight: bold;
             }
             .institute-name-simple {
               font-family: 'Times New Roman', Times, serif;
               font-weight: bold;
-              font-size: 14px;
+              font-size: 12px;
               text-transform: uppercase;
               margin-bottom: 2px;
             }
             .institute-address-simple {
-              font-size: 11px;
+              font-size: 9px;
               font-weight: bold;
             }
             .receipt-type-label {
@@ -1215,7 +1221,7 @@ export default function AddPayment() {
               border: 1px solid #000;
               border-collapse: collapse;
               margin-bottom: 6px;
-              font-size: 12px;
+              font-size: 10px;
               background: white;
               font-weight: bold;
               position: relative;
@@ -1228,7 +1234,7 @@ export default function AddPayment() {
             }
             .receipt-info-table .label-cell {
               font-family: 'Arial', sans-serif;
-              font-size: 12px;
+              font-size: 10px;
               width: 20%;
               color: #000;
               font-weight: bold;
@@ -1246,7 +1252,7 @@ export default function AddPayment() {
               padding: 5px 8px;
               background: #f0f0f0;
               font-weight: bold;
-              font-size: 13px;
+              font-size: 11px;
               min-height: 50px;
               align-items: center;
               position: relative;
@@ -1258,6 +1264,7 @@ export default function AddPayment() {
               position: relative;
               z-index: 10;
               background: transparent;
+              min-height: 200px;
             }
             .fee-details-table table {
               width: 100%;
@@ -1265,8 +1272,7 @@ export default function AddPayment() {
             }
             .fee-details-table td {
               padding: 5px 8px;
-              border-bottom: 1px solid #ddd;
-              font-size: 12px;
+              font-size: 10px;
               line-height: 1.5;
               font-weight: bold;
               background: transparent;
@@ -1301,7 +1307,7 @@ export default function AddPayment() {
               border-top: 2px solid #000;
               padding: 4px 6px;
               font-weight: bold;
-              font-size: 14px;
+              font-size: 12px;
               position: relative;
               z-index: 10;
               background: white;
@@ -1393,8 +1399,8 @@ export default function AddPayment() {
         </head>
         <body>
           <div class="receipts-wrapper">
-            ${generateReceipt("ORIGINAL")}
-            ${generateReceipt("DUPLICATE")}
+            ${generateReceipt("OFFICE COPY")}
+            ${generateReceipt("STUDENT COPY")}
           </div>
         </body>
         </html>
@@ -1553,7 +1559,7 @@ export default function AddPayment() {
                       background: #f8f9fa;
                       line-height: 1.5;
                       color: #2d3748;
-                      font-size: 12px;
+                      font-size: 10px;
                       font-weight: 400;
                     }
                     .receipts-wrapper {
@@ -1585,13 +1591,13 @@ export default function AddPayment() {
                     }
                     .duplicate-label {
                       position: absolute;
-                      top: 5px;
-                      right: 10px;
+                      top: -14px;
+                      right: -14px;
                       font-weight: bold;
-                      font-size: 12px;
+                      font-size: 10px;
                       text-transform: uppercase;
                       color: #dc3545;
-                      margin-bottom: 15px;
+                      margin-bottom: 0;
                     }
                     .institute-header-simple {
                       display: flex;
@@ -1615,20 +1621,20 @@ export default function AddPayment() {
                       padding: 12px 0;
                     }
                     .society-name-simple {
-                      font-size: 13px;
+                      font-size: 11px;
                       margin-bottom: 2px;
                       color: #000;
                     }
                     .institute-name-simple {
                       font-weight: bold;
-                      font-size: 18px;
+                      font-size: 16px;
                       text-transform: uppercase;
                       margin-bottom: 4px;
                       color: #1a202c;
                       letter-spacing: 0.5px;
                     }
                     .institute-address-simple {
-                      font-size: 13px;
+                      font-size: 11px;
                       color: #000;
                     }
                     .receipt-type-label {
@@ -1693,6 +1699,7 @@ export default function AddPayment() {
                       position: relative;
                       z-index: 10;
                       background: transparent;
+                      min-height: 250px;
                     }
                     .fee-details-table table {
                       width: 100%;
@@ -1700,7 +1707,6 @@ export default function AddPayment() {
                     }
                     .fee-details-table td {
                       padding: 6px 10px;
-                      border-bottom: 1px solid #dee2e6;
                       font-size: 11px;
                       background: transparent;
                     }
@@ -1890,6 +1896,7 @@ export default function AddPayment() {
                                 ${
                                   receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.length > 0
                                     ? receiptData.selectedFeeCategories
+                                        .filter(category => parseFloat(category.amount) > 0)
                                         .map(
                                           (category, index) => `
                                 <tr>
@@ -1981,7 +1988,7 @@ export default function AddPayment() {
             </button>
           </div>
         </div>
-      </div>
+      </div>  
     );
   };
 

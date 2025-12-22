@@ -202,6 +202,9 @@ const Receipts = () => {
         }
         const paymentData = await paymentResponse.json();
 
+        console.log("🔍 Payment Data from Backend:", paymentData);
+        console.log("🔍 Selected Fee Categories:", paymentData.selectedFeeCategories);
+
         // Create receipt data and show modal
         const formattedReceipt = {
           receiptNumber:
@@ -224,6 +227,7 @@ const Receipts = () => {
             department: paymentData.studentId?.department || "N/A",
             program: paymentData.studentId?.program || "N/A",
             caste: paymentData.studentId?.casteCategory || "N/A",
+            casteCategory: paymentData.studentId?.casteCategory || "N/A",
             rollNumber: paymentData.studentId?.rollNo || "N/A",
             section: paymentData.studentId?.section || "N/A"
           },
@@ -231,6 +235,8 @@ const Receipts = () => {
           paymentType: "specific",
           collectedBy: paymentData.collectedBy || "Cashier",
           remarks: paymentData.remarks || "",
+          selectedFeeCategories: paymentData.selectedFeeCategories || [],
+          multipleFees: paymentData.multipleFees || [],
         };
         
         setReceiptData(formattedReceipt);
@@ -2314,251 +2320,396 @@ const Receipts = () => {
   const printReceipt = () => {
     if (!receiptData) return;
 
+    console.log("🖨️ Receipt Data for Print:", receiptData);
+    console.log("🖨️ Selected Fee Categories:", receiptData.selectedFeeCategories);
+
+    // Get absolute logo URLs for reliable loading
+    const baseUrl = window.location.origin;
+    const logo1Url = `${baseUrl}/logo1.png`;
+    const logoUrl = `${baseUrl}/logo.png`;
+    
+    // Function to generate single receipt with label
+    const generateReceipt = (label) => `
+      <div class="receipt-container">
+        <div class="receipt-header-box">
+          <div class="duplicate-label">${label}</div>
+          <div class="institute-header-simple">
+            <div class="logo-left">
+              <img src="${logo1Url}" alt="Logo" />
+            </div>
+            <div class="header-text">
+              <div class="society-name-simple">Maitrey Educational Society's</div>
+              <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+              <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
+            </div>
+            <div class="logo-right">
+              <img src="${logoUrl}" alt="Logo" />
+            </div>
+          </div>
+        </div>
+
+        <table class="receipt-info-table">
+          <tr>
+            <td class="label-cell">Rec. No.</td>
+            <td class="value-cell">: ${receiptData.receiptNumber}</td>
+            <td class="label-cell">Date</td>
+            <td class="value-cell">: ${receiptData.date}</td>
+          </tr>
+          <tr>
+            <td class="label-cell" style="font-weight: bold">Class</td>
+            <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
+            <td class="label-cell">Adm. No.</td>
+            <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Category</td>
+            <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
+            <td class="label-cell">Student Id.</td>
+            <td class="value-cell">: ${receiptData.student?.studentId}</td>
+          </tr>
+          <tr>
+            <td class="label-cell" style="font-weight: bold">Name</td>
+            <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Roll No</td>
+            <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
+            <td class="label-cell">Section</td>
+            <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
+          </tr>
+        </table>
+        
+        <div class="received-section">
+          <div class="received-label">Received the following:</div>
+          <div class="amount-label">(₹)Amount</div>
+        </div>
+        
+          <div class="fee-details-table">
+          <table>
+            <tbody>
+              ${
+                receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
+                  ? receiptData.selectedFeeCategories
+                      .filter(category => parseFloat(category.amount) > 0)
+                      .map(
+                        (category, index) => `
+              <tr>
+                <td class="fee-name">${category.name}</td>
+                <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            `
+                      )
+                      .join("")
+                  : receiptData.multipleFees && receiptData.multipleFees.length > 0
+                  ? receiptData.multipleFees
+                      .map(
+                        (fee, index) => `
+              <tr>
+                <td class="fee-name">${fee.feeHead}</td>
+                <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            `
+                      )
+                      .join("")
+                  : `
+              <tr>
+                <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
+                <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            `
+              }
+            </tbody>
+          </table>
+          <div class="logo-section">
+            <img src="${logoUrl}" alt="NIETM Logo" class="center-logo" />
+          </div>
+        </div>
+
+        <div class="summary-box">
+          <div class="total-section">
+            <div class="total-label">Total :</div>
+            <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+
+          <div class="amount-in-words">
+            <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} 
+          </div>
+
+          <div class="payment-details-footer">
+            <div class="payment-info">Med : ENG, Subject : BSE1-1T,BSE1-2T,BSE1-3T,BSE1-4T,BSE1-5T,BSE1-6T,<br>BSE1-2P,BSE1-3P,BSE1-4P,BSE1-5P</div>
+            ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' ? `
+            <div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
+            <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>
+            ` : ''}
+            <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
+          </div>
+
+          <div class="footer-signature">
+            <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
+            <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
+            <div class="signature-label">RECEIVER'S SIGNATURE</div>
+          </div>
+
+          <div class="page-number">Page 1 of 1</div>
+        </div>
+      </div>
+    `;
+
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Receipt - ${receiptData.receiptNumber}</title>
+        <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
         <style>
+          @page {
+            size: A4 landscape;
+            margin: 5mm;
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
           body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
-            padding: 5px; 
+            padding: 3px; 
             background: white;
             line-height: 1.4;
             color: #000;
-            font-size: 9px;
+            font-size: 10px;
+            font-weight: 600;
+          }
+          /* Ensure all receipt elements use the smaller base size */
+          .receipt-container, .receipt-container * {
+            font-size: 10px !important;
           }
           .receipts-wrapper {
             display: flex;
-            justify-content: center;
-            gap: 8px;
+            flex-direction: row;
+            gap: 5px;
             width: 100%;
-            height: 100vh;
-            align-items: flex-start;
+            justify-content: space-between;
+            height: 100%;
           }
           .receipt-container {
             width: 49%;
-            max-width: 500px;
             border: 1px solid #000;
             background: white;
-            padding: 12px;
-            margin: 0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 8px;
             page-break-inside: avoid;
-            min-height: 650px;
+            min-height: 700px;
             height: auto;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
           }
           .receipt-header-box {
-            border: 1px solid #2d3748;
+            border: 1px solid #000;
             padding: 6px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             position: relative;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            z-index: 10;
+            background: white;
           }
-          .duplicate-label {
-            position: absolute;
-            top: 2px;
-            right: 6px;
-            font-weight: bold;
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #dc3545;
-            margin-bottom: 15px;
-          }
+                      .duplicate-label {
+                        position: absolute;
+                        top: -10px;
+                        right: 15px;
+                        font-weight: bold;
+                        font-size: 6px;
+                        text-transform: uppercase;
+                        color: #000;
+                        
+                        margin-bottom: 0;
+                      }
           .institute-header-simple {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 15px;
-            padding: 0 10px;
+            gap: 5px;
           }
-          .logo-left {
-            width: 50px;
-            height: 50px;
+          .logo-left, .logo-right {
+            width: 66px;
+            height: 66px;
             flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
           }
-          .logo-left img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-          }
-          .logo-right {
-            width: 35px;
-            height: 35px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .logo-right img {
-            max-width: 100%;
-            max-height: 100%;
+          .logo-left img, .logo-right img {
+            width: 100%;
+            height: 100%;
             object-fit: contain;
           }
           .header-text {
             flex: 1;
             text-align: center;
-            padding: 4px 0;
+            padding: 8px 0;
           }
           .society-name-simple {
-            font-size: 8px;
+            font-size: 12px;
             margin-bottom: 1px;
-            color: #6c757d;
+            font-weight: bold;
           }
           .institute-name-simple {
+            font-family: 'Times New Roman', Times, serif;
             font-weight: bold;
-            font-size: 10px;
+            font-size: 14px;
             text-transform: uppercase;
             margin-bottom: 2px;
-            color: #1a202c;
-            letter-spacing: 0.3px;
           }
           .institute-address-simple {
-            font-size: 8px;
-            color: #6c757d;
-          }
-          .receipt-type-label {
+            font-size: 11px;
             font-weight: bold;
-            text-align: center;
-            text-transform: uppercase;
-            font-size: 9px;
-            margin-bottom: 4px;
-            padding: 2px 4px;
-            border: 2px solid #000;
-            border-bottom: 1px solid #000;
-            color: #000;
-            background: white;
           }
           .receipt-info-table {
             width: 100%;
-            border: 2px solid #000;
+            border: 1px solid #000;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             font-size: 12px;
             background: white;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
           }
           .receipt-info-table td {
             border: 1px solid #000;
-            padding: 4px 8px;
+            padding: 3px 6px;
             vertical-align: top;
           }
           .receipt-info-table .label-cell {
-            font-weight: bold;
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
             width: 20%;
             color: #000;
+            font-weight: bold;
           }
           .receipt-info-table .value-cell {
             width: 30%;
             color: #000;
+            font-weight: bold;
           }
           .received-section {
             display: flex;
             justify-content: space-between;
-            border: 2px solid #2d3748;
+            border: 1px solid #000;
             border-bottom: none;
-            padding: 8px 8px;
-            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+            padding: 5px 8px;
+            background: #f0f0f0;
             font-weight: bold;
-            font-size: 14px;
-            color: #1a202c;
-            min-height: 35px;
+            font-size: 13px;
+            min-height: 50px;
             align-items: center;
+            position: relative;
+            z-index: 10;
           }
           .fee-details-table {
-            border: 2px solid #000;
+            border: 1px solid #000;
             margin-bottom: 0;
+            position: relative;
+            z-index: 10;
+            background: transparent;
+            min-height: 200px;
           }
           .fee-details-table table {
             width: 100%;
             border-collapse: collapse;
           }
           .fee-details-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #dee2e6;
-            font-size: 13px;
+            padding: 5px 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            font-weight: bold;
+            background: transparent;
           }
           .fee-details-table td.fee-name {
             text-transform: uppercase;
             font-weight: bold;
-            color: #000;
           }
           .fee-details-table td.fee-amount {
             text-align: right;
             font-weight: bold;
-            color: #000;
           }
           .logo-section {
-            text-align: center;
-            padding: 12px 0;
-            border-left: 2px solid #000;
-            border-right: 2px solid #000;
-            background: #f8f9fa;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            pointer-events: none;
           }
           .center-logo {
-            width: 70px;
-            height: 70px;
-            opacity: 0.4;
+            width: 150px;
+            height: 150px;
+            opacity: 0.06;
             display: block;
-            margin: 0 auto;
+            filter: grayscale(30%);
           }
           .total-section {
             display: flex;
             justify-content: space-between;
-            border: 2px solid #2d3748;
-            border-top: 3px solid #1a202c;
-            padding: 4px 8px;
+            border: 2px solid #000;
+            border-top: 2px solid #000;
+            padding: 4px 6px;
             font-weight: bold;
             font-size: 14px;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-            color: #1a202c;
+            position: relative;
+            z-index: 10;
+            background: white;
+          }
+          .summary-box {
+            border: 1px solid #000;
+            padding: 8px;
+            background: white;
+            position: relative;
+            z-index: 10;
+            display: block;
+            margin-bottom: 8px;
           }
           .amount-in-words {
-            border: 2px solid #000;
-            border-top: none;
-            padding: 5px 8px;
-            font-size: 12px;
-            background: #f8f9fa;
-            color: #000;
+            border: 1px solid #000;
+            padding: 4px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
+            background: white;
           }
           .words-label {
             font-weight: bold;
           }
           .payment-details-footer {
-            border: 2px solid #2d3748;
+            border: 1px solid #000;
             border-top: none;
-            padding: 10px;
-            font-size: 12px;
+            padding: 6px;
+            font-size: 10px;
             line-height: 1.5;
-            background: #f7fafc;
-            color: #2d3748;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
+            background: white;
           }
           .payment-info {
+            font-size: 10px;
+            font-family: 'Arial', sans-serif;
             margin-bottom: 3px;
           }
           .footer-signature {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            border: 2px solid #2d3748;
+            border: 1px solid #000;
             border-top: none;
             padding: 10px;
-            font-size: 12px;
-            min-height: 40px;
-            background: #f7fafc;
-            color: #2d3748;
+            font-size: 10px;
+            min-height: 60px;
+            position: relative;
+            z-index: 10;
+            background: white;
           }
           .cashier-info {
-            font-size: 11px;
+            font-size: 10px;
+            font-weight: bold;
           }
           .cashier-name {
             font-weight: bold;
@@ -2569,9 +2720,11 @@ const Receipts = () => {
           }
           .page-number {
             text-align: right;
-            font-size: 11px;
-            margin-top: 5px;
-            color: #6c757d;
+            font-size: 10px;
+            margin-top: 4px;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
           }
           @media print {
             @page {
@@ -2581,216 +2734,17 @@ const Receipts = () => {
             body {
               print-color-adjust: exact;
               -webkit-print-color-adjust: exact;
-              font-size: 8px;
             }
             .receipt-container {
               page-break-inside: avoid;
-              height: auto;
-              max-height: none;
-              overflow: visible;
-            }
-            .receipts-wrapper {
-              height: auto;
-              gap: 5px;
             }
           }
         </style>
       </head>
       <body>
         <div class="receipts-wrapper">
-          <!-- ORIGINAL RECEIPT -->
-          <div class="receipt-container">
-            <div class="receipt-header-box">
-              <div class="duplicate-label">ORIGINAL</div>
-              <div class="institute-header-simple">
-                <div class="logo-left">
-                  <img src="/logo1.png" alt="Logo" />
-                </div>
-                <div class="header-text">
-                  <div class="society-name-simple">Maitrey Educational Society's</div>
-                  <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
-                  <div class="institute-address-simple">Nagpur - 440023</div>
-                </div>
-                <div class="logo-right">
-                  <img src="/logo.png" alt="Logo" />
-                </div>
-              </div>
-            </div>
-
-            <table class="receipt-info-table">
-              <tr>
-                <td class="label-cell">Rec. No.</td>
-                <td class="value-cell">: ${receiptData.receiptNumber}</td>
-                <td class="label-cell">Date</td>
-                <td class="value-cell">: ${receiptData.date}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Class</td>
-                <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
-                <td class="label-cell">Adm. No.</td>
-                <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Name</td>
-                <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Roll No</td>
-                <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-                <td class="label-cell">Student Id.</td>
-                <td class="value-cell">: ${receiptData.student?.studentId}</td>
-              </tr>
-            </table>
-            
-            <div class="received-section">
-              <div class="received-label">Received the following:</div>
-              <div class="amount-label">(₹)Amount</div>
-            </div>
-            
-            <div class="fee-details-table">
-              <table>
-                <tbody>
-                  ${receiptData.multipleFees && receiptData.multipleFees.length > 0
-                    ? receiptData.multipleFees.map(fee => 
-                        `<tr>
-                          <td class="fee-name">${fee.feeHead}</td>
-                          <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>`
-                      ).join('')
-                    : `<tr>
-                        <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
-                        <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>`
-                  }
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="logo-section">
-              <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
-            </div>
-            
-            <div class="total-section">
-              <div class="total-label">Total :</div>
-              <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            
-            <div class="amount-in-words">
-              <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
-            </div>
-            
-            <div class="payment-details-footer">
-              <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
-              ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
-                ? `<div class="payment-info">UPI Amount : ₹${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | TID: ${receiptData.transactionId || 'N/A'} | ${receiptData.bankName || 'N/A'}</div>`
-                : ''
-              }
-              <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
-            </div>
-            
-            <div class="footer-signature">
-              <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
-              <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
-              <div class="signature-label">RECEIVER'S SIGNATURE</div>
-            </div>
-          </div>
-
-          <!-- DUPLICATE RECEIPT -->
-          <div class="receipt-container">
-            <div class="receipt-header-box">
-              <div class="duplicate-label">DUPLICATE</div>
-              <div class="institute-header-simple">
-                <div class="logo-left">
-                  <img src="/logo1.png" alt="Logo" />
-                </div>
-                <div class="header-text">
-                  <div class="society-name-simple">Maitrey Educational Society's</div>
-                  <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
-                  <div class="institute-address-simple">Nagpur - 440023</div>
-                </div>
-                <div class="logo-right">
-                  <img src="/logo.png" alt="Logo" />
-                </div>
-              </div>
-            </div>
-
-            <table class="receipt-info-table">
-              <tr>
-                <td class="label-cell">Rec. No.</td>
-                <td class="value-cell">: ${receiptData.receiptNumber}</td>
-                <td class="label-cell">Date</td>
-                <td class="value-cell">: ${receiptData.date}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Class</td>
-                <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
-                <td class="label-cell">Adm. No.</td>
-                <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Name</td>
-                <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Roll No</td>
-                <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-                <td class="label-cell">Student Id.</td>
-                <td class="value-cell">: ${receiptData.student?.studentId}</td>
-              </tr>
-            </table>
-            
-            <div class="received-section">
-              <div class="received-label">Received the following:</div>
-              <div class="amount-label">(₹)Amount</div>
-            </div>
-            
-            <div class="fee-details-table">
-              <table>
-                <tbody>
-                  ${receiptData.multipleFees && receiptData.multipleFees.length > 0
-                    ? receiptData.multipleFees.map(fee => 
-                        `<tr>
-                          <td class="fee-name">${fee.feeHead}</td>
-                          <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>`
-                      ).join('')
-                    : `<tr>
-                        <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
-                        <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>`
-                  }
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="logo-section">
-              <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
-            </div>
-            
-            <div class="total-section">
-              <div class="total-label">Total :</div>
-              <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            
-            <div class="amount-in-words">
-              <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
-            </div>
-            
-            <div class="payment-details-footer">
-              <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
-              ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
-                ? `<div class="payment-info">UPI Amount : ₹${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | TID: ${receiptData.transactionId || 'N/A'} | ${receiptData.bankName || 'N/A'}</div>`
-                : ''
-              }
-              <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
-            </div>
-            
-            <div class="footer-signature">
-              <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
-              <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
-              <div class="signature-label">RECEIVER'S SIGNATURE</div>
-            </div>
-          </div>
+          ${generateReceipt("OFFICE COPY")}
+          ${generateReceipt("STUDENT COPY")}
         </div>
       </body>
       </html>
@@ -2799,8 +2753,36 @@ const Receipts = () => {
     const printWindow = window.open("", "_blank");
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    
+    // Wait for images to load before printing
+    printWindow.onload = () => {
+      const images = printWindow.document.getElementsByTagName('img');
+      let loadedCount = 0;
+      const totalImages = images.length;
+      
+      if (totalImages === 0) {
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 250);
+        return;
+      }
+      
+      const checkAllLoaded = () => {
+        loadedCount++;
+        if (loadedCount === totalImages) {
+          printWindow.focus();
+          setTimeout(() => printWindow.print(), 250);
+        }
+      };
+      
+      for (let i = 0; i < totalImages; i++) {
+        if (images[i].complete) {
+          checkAllLoaded();
+        } else {
+          images[i].onload = checkAllLoaded;
+          images[i].onerror = checkAllLoaded;
+        }
+      }
+    };
   };
 
   if (loading) {
@@ -3313,12 +3295,16 @@ const Receipts = () => {
                       body {
                         font-family: Arial, sans-serif;
                         margin: 0;
-                        padding: 15px;
-                        background: #f8f9fa;
-                        line-height: 1.5;
-                        color: #2d3748;
-                        font-size: 12px;
-                        font-weight: 400;
+                        padding: 3px;
+                        background: white;
+                        line-height: 1.4;
+                        color: #000;
+                        font-size: 10px;
+                        font-weight: 600;
+                      }
+                      /* Ensure all receipt elements use the smaller base size */
+                      .receipt-container, .receipt-container * {
+                        font-size: 10px !important;
                       }
                       .receipts-wrapper {
                         display: flex;
@@ -3329,63 +3315,49 @@ const Receipts = () => {
                       .receipt-container {
                         width: 90%;
                         max-width: 650px;
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         background: white;
-                        padding: 10px;
+                        padding: 8px;
                         margin: 10px auto;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                         page-break-inside: avoid;
-                        min-height: 745px;
+                        min-height: 700px;
                         height: auto;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        position: relative;
                       }
                       .receipt-header-box {
-                        border: 2px solid #2d3748;
-                        padding: 10px;
-                        margin-bottom: 10px;
+                        border: 1px solid #000;
+                        padding: 6px;
+                        margin-bottom: 8px;
                         position: relative;
-                        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                        z-index: 10;
+                        background: white;
                       }
                       .duplicate-label {
                         position: absolute;
-                        top: 5px;
-                        right: 10px;
+                        top: -12px;
+                        right: 15px;
                         font-weight: bold;
-                        font-size: 14px;
+                        font-size: 6px;
                         text-transform: uppercase;
-                        color: #dc3545;
-                        margin-bottom: 15px;
+                        margin-bottom: 0;
                       }
                       .institute-header-simple {
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        gap: 15px;
-                        padding: 0 10px;
+                        gap: 5px;
                       }
-                      .logo-left {
-                        width: 50px;
-                        height: 50px;
+                      .logo-left, .logo-right {
+                        width: 66px;
+                        height: 66px;
                         flex-shrink: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
                       }
-                      .logo-left img {
-                        max-width: 100%;
-                        max-height: 100%;
-                        object-fit: contain;
-                      }
-                      .logo-right {
-                        width: 35px;
-                        height: 35px;
-                        flex-shrink: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                      }
-                      .logo-right img {
-                        max-width: 100%;
-                        max-height: 100%;
+                      .logo-left img, .logo-right img {
+                        width: 100%;
+                        height: 100%;
                         object-fit: contain;
                       }
                       .header-text {
@@ -3394,157 +3366,170 @@ const Receipts = () => {
                         padding: 8px 0;
                       }
                       .society-name-simple {
-                        font-size: 13px;
-                        margin-bottom: 2px;
-                        color: #6c757d;
+                        font-size: 12px;
+                        margin-bottom: 1px;
+                        font-weight: bold;
                       }
                       .institute-name-simple {
+                        font-family: 'Times New Roman', Times, serif;
                         font-weight: bold;
-                        font-size: 16px;
+                        font-size: 14px;
                         text-transform: uppercase;
-                        margin-bottom: 4px;
-                        color: #1a202c;
-                        letter-spacing: 0.5px;
+                        margin-bottom: 2px;
                       }
                       .institute-address-simple {
-                        font-size: 13px;
-                        color: #6c757d;
-                      }
-                      .receipt-type-label {
+                        font-size: 11px;
                         font-weight: bold;
-                        text-align: center;
-                        text-transform: uppercase;
-                        font-size: 13px;
-                        margin-bottom: 8px;
-                        padding: 3px 8px;
-                        border: 2px solid #000;
-                        border-bottom: 1px solid #000;
-                        color: #000;
-                        background: white;
                       }
                       .receipt-info-table {
                         width: 100%;
-                        border: 2px solid #000;
+                        border: 1px solid #000;
                         border-collapse: collapse;
-                        margin-bottom: 10px;
+                        margin-bottom: 6px;
                         font-size: 12px;
                         background: white;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
                       }
                       .receipt-info-table td {
                         border: 1px solid #000;
-                        padding: 4px 8px;
+                        padding: 3px 6px;
                         vertical-align: top;
                       }
                       .receipt-info-table .label-cell {
-                        font-weight: bold;
+                        font-family: 'Arial', sans-serif;
+                        font-size: 12px;
                         width: 20%;
                         color: #000;
+                        font-weight: bold;
                       }
                       .receipt-info-table .value-cell {
                         width: 30%;
                         color: #000;
+                        font-weight: bold;
                       }
                       .received-section {
                         display: flex;
                         justify-content: space-between;
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         border-bottom: none;
-                        padding: 8px 8px;
-                        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+                        padding: 5px 8px;
+                        background: #f0f0f0;
                         font-weight: bold;
-                        font-size: 14px;
-                        color: #1a202c;
-                        min-height: 35px;
+                        font-size: 13px;
+                        min-height: 50px;
                         align-items: center;
+                        position: relative;
+                        z-index: 10;
                       }
                       .fee-details-table {
-                        border: 2px solid #000;
+                        border: 1px solid #000;
                         margin-bottom: 0;
+                        position: relative;
+                        z-index: 10;
+                        background: transparent;
+                        min-height: 250px;
                       }
                       .fee-details-table table {
                         width: 100%;
                         border-collapse: collapse;
                       }
                       .fee-details-table td {
-                        padding: 6px 10px;
-                        border-bottom: 1px solid #dee2e6;
-                        font-size: 13px;
+                        padding: 5px 8px;
+                        font-size: 12px;
+                        line-height: 1.5;
+                        font-weight: bold;
+                        background: transparent;
                       }
                       .fee-details-table td.fee-name {
                         text-transform: uppercase;
                         font-weight: bold;
-                        color: #000;
                       }
                       .fee-details-table td.fee-amount {
                         text-align: right;
                         font-weight: bold;
-                        color: #000;
                       }
                       .logo-section {
-                        text-align: center;
-                        padding: 12px 0;
-                        border-left: 2px solid #000;
-                        border-right: 2px solid #000;
-                        background: #f8f9fa;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        z-index: 0;
+                        pointer-events: none;
                       }
                       .center-logo {
-                        width: 70px;
-                        height: 70px;
-                        opacity: 0.4;
+                        width: 150px;
+                        height: 150px;
+                        opacity: 0.06;
                         display: block;
-                        margin: 0 auto;
+                        filter: grayscale(30%);
                       }
                       .total-section {
                         display: flex;
                         justify-content: space-between;
-                        border: 2px solid #2d3748;
-                        border-top: 3px solid #1a202c;
-                        padding: 4px 8px;
+                        border: 2px solid #000;
+                        border-top: 2px solid #000;
+                        padding: 4px 6px;
                         font-weight: bold;
                         font-size: 14px;
-                        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-                        color: #1a202c;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
+                      }
+                      .summary-box {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        background: white;
+                        position: relative;
+                        z-index: 10;
+                        display: block;
+                        margin-bottom: 8px;
                       }
                       .amount-in-words {
-                        border: 2px solid #000;
-                        border-top: none;
-                        padding: 5px 8px;
-                        font-size: 12px;
-                        background: #f8f9fa;
-                        color: #000;
+                        border: 1px solid #000;
+                        padding: 4px 6px;
+                        font-size: 11px;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
                       }
                       .words-label {
                         font-weight: bold;
                       }
                       .payment-details-footer {
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         border-top: none;
-                        padding: 10px;
-                        font-size: 12px;
+                        padding: 6px;
+                        font-size: 10px;
                         line-height: 1.5;
-                        background: #f7fafc;
-                        color: #2d3748;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
                       }
                       .payment-info {
+                        font-size: 10px;
+                        font-family: 'Arial', sans-serif;
                         margin-bottom: 3px;
                       }
                       .footer-signature {
                         display: flex;
                         justify-content: space-between;
                         align-items: flex-end;
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         border-top: none;
                         padding: 10px;
-                        font-size: 12px;
-                        min-height: 40px;
-                        background: #f7fafc;
-                        color: #2d3748;
+                        font-size: 10px;
+                        min-height: 60px;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
                       }
                       .cashier-info {
-                        font-size: 11px;
+                        font-size: 10px;
+                        font-weight: bold;
                       }
                       .cashier-name {
                         font-weight: bold;
@@ -3555,9 +3540,11 @@ const Receipts = () => {
                       }
                       .page-number {
                         text-align: right;
-                        font-size: 11px;
-                        margin-top: 5px;
-                        color: #6c757d;
+                        font-size: 10px;
+                        margin-top: 4px;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
                       }
                       @media print {
                         @page {
@@ -3576,7 +3563,7 @@ const Receipts = () => {
                     <div class="receipts-wrapper">
                       <div class="receipt-container">
                         <div class="receipt-header-box">
-                          <div class="duplicate-label">ORIGINAL</div>
+                          
                           <div class="institute-header-simple">
                             <div class="logo-left">
                               <img src="/logo1.png" alt="Logo" />
@@ -3602,20 +3589,20 @@ const Receipts = () => {
                             <td class="value-cell">: ${receiptData.date}</td>
                           </tr>
                           <tr>
-                            <td class="label-cell">Class</td>
-                            <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
+                            <td class="label-cell" style="font-weight: bold">Class</td>
+                            <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
                             <td class="label-cell">Adm. No.</td>
                             <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
                           </tr>
                           <tr>
                             <td class="label-cell">Category</td>
-                            <td class="value-cell">: ${receiptData.student?.caste || 'N/A'}</td>
+                            <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
                             <td class="label-cell">Student Id.</td>
                             <td class="value-cell">: ${receiptData.student?.studentId}</td>
                           </tr>
                           <tr>
-                            <td class="label-cell">Name</td>
-                            <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+                            <td class="label-cell" style="font-weight: bold">Name</td>
+                            <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
                           </tr>
                           <tr>
                             <td class="label-cell">Roll No</td>
@@ -3633,52 +3620,72 @@ const Receipts = () => {
                         <div class="fee-details-table">
                           <table>
                             <tbody>
-                              ${receiptData.multipleFees && receiptData.multipleFees.length > 0
-                                ? receiptData.multipleFees.map(fee => 
-                                    `<tr>
-                                      <td class="fee-name">${fee.feeHead}</td>
-                                      <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    </tr>`
-                                  ).join('')
-                                : `<tr>
+                              ${
+                                receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
+                                  ? receiptData.selectedFeeCategories
+                                      .filter(category => parseFloat(category.amount) > 0)
+                                      .map(
+                                        (category, index) => `
+                                  <tr>
+                                    <td class="fee-name">${category.name}</td>
+                                    <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  </tr>
+                                `
+                                      )
+                                      .join("")
+                                  : receiptData.multipleFees && receiptData.multipleFees.length > 0
+                                  ? receiptData.multipleFees
+                                      .map(
+                                        (fee, index) => `
+                                  <tr>
+                                    <td class="fee-name">${fee.feeHead}</td>
+                                    <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  </tr>
+                                `
+                                      )
+                                      .join("")
+                                  : `
+                                  <tr>
                                     <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
                                     <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                  </tr>`
+                                  </tr>
+                                `
                               }
                             </tbody>
                           </table>
+                          <div class="logo-section">
+                            <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+                          </div>
                         </div>
 
-                        <div class="logo-section">
-                          <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
-                        </div>
+                        <div class="summary-box">
+                          <div class="total-section">
+                            <div class="total-label">Total :</div>
+                            <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          </div>
 
-                        <div class="total-section">
-                          <div class="total-label">Total :</div>
-                          <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </div>
+                          <div class="amount-in-words">
+                            <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))}
+                          </div>
 
-                        <div class="amount-in-words">
-                          <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
-                        </div>
+                          <div class="payment-details-footer">
+                            <div class="payment-info">Med : ENG, Subject : BSE1-1T,BSE1-2T,BSE1-3T,BSE1-4T,BSE1-5T,BSE1-6T,<br>BSE1-2P,BSE1-3P,BSE1-4P,BSE1-5P</div>
+                            ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
+                              ? `<div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
+                                 <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>`
+                              : ''
+                            }
+                            <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
+                          </div>
 
-                        <div class="payment-details-footer">
-                          <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
-                          ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
-                            ? `<div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
-                               <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>`
-                            : ''
-                          }
-                          <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
-                        </div>
+                          <div class="footer-signature">
+                            <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
+                            <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
+                            <div class="signature-label">RECEIVER'S SIGNATURE</div>
+                          </div>
 
-                        <div class="footer-signature">
-                          <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
-                          <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
-                          <div class="signature-label">RECEIVER'S SIGNATURE</div>
+                          <div class="page-number">Page 1 of 1</div>
                         </div>
-
-                        <div class="page-number">Page 1 of 1</div>
                       </div>
                     </div>
                   `
@@ -3709,18 +3716,18 @@ const Receipts = () => {
 };
 
 // Helper function to convert number to words
-const numberToWords = (num) => {
+const numberToWords = (num, addOnly = true) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
   const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
 
-  if (num === 0) return 'Zero';
+  if (num === 0) return addOnly ? 'Zero Only' : 'Zero';
 
   let words = '';
   
   // Handle thousands
   if (Math.floor(num / 1000) > 0) {
-    words += numberToWords(Math.floor(num / 1000)) + ' Thousand ';
+    words += numberToWords(Math.floor(num / 1000), false) + ' Thousand ';
     num %= 1000;
   }
   
@@ -3742,7 +3749,7 @@ const numberToWords = (num) => {
     }
   }
   
-  return words.trim() + ' Only';
+  return addOnly ? words.trim() + ' Only' : words.trim();
 };
 
 export default Receipts;

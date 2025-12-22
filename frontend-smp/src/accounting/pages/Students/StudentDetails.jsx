@@ -671,11 +671,29 @@ export default function StudentDetails() {
                         <h3 className="font-bold text-blue-900 mb-3 flex items-center text-lg">
                           💰 Department Fee Heads
                           <span className="ml-2 bg-blue-200 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
-                            {fee.heads.length} items
+                            {(() => {
+                              // Filter out tuition fees for students from reserved castes
+                              const isReservedCaste = ['sc', 'st', 'obc', 'nt', 'vjnt', 'sbc','djnt'].includes(
+                                selectedStudent.casteCategory?.toLowerCase().trim()
+                              );
+                              const filteredHeads = isReservedCaste
+                                ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                                : fee.heads;
+                              return filteredHeads.length;
+                            })()} items
                           </span>
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {fee.heads.map((h, i) => (
+                          {(() => {
+                            // Filter out tuition fees for students from reserved castes
+                            const isReservedCaste = ['sc', 'st', 'obc', 'nt', 'vjnt', 'sbc'].includes(
+                              selectedStudent.casteCategory?.toLowerCase().trim()
+                            );
+                            const filteredHeads = isReservedCaste
+                              ? fee.heads.filter(h => !h.head?.toLowerCase().includes('tuition'))
+                              : fee.heads;
+                            return filteredHeads;
+                          })().map((h, i) => (
                             <div
                               key={i}
                               className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm"
