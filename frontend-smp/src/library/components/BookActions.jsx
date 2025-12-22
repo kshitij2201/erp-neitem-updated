@@ -2094,14 +2094,45 @@ const BookActions = () => {
           (returnDate - issueDate) / (1000 * 60 * 60 * 24)
         );
 
+        // Resolve borrower name if missing in returned record (try multiple fallbacks)
+        let resolvedBorrowerName =
+          returnedBook?.borrowerName || returnedBook?.studentName || returnedBook?.name || formData.borrowerName || "";
+
+        if (!resolvedBorrowerName) {
+          try {
+            if (formData.borrowerType === "student") {
+              const resp = await axios.get(
+                `https://backenderp.tarstech.in/api/students/enrollment/${encodeURIComponent(
+                  borrowerId
+                )}`,
+                { headers: getAuthHeaders() }
+              );
+              const sd = resp.data;
+              if (sd) {
+                resolvedBorrowerName = [sd.firstName, sd.middleName, sd.lastName]
+                  .filter(Boolean)
+                  .join(" ");
+              }
+            } else {
+              const resp = await axios.get(
+                "https://backenderp.tarstech.in/api/faculty/faculties",
+                { headers: getAuthHeaders() }
+              );
+              const faculty = resp.data.find((f) => f.employeeId == borrowerId);
+              if (faculty) resolvedBorrowerName = faculty.name || faculty.firstName;
+            }
+          } catch (e) {
+            console.warn("Could not resolve borrower name:", e?.message || e);
+          }
+        }
+
         // Prepare return book details for modal
         const returnBookDetails = {
           ACCNO: selectedBookId,
           bookTitle: returnedBook?.bookTitle || "Unknown Title",
           author: returnedBook?.author || "Unknown Author",
           publisher: returnedBook?.publisher || "Unknown Publisher",
-          borrowerName:
-            returnedBook?.borrowerName || formData.borrowerName || "Unknown",
+          borrowerName: resolvedBorrowerName || "Unknown",
           borrowerId: borrowerId,
           borrowerType: formData.borrowerType,
           department:

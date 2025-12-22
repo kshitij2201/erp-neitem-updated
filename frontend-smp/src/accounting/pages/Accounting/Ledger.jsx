@@ -457,7 +457,7 @@ export default function Ledger() {
     // Fetch receipts data (all entries) and fee heads in parallel
     Promise.all([
       // Fetch ALL receipts with very high limit to ensure we get everything
-      fetch("http://localhost:4000/api/receipts?limit=999999", { headers }).then(
+      fetch("https://backenderp.tarstech.in/api/receipts?limit=999999", { headers }).then(
         (res) => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -465,7 +465,7 @@ export default function Ledger() {
           return res.json();
         }
       ),
-      fetch("http://localhost:4000/api/ledger", { headers }).then(
+      fetch("https://backenderp.tarstech.in/api/ledger", { headers }).then(
         (res) => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
