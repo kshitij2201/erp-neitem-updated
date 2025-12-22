@@ -286,19 +286,41 @@ const Analytics = () => {
               book.materialType === "journal" || book.SERIESCODE === "JOURNAL"
           ).length;
 
-          // Generate most borrowed books (mock for now, as we don't have borrow history)
-          const mockMostBorrowedBooks = fetchedBooks
-            .slice(0, 5)
-            .map((book, index) => ({
+          // Fetch real borrow counts from issues overview
+          let mostBorrowedBooks = [];
+          try {
+            const ov = await fetch("https://backenderp.tarstech.in/api/issues/overview");
+            if (ov.ok) {
+              const json = await ov.json();
+              mostBorrowedBooks = (json.books || [])
+                .filter((b) => b.title && b.title !== 'Unknown Title' && b.title.trim() !== '')
+                .slice(0, 5)
+                .map((b) => ({
+                  bookId: b.bookId || b._id,
+                  title: b.title,
+                  borrowCount: b.borrowCount || 0,
+                  lastBorrowed: b.lastBorrowed || null,
+                }));
+            } else {
+              console.warn('Analytics: /issues/overview not available', ov.status);
+            }
+          } catch (err) {
+            console.warn('Analytics: error fetching /issues/overview', err);
+          }
+
+          // Fallback: if no data, show zeroed list from API books
+          if (!mostBorrowedBooks || mostBorrowedBooks.length === 0) {
+            mostBorrowedBooks = fetchedBooks.slice(0, 5).map((book) => ({
               bookId: book._id,
               title: book.TITLENAME || "Unknown Title",
-              borrowCount: Math.floor(Math.random() * 50) + (50 - index * 5), // Decreasing pattern
+              borrowCount: 0,
             }));
+          }
 
           const realAnalyticsData = {
             totalBooks,
             journalBooks,
-            mostBorrowedBooks: mockMostBorrowedBooks,
+            mostBorrowedBooks,
           };
 
           // Mock books borrowed by month data (since we don't have borrow history yet)
