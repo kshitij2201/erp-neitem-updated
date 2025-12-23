@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
+
 export default function StudentDetails() {
   const [students, setStudents] = useState([]); // Current page students
   const [feeData, setFeeData] = useState({});
@@ -99,7 +101,7 @@ export default function StudentDetails() {
         batch.map(async (student) => {
           try {
             const res = await axios.get(
-              `/api/insurance/student/${student._id}`,
+              `${API_BASE_URL}/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data || [];
@@ -198,7 +200,7 @@ export default function StudentDetails() {
 
           // Fetch department-specific fee heads from FeeHeads API
           const feeRes = await axios.get(
-            `/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
+            `${API_BASE_URL}/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
             { headers }
           );
           const departmentFees = feeRes.data;
@@ -214,7 +216,7 @@ export default function StudentDetails() {
 
           // Fetch all payments for the student
           const paymentsRes = await axios.get(
-            `/api/payments/student/${student._id}`,
+            `${API_BASE_URL}/api/payments/student/${student._id}`,
             { headers }
           );
           const payments = paymentsRes.data;
@@ -288,7 +290,7 @@ export default function StudentDetails() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("/api/accounts/financial-summary", { headers });
+      const response = await axios.get(`${API_BASE_URL}/api/accounts/financial-summary`, { headers });
 
       setFinancialSummary(response.data);
     } catch (err) {
@@ -319,7 +321,7 @@ export default function StudentDetails() {
 
         // Fetch students with server-side pagination
         const res = await axios.get(
-          "/api/students/public",
+          `${API_BASE_URL}/api/students/public`,
           {
             params: { 
               search: debouncedSearchTerm,
@@ -461,7 +463,7 @@ export default function StudentDetails() {
 
       // Update the fee head amount
       await axios.put(
-        `/api/fees/update`,
+        `${API_BASE_URL}/api/fees/update`,
         {
           stream: studentStream,
           branch: feeHead.branch,
