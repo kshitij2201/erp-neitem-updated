@@ -675,7 +675,24 @@ export default function StudentDetails() {
                           </span>
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {fee.heads.map((h, i) => (
+                          {fee.heads
+                            .filter((h) => {
+                              // Filter out tuition fees for reserved caste students and female students
+                              const studentCaste = selectedStudent.casteCategory?.toUpperCase() || '';
+                              const studentGender = selectedStudent.gender?.toLowerCase() || '';
+                              const isReservedCaste = ['SC', 'ST', 'NT', 'SBC', 'VJNT'].includes(studentCaste);
+                              const isFemale = studentGender === 'female' || studentGender === 'f';
+                              const isTuitionFee = h.head?.toLowerCase().trim() === 'tuition fees';
+                              
+                              // Hide tuition fees if student is from reserved caste OR is female
+                              if ((isReservedCaste || isFemale) && isTuitionFee) {
+                                console.log(`Hiding tuition fees for student: ${selectedStudent.firstName} ${selectedStudent.lastName}, Caste: ${studentCaste}, Gender: ${studentGender}, Reserved: ${isReservedCaste}, Female: ${isFemale}`);
+                                return false;
+                              }
+                              
+                              return true;
+                            })
+                            .map((h, i) => (
                             <div
                               key={i}
                               className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm"

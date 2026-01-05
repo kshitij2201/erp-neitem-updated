@@ -60,6 +60,7 @@ router.post("/updatepassword", updatePassword);
 router.put("/update/:email", updateFaculty);
 router.delete("/delete/:facultyId", deleteFaculty);
 router.post("/getstudent", getStudent);
+router.get("/", getFaculties); // Root endpoint to get all faculties
 router.get("/faculties", getFaculties);
 router.get("/last-id", getLastEmployeeId);
 router.get("/hod-history", getHodHistory);
@@ -786,6 +787,53 @@ router.get("/dashboard/data", protect, async (req, res) => {
   } catch (err) {
     console.error('Faculty dashboard data error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Faculty search route - search by employeeId or name
+router.get("/search/:identifier", async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    console.log("[Faculty Search] Searching for:", identifier);
+
+    // Try to find by employeeId first
+    let faculty = await Faculty.findOne({ employeeId: identifier });
+
+    // If not found, try to find by name (case-insensitive)
+    if (!faculty) {
+      faculty = await Faculty.findOne({
+        $or: [
+          { name: new RegExp(`^${identifier}$`, 'i') },
+          { firstName: new RegExp(`^${identifier}$`, 'i') },
+          {
+            $expr: {
+              $regexMatch: {
+                input: { $concat: ["$firstName", " ", "$lastName"] },
+                regex: identifier,
+                options: "i"
+              }
+            }
+          }
+        ]
+      });
+    }
+
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: `Faculty member "${identifier}" not found`
+      });
+    }
+
+    console.log("[Faculty Search] Found faculty:", faculty.employeeId);
+    res.json(faculty);
+  } catch (err) {
+    console.error("[Faculty Search] Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error searching for faculty",
+      error: err.message
+    });
   }
 });
 

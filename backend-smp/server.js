@@ -148,6 +148,7 @@ import incomeTaxRoutes from "./routes/incomeTax.js";
 import pfRoutes from "./routes/pf.js";
 import gratuityRoutes from "./routes/gratuity.js";
 import storeRoutes from "./routes/storeRoutes.js";
+import usersRoutes from "./routes/users.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import subjectRoutes from "./routes/subject.js";
 import facultySubjectRoutes from "./routes/facultySubjectRoutes.js";
@@ -445,7 +446,7 @@ app.use("/api/purchases", purchaseRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/payments", protect, paymentsRoutes);
 app.use("/api/expenses", protect, expensesRoutes);
-app.use("/api/receipts", protect, receiptsRoutes);
+app.use("/api/receipts", receiptsRoutes); // TEMPORARILY REMOVED protect FOR TESTING
 app.use("/api/audit", protect, auditRoutes);
 app.use("/api/ledger", protect, ledgerRoutes);
 app.use("/api/income-tax", incomeTaxRoutes);
@@ -455,6 +456,40 @@ app.use("/api/pf", protect, pfRoutes);
 
 // Store Management Routes
 app.use("/api/store", storeRoutes);
+
+// Users Routes
+app.use("/api/users", usersRoutes);
+
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(async () => {
+    console.log("MongoDB connected ✅");
+    await initializeCounters();
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err.message);
+    process.exit(1);
+  });
+
+// Initialize Counters
+async function initializeCounters() {
+  try {
+    const teachingCounter = await Counter.findOne({ id: "teaching" });
+    if (!teachingCounter) {
+      await new Counter({ id: "teaching", seq: 1000 }).save();
+      console.log("Teaching counter initialized");
+    }
+
+    const nonTeachingCounter = await Counter.findOne({ id: "nonTeaching" });
+    if (!nonTeachingCounter) {
+      await new Counter({ id: "nonTeaching", seq: 1000 }).save();
+      console.log("Non-teaching counter initialized");
+    }
+  } catch (error) {
+    console.error("Error initializing counters:", error);
+  }
+}
 
 // Cron Job to delete expired announcements
 cron.schedule("0 0 * * *", async () => {

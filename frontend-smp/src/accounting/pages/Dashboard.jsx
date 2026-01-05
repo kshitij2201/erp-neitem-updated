@@ -51,7 +51,7 @@ export default function Dashboard() {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
       try {
-        const res = await fetch(url, { signal: controller.signal, ...opts });
+        const res = await fetch(url, { ...opts, signal: controller.signal });
         clearTimeout(id);
         return res;
       } catch (err) {
@@ -66,6 +66,12 @@ export default function Dashboard() {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const response = await fetchWithTimeout(url, { headers }, timeout);
         if (!response || !response.ok) {
+          if (response && response.status === 401) {
+            console.error(`Authentication required for ${url}. Please log in.`);
+            // Optionally redirect to login or clear invalid token
+            // localStorage.removeItem("token");
+            // window.location.href = "/accounting/login";
+          }
           console.warn(`API ${url} returned ${response ? response.status : "no-response"}`);
           return defaultValue;
         }

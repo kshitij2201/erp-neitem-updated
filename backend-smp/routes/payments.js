@@ -491,7 +491,9 @@ router.post('/', async (req, res) => {
       admissionCategory,
       examType,
       examSemester,
-      examSubjectCount
+      examSubjectCount,
+      selectedFeeCategories,
+      multipleFees
     } = req.body;
 
     // Validate required fields
@@ -573,7 +575,10 @@ router.post('/', async (req, res) => {
       admissionCategory: admissionCategory || undefined,
       examType: examType || undefined,
       examSemester: examSemester ? parseInt(examSemester) : undefined,
-      examSubjectCount: examSubjectCount ? parseInt(examSubjectCount) : undefined
+      examSubjectCount: examSubjectCount ? parseInt(examSubjectCount) : undefined,
+      // Fee categories
+      selectedFeeCategories: selectedFeeCategories || [],
+      multipleFees: multipleFees || []
     });
 
     console.log('🔍 UTR Debug - Received from form:', utr);
