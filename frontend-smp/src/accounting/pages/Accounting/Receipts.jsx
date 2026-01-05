@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-// Use ExcelJS browser-friendly build to avoid CJS resolution issues with Vite
-import ExcelJS from 'exceljs/dist/exceljs.min.js';
+import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 const API_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
@@ -29,16 +28,7 @@ const Receipts = () => {
   });
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
-<<<<<<< HEAD
-  const [exportLoading, setExportLoading] = useState(false);
-  const [showExportFormModal, setShowExportFormModal] = useState(false);
-  const [exportForm, setExportForm] = useState({
-    feeType: "",
-    stream: "",
-    department: "",
-    year: "",
-  });
-=======
+
   const [showExportForm, setShowExportForm] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportFormData, setExportFormData] = useState({
@@ -48,9 +38,14 @@ const Receipts = () => {
     semester: '',
     feeTypes: []
   });
+  const [exportForm, setExportForm] = useState({
+    feeType: "",
+    stream: "",
+    department: "",
+    year: "",
+  });
   const [semesters, setSemesters] = useState([]);
   const [semestersLoading, setSemestersLoading] = useState(false);
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
 
   useEffect(() => {
     fetchReceipts();
@@ -1961,7 +1956,7 @@ const Receipts = () => {
     }
   };
 
-<<<<<<< HEAD
+
   // Handle export form submission
   const handleExportFormSubmit = async () => {
     const { feeType, stream, department, year } = exportForm;
@@ -1978,7 +1973,7 @@ const Receipts = () => {
     }
 
     setExportLoading(true);
-    setShowExportFormModal(false);
+    setShowExportForm(false);
 
     try {
       const token = localStorage.getItem("token");
@@ -2235,8 +2230,8 @@ const Receipts = () => {
     }
   };
 
-=======
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
+
+
   // Fetch student data and export professionally by department
   const fetchAndExportStudentData = async (type) => {
     try {
@@ -2760,13 +2755,13 @@ const Receipts = () => {
           body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
-<<<<<<< HEAD
+
             padding: 5px; 
             background: white;
             line-height: 1.4;
             color: #000;
             font-size: 9px;
-=======
+
             padding: 3px; 
             background: white;
             line-height: 1.4;
@@ -2777,7 +2772,7 @@ const Receipts = () => {
           /* Ensure all receipt elements use the smaller base size */
           .receipt-container, .receipt-container * {
             font-size: 10px !important;
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
+
           }
           .receipts-wrapper {
             display: flex;
@@ -2789,7 +2784,7 @@ const Receipts = () => {
           }
           .receipt-container {
             width: 49%;
-<<<<<<< HEAD
+
             max-width: 500px;
             border: 1px solid #000;
             background: white;
@@ -2798,21 +2793,21 @@ const Receipts = () => {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             page-break-inside: avoid;
             min-height: 650px;
-=======
+
             border: 1px solid #000;
             background: white;
             padding: 8px;
             page-break-inside: avoid;
             min-height: 700px;
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
+
             height: auto;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-<<<<<<< HEAD
-=======
+
+
             position: relative;
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
+
           }
           .receipt-header-box {
             border: 1px solid #000;
@@ -3052,7 +3047,7 @@ const Receipts = () => {
       </head>
       <body>
         <div class="receipts-wrapper">
-<<<<<<< HEAD
+
           <!-- ORIGINAL RECEIPT -->
           <div class="receipt-container">
             <div class="receipt-header-box">
@@ -3246,10 +3241,10 @@ const Receipts = () => {
               <div class="signature-label">RECEIVER'S SIGNATURE</div>
             </div>
           </div>
-=======
+
           ${generateReceipt("OFFICE COPY")}
           ${generateReceipt("STUDENT COPY")}
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
+
         </div>
       </body>
       </html>
@@ -3310,17 +3305,10 @@ const Receipts = () => {
             
             {/* Export Overview Button */}
             <button
-<<<<<<< HEAD
-              onClick={() => setShowExportFormModal(true)}
-              disabled={exportLoading}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-2 transition-colors duration-200 disabled:opacity-50"
-              title="Export receipts overview"
-=======
               onClick={() => setShowExportForm(true)}
               disabled={exportLoading}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-2 transition-colors duration-200 disabled:opacity-50"
               title="Export student data with filters"
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
             >
               <span>{exportLoading ? '🔄 Exporting...' : '📊 Export Overview'}</span>
             </button>
@@ -3772,7 +3760,7 @@ const Receipts = () => {
       )}
 
       {/* Export Form Modal */}
-      {showExportFormModal && (
+      {showExportForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
             <div className="bg-gradient-to-r from-green-600 to-green-800 text-white p-6 rounded-t-lg flex justify-between items-center">
@@ -3782,8 +3770,8 @@ const Receipts = () => {
               </h2>
               <button
                 onClick={() => {
-                  setShowExportFormModal(false);
-                  setExportForm({ feeType: "", stream: "", department: "", year: "" });
+                  setShowExportForm(false);
+                  setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
                 }}
                 className="text-white hover:text-gray-200 transition-colors duration-200"
               >
@@ -3878,8 +3866,8 @@ const Receipts = () => {
             <div className="border-t border-gray-200 p-6 flex justify-end space-x-4 bg-gray-50">
               <button
                 onClick={() => {
-                  setShowExportFormModal(false);
-                  setExportForm({ feeType: "", stream: "", department: "", year: "" });
+                  setShowExportForm(false);
+                  setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
                 }}
                 className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors duration-200"
               >
@@ -3933,14 +3921,14 @@ const Receipts = () => {
                       body {
                         font-family: Arial, sans-serif;
                         margin: 0;
-<<<<<<< HEAD
+
                         padding: 15px;
                         background: #f8f9fa;
                         line-height: 1.5;
                         color: #2d3748;
                         font-size: 12px;
                         font-weight: 400;
-=======
+
                         padding: 3px;
                         background: white;
                         line-height: 1.4;
@@ -3951,7 +3939,7 @@ const Receipts = () => {
                       /* Ensure all receipt elements use the smaller base size */
                       .receipt-container, .receipt-container * {
                         font-size: 10px !important;
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
+
                       }
                       .receipts-wrapper {
                         display: flex;

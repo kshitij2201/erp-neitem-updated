@@ -457,7 +457,6 @@ app.use("/api/pf", protect, pfRoutes);
 // Store Management Routes
 app.use("/api/store", storeRoutes);
 
-<<<<<<< HEAD
 // Users Routes
 app.use("/api/users", usersRoutes);
 
@@ -492,8 +491,6 @@ async function initializeCounters() {
   }
 }
 
-=======
->>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
 // Cron Job to delete expired announcements
 cron.schedule("0 0 * * *", async () => {
   try {
