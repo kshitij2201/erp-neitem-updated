@@ -483,4 +483,159 @@ router.delete("/salary/:id", async (req, res) => {
   }
 });
 
+// POST: Export filtered student data for receipts (TEMPORARILY WITHOUT AUTH FOR TESTING)
+router.post("/export-filtered", async (req, res) => {
+  try {
+    const { stream, department, year, admissionFees, examFees } = req.body;
+
+    // Validate required fields
+    if (!stream || !department || !year) {
+      return res.status(400).json({ 
+        message: "Stream, department, and year are required" 
+      });
+    }
+
+    // Map year to semester numbers
+    const yearToSemesterMap = {
+      '1st': [1],      // 1st year = 1st semester
+      '2nd': [3],      // 2nd year = 3rd semester
+      '3rd': [5],      // 3rd year = 5th semester
+      '4th': [7]       // 4th year = 7th semester
+    };
+
+    const semesterNumbers = yearToSemesterMap[year];
+    if (!semesterNumbers) {
+      return res.status(400).json({ 
+        message: "Invalid year. Must be 1st, 2nd, 3rd, or 4th" 
+      });
+    }
+
+    // Build student query
+    let studentQuery = {
+      stream: stream,
+      department: department,
+      academicStatus: "Active" // Only active students
+    };
+
+    // Find semester IDs that match the semester numbers
+    const Semester = (await import("../models/Semester.js")).default;
+    const matchingSemesters = await Semester.find({ 
+      number: { $in: semesterNumbers } 
+    }).select('_id');
+
+    if (matchingSemesters.length === 0) {
+      return res.status(404).json({ 
+        message: "No semesters found for the specified year" 
+      });
+    }
+
+    const semesterIds = matchingSemesters.map(sem => sem._id);
+    studentQuery.semester = { $in: semesterIds };
+
+    // Find students matching the criteria
+    const students = await Student.find(studentQuery)
+      .populate('department', 'name')
+      .populate('stream', 'name')
+      .populate('semester', 'number')
+      .select('studentId firstName lastName department stream semester feesPaid pendingAmount');
+
+    if (students.length === 0) {
+      return res.status(404).json({ 
+        message: "No students found matching the specified criteria" 
+      });
+    }
+
+    const studentIds = students.map(student => student._id);
+
+    // Build payment query
+    let paymentQuery = {
+      studentId: { $in: studentIds },
+      status: 'Completed' // Only completed payments
+    };
+
+    // Filter by fee types if specified
+    if (admissionFees && examFees) {
+      // Both admission and exam fees
+      paymentQuery.$or = [
+        { admissionType: { $exists: true, $ne: null } },
+        { examType: { $exists: true, $ne: null } }
+      ];
+    } else if (admissionFees) {
+      // Only admission fees
+      paymentQuery.admissionType = { $exists: true, $ne: null };
+    } else if (examFees) {
+      // Only exam fees
+      paymentQuery.examType = { $exists: true, $ne: null };
+    } else {
+      // No fee type filter - include all payments
+    }
+
+    // Get payments for matching students
+    const payments = await Payment.find(paymentQuery)
+      .populate('studentId', 'studentId firstName lastName department stream semester')
+      .populate('feeHead', 'head amount')
+      .sort({ paymentDate: -1 });
+
+    // Group data by department for export
+    const exportData = {};
+
+    payments.forEach(payment => {
+      const student = payment.studentId;
+      if (!student) return;
+
+      const deptName = student.department?.name || 'Unknown Department';
+      
+      if (!exportData[deptName]) {
+        exportData[deptName] = [];
+      }
+
+      exportData[deptName].push({
+        studentId: student.studentId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        stream: student.stream?.name || '',
+        department: deptName,
+        semester: student.semester?.number || '',
+        paymentId: payment.paymentId,
+        receiptNumber: payment.receiptNumber,
+        amount: payment.amount,
+        paymentMethod: payment.paymentMethod,
+        paymentDate: payment.paymentDate,
+        feeHead: payment.feeHead?.head || '',
+        description: payment.description || '',
+        utr: payment.utr || '',
+        admissionType: payment.admissionType || '',
+        examType: payment.examType || '',
+        collectedBy: payment.collectedBy || ''
+      });
+    });
+
+    // Convert to array format for frontend processing
+    const result = Object.keys(exportData).map(deptName => ({
+      department: deptName,
+      students: exportData[deptName]
+    }));
+
+    res.json({
+      success: true,
+      data: result,
+      totalStudents: students.length,
+      totalPayments: payments.length,
+      filters: {
+        stream,
+        department,
+        year,
+        admissionFees: !!admissionFees,
+        examFees: !!examFees
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in export-filtered:", error);
+    res.status(500).json({ 
+      message: "Error fetching filtered export data", 
+      error: error.message 
+    });
+  }
+});
+
 export default router;

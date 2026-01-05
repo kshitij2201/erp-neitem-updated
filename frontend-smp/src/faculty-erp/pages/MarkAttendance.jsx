@@ -107,6 +107,9 @@ export default function MarkAttendance() {
   const [monthlyClassAttendance, setMonthlyClassAttendance] = useState(null);
   const [monthlyAttendanceLoading, setMonthlyAttendanceLoading] =
     useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [existingAttendance, setExistingAttendance] = useState({});
+  const [loadingExistingAttendance, setLoadingExistingAttendance] = useState(false);
 
   const logsRef = useRef(null);
 
@@ -168,7 +171,7 @@ export default function MarkAttendance() {
         type: "day",
         date: today,
         page: 1,
-        limit: 1,
+        limit: 1000, // Get all students' attendance for today
       };
 
       const response = await api.get("/faculty/attendance/query", { params });
@@ -179,6 +182,25 @@ export default function MarkAttendance() {
         response.data.data.length > 0
       ) {
         setAttendanceMarkedToday(true);
+        setEditMode(true);
+
+        // Store existing attendance records by student ID
+        const attendanceMap = {};
+        response.data.data.forEach(record => {
+          // Try multiple ways to get student ID
+          const studentId = record.studentId || record.student?._id || record.student;
+          if (studentId) {
+            attendanceMap[studentId] = {
+              id: record._id,
+              status: record.status,
+              date: record.date
+            };
+          }
+        });
+        
+        console.log("Existing attendance loaded:", attendanceMap);
+        console.log("Total records:", response.data.data.length);
+        setExistingAttendance(attendanceMap);
 
         // Calculate today's class attendance percentage
         const todayRecords = response.data.data;
@@ -191,6 +213,8 @@ export default function MarkAttendance() {
         setTodayClassAttendance(classPercentage);
       } else {
         setAttendanceMarkedToday(false);
+        setEditMode(false);
+        setExistingAttendance({});
         setTodayClassAttendance(null);
       }
     } catch (error) {
@@ -584,6 +608,77 @@ export default function MarkAttendance() {
       const userData = JSON.parse(userDataStr);
       const facultyId = userData.employeeId;
 
+      // If in edit mode, update each student individually
+      if (editMode) {
+        console.log("Batch marking in edit mode - updating individual records");
+        
+        // Update all students individually
+        const updatePromises = students.map(async (student) => {
+          const isPresent = status === "present" 
+            ? selectedStudents.includes(student._id)
+            : !selectedStudents.includes(student._id);
+          
+          const newStatus = isPresent ? "present" : "absent";
+          
+          // Check if student has existing attendance record
+          const existingRecord = existingAttendance[student._id];
+          
+          if (existingRecord) {
+            // Update existing record only if status changed
+            if (existingRecord.status !== newStatus) {
+              return api.put(
+                `/attendance/${existingRecord.id}`,
+                { status: newStatus },
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+            }
+          } else {
+            // Create new record for students who don't have attendance yet
+            return api.post(
+              "/attendance",
+              {
+                student: student._id,
+                subject: expandedSubject,
+                faculty: facultyId,
+                status: newStatus,
+                date: new Date().toISOString().split("T")[0],
+                semester: student.semester?._id || student.semester,
+                department: student.department?._id || student.department,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          }
+        });
+
+        await Promise.all(updatePromises.filter(p => p)); // Filter out undefined promises
+
+        // Calculate overall class attendance percentage
+        const totalStudents = students.length;
+        const presentCount =
+          status === "present"
+            ? selectedStudents.length
+            : totalStudents - selectedStudents.length;
+        const classAttendancePercent =
+          totalStudents > 0
+            ? Math.round((presentCount / totalStudents) * 100)
+            : 0;
+
+        alert(
+          `Attendance updated successfully! Today's Class Attendance: ${classAttendancePercent}%`
+        );
+        setSelectedStudents([]);
+        setTodayClassAttendance(classAttendancePercent);
+        
+        // Reload attendance to update UI
+        await checkTodayAttendance(expandedSubject);
+        fetchAttendanceStats(students, expandedSubject);
+        calculateMonthlyClassAttendance(expandedSubject);
+        
+        setIsUpdating(false);
+        return;
+      }
+
+      // Original batch marking logic for first-time marking
       // For the backend API, if status is "present", we send the selected students
       // If status is "absent", we need to send all other students as selected (inverse logic)
       let studentsToMarkPresent = [];
@@ -608,15 +703,11 @@ export default function MarkAttendance() {
           ? Math.round((presentCount / totalStudents) * 100)
           : 0;
 
-      // Optionally, you can send notes to backend by including them in attendanceData
-      // const notesForMarked = studentsToMarkPresent.reduce((acc, id) => { acc[id] = studentNotes[id] || ""; return acc; }, {});
-
       const attendanceData = {
         subjectId: expandedSubject,
         facultyId: facultyId,
         selectedStudents: studentsToMarkPresent,
         date: new Date().toISOString().split("T")[0],
-        // notes: notesForMarked, // Uncomment if backend supports notes
       };
 
       const response = await api.post(
@@ -634,8 +725,10 @@ export default function MarkAttendance() {
         setSelectedStudents([]);
         setAttendanceMarkedToday(true);
         setTodayClassAttendance(classAttendancePercent);
+        
+        // Reload attendance to enter edit mode
+        await checkTodayAttendance(expandedSubject);
         fetchAttendanceStats(students, expandedSubject);
-        // Recalculate monthly attendance after marking today's attendance
         calculateMonthlyClassAttendance(expandedSubject);
       } else {
         // Check if attendance was already marked
@@ -644,6 +737,8 @@ export default function MarkAttendance() {
             "Attendance has already been marked for today for this subject!"
           );
           setAttendanceMarkedToday(true);
+          // Reload to enter edit mode
+          await checkTodayAttendance(expandedSubject);
         } else {
           alert(response.data.message || "Failed to mark attendance");
         }
@@ -655,9 +750,95 @@ export default function MarkAttendance() {
       if (err.response?.status === 400 && err.response?.data?.alreadyMarked) {
         alert("Attendance has already been marked for today for this subject!");
         setAttendanceMarkedToday(true);
+        // Reload to enter edit mode
+        await checkTodayAttendance(expandedSubject);
       } else {
         alert("Failed to mark attendance. Please try again.");
       }
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const markIndividualAttendance = async (studentId, status) => {
+    try {
+      setIsUpdating(true);
+      const token = localStorage.getItem("authToken");
+      const userDataStr = localStorage.getItem("user");
+      const userData = JSON.parse(userDataStr);
+      const facultyId = userData.employeeId;
+      const today = new Date().toISOString().split("T")[0];
+
+      const existing = existingAttendance[studentId];
+      
+      console.log("Marking attendance for student:", studentId);
+      console.log("Existing record:", existing);
+      console.log("Status:", status);
+
+      if (existing) {
+        // Update existing record
+        console.log("Updating attendance record:", existing.id);
+        const response = await api.put(
+          `/attendance/${existing.id}`,
+          { status: status },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log("Update response:", response.data);
+        
+        // Immediately update the existingAttendance state
+        setExistingAttendance(prev => ({
+          ...prev,
+          [studentId]: {
+            ...prev[studentId],
+            status: status
+          }
+        }));
+        
+        alert(`Attendance updated to ${status} successfully!`);
+      } else {
+        // Create new record - Need to get semester and department from student
+        console.log("Creating new attendance record");
+        const student = students.find(s => s._id === studentId);
+        
+        if (!student) {
+          throw new Error("Student not found");
+        }
+        
+        const response = await api.post(
+          "/attendance",
+          {
+            student: studentId,
+            subject: expandedSubject,
+            faculty: facultyId,
+            status: status,
+            date: today,
+            semester: student.semester?._id || student.semester,
+            department: student.department?._id || student.department,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log("Create response:", response.data);
+        
+        // Add the new record to existingAttendance state
+        setExistingAttendance(prev => ({
+          ...prev,
+          [studentId]: {
+            id: response.data.attendance?._id || response.data._id,
+            status: status,
+            date: today
+          }
+        }));
+        
+        alert(`Attendance marked as ${status} successfully!`);
+      }
+
+      // Refresh attendance stats (but NOT the existingAttendance state - already updated above)
+      await fetchAttendanceStats(students, expandedSubject);
+      await calculateMonthlyClassAttendance(expandedSubject);
+    } catch (err) {
+      console.error("Error marking individual attendance:", err);
+      console.error("Error details:", err.response?.data);
+      alert(`Failed to mark attendance: ${err.response?.data?.message || err.message}`);
     } finally {
       setIsUpdating(false);
     }
@@ -1027,11 +1208,16 @@ export default function MarkAttendance() {
                 </div>
               ) : attendanceMarkedToday ? (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-700 font-medium">
-                      Attendance already marked for today
-                    </span>
+                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <span className="text-blue-800 font-semibold block">
+                        📝 Edit Mode - Attendance exists for today
+                      </span>
+                      <span className="text-blue-600 text-xs">
+                        You can update attendance for any student
+                      </span>
+                    </div>
                   </div>
                   {todayClassAttendance !== null && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1070,14 +1256,14 @@ export default function MarkAttendance() {
               )}
 
               {/* Batch Actions */}
-              {students.length > 0 && !attendanceMarkedToday && (
+              {students.length > 0 && (
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={selectAllStudents}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
                   >
                     {selectedStudents.length === students.length
-                      ? "Deselect All"
+                      ? "✓ Deselect All"
                       : "Select All"}
                   </button>
                   {selectedStudents.length > 0 && (
@@ -1085,18 +1271,26 @@ export default function MarkAttendance() {
                       <button
                         onClick={() => markAttendance("present")}
                         disabled={isUpdating}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 font-medium"
                       >
-                        <CheckCircle className="h-4 w-4" />
-                        Mark Present ({selectedStudents.length})
+                        {isUpdating ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4" />
+                        )}
+                        {editMode ? `Update to Present (${selectedStudents.length})` : `Mark Present (${selectedStudents.length})`}
                       </button>
                       <button
                         onClick={() => markAttendance("absent")}
                         disabled={isUpdating}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 font-medium"
                       >
-                        <XCircle className="h-4 w-4" />
-                        Mark Absent ({selectedStudents.length})
+                        {isUpdating ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        {editMode ? `Update to Absent (${selectedStudents.length})` : `Mark Absent (${selectedStudents.length})`}
                       </button>
                     </>
                   )}
@@ -1136,10 +1330,13 @@ export default function MarkAttendance() {
                       Overall %
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Today's Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Reason/Note
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
+                      Mark/Update
                     </th>
                   </tr>
                 </thead>
@@ -1257,58 +1454,46 @@ export default function MarkAttendance() {
                           )}
                         </td>
                         <td className="px-6 py-4">
+                          {existingAttendance[student._id] ? (
+                            <span
+                              className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                                existingAttendance[student._id].status === "present"
+                                  ? "bg-green-100 text-green-800 border border-green-300"
+                                  : "bg-red-100 text-red-800 border border-red-300"
+                              }`}
+                            >
+                              {existingAttendance[student._id].status === "present" ? "✓ Present" : "✗ Absent"}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-sm italic">Not marked</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
                           <input
                             type="text"
-                            className="w-full p-2 border border-gray-300 rounded"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             placeholder="Optional reason/note"
                             value={studentNotes[student._id] || ""}
                             onChange={(e) =>
                               handleNoteChange(student._id, e.target.value)
                             }
-                            disabled={attendanceMarkedToday}
                           />
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
                             <button
-                              onClick={() => {
-                                if (!attendanceMarkedToday) {
-                                  setSelectedStudents([student._id]);
-                                  markAttendance("present");
-                                }
-                              }}
-                              disabled={isUpdating || attendanceMarkedToday}
-                              className={`p-2 rounded-lg transition-colors ${
-                                attendanceMarkedToday
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  : "bg-green-100 hover:bg-green-200 text-green-700"
-                              } disabled:opacity-50`}
-                              title={
-                                attendanceMarkedToday
-                                  ? "Attendance already marked"
-                                  : "Mark Present"
-                              }
+                              onClick={() => markIndividualAttendance(student._id, "present")}
+                              disabled={isUpdating}
+                              className="p-2 rounded-lg transition-all bg-green-100 hover:bg-green-200 text-green-700 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={existingAttendance[student._id] ? "Update to Present" : "Mark Present"}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => {
-                                if (!attendanceMarkedToday) {
-                                  setSelectedStudents([student._id]);
-                                  markAttendance("absent");
-                                }
-                              }}
-                              disabled={isUpdating || attendanceMarkedToday}
-                              className={`p-2 rounded-lg transition-colors ${
-                                attendanceMarkedToday
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  : "bg-red-100 hover:bg-red-200 text-red-700"
-                              } disabled:opacity-50`}
-                              title={
-                                attendanceMarkedToday
-                                  ? "Attendance already marked"
-                                  : "Mark Absent"
-                              }
+                              onClick={() => markIndividualAttendance(student._id, "absent")}
+                              disabled={isUpdating}
+                              className="p-2 rounded-lg transition-all bg-red-100 hover:bg-red-200 text-red-700 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={existingAttendance[student._id] ? "Update to Absent" : "Mark Absent"}
                             >
                               <XCircle className="h-4 w-4" />
                             </button>

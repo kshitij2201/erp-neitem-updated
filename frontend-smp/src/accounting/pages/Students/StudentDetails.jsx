@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function StudentDetails() {
-  const [allStudents, setAllStudents] = useState([]); // Store all students for pagination
   const [students, setStudents] = useState([]); // Current page students
   const [feeData, setFeeData] = useState({});
   const [insuranceData, setInsuranceData] = useState({});
@@ -21,56 +20,10 @@ export default function StudentDetails() {
     pendingCollection: 0,
     facultySalaries: 0,
   });
-  const studentsPerPage = 10;
   const [totalStudents, setTotalStudents] = useState(0);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [exportType, setExportType] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-
-  const handleExportClick = async (type) => {
-    console.log('Export clicked:', type);
-    setShowExportDropdown(false);
-    
-    // Show loading feedback
-    setToastMessage('🔄 Fetching student data...');
-    setShowToast(true);
-    setExportLoading(true);
-    
-    try {
-      let studentList = [];
-      
-      if (type === 'current') {
-        // Use current page students
-        studentList = students;
-      } else {
-        // Use cached allStudents and filter by stream for better performance
-        const streamFilter = type === 'btech' ? 'B.Tech' : 'MBA';
-        studentList = allStudents.filter(s => {
-          const stream = s.stream?.name || s.stream || '';
-          return stream.toLowerCase().includes(streamFilter.toLowerCase());
-        });
-      }
-      
-      // Update toast message
-      setToastMessage('🔄 Fetching fee data...');
-      
-      // Export with real fee data like student box click
-      await openExcelView(studentList, type === 'current' ? null : (type === 'btech' ? 'B.Tech' : 'MBA'));
-      
-      // Success message
-      setToastMessage('✅ Export completed with real fee data!');
-      setTimeout(() => setShowToast(false), 2000);
-      
-    } catch (error) {
-      console.error('Export error:', error);
-      setToastMessage('❌ Export failed.');
-      setTimeout(() => setShowToast(false), 2000);
-    } finally {
-      setExportLoading(false);
-    }
-  };
+  const [editingFeeHead, setEditingFeeHead] = useState(null);
+  const [editingAmount, setEditingAmount] = useState("");
+  const studentsPerPage = 10;
 
   // Calculate pagination values
   const startIndex = (currentPage - 1) * studentsPerPage;
@@ -78,25 +31,6 @@ export default function StudentDetails() {
   const totalPages = Math.ceil(totalStudents / studentsPerPage);
 
   // Fetch financial summary on component mount
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showExportDropdown) {
-        const dropdown = event.target.closest('.absolute.top-full');
-        const button = event.target.closest('button');
-        const isExportButton = button && button.textContent.includes('Export Overview');
-        
-        if (!dropdown && !isExportButton) {
-          setShowExportDropdown(false);
-        }
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showExportDropdown]);
 
   useEffect(() => {
     fetchFinancialSummary();
@@ -128,88 +62,12 @@ export default function StudentDetails() {
   };
 
   // Update students when search or page changes
-  useEffect(() => {
-    const fetchStudents = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        // Get authentication token
-        const token = localStorage.getItem("token");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-        // Fetch all students for fast search and navigation
-        const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/public",
-          {
-            params: { 
-              search: debouncedSearchTerm,
-              limit: 50000, // Get all students
-              page: 1
-            }
-          }
-        );
-        
-        console.log('API Response:', res.data);
-        
-        // Parse all students response
-        let allStudentList = [];
-        
-        if (res.data) {
-          if (Array.isArray(res.data.data)) {
-            allStudentList = res.data.data;
-          } else if (Array.isArray(res.data.students)) {
-            allStudentList = res.data.students;
-          } else if (Array.isArray(res.data)) {
-            allStudentList = res.data;
-          }
-        }
-        
-        console.log('Parsed students:', allStudentList.length);
-        console.log('Search term used:', debouncedSearchTerm);
-        
-        // Store all students and calculate pagination
-        setAllStudents(allStudentList);
-        setTotalStudents(allStudentList.length);
-        
-        // Calculate current page students
-        const startIndex = (currentPage - 1) * studentsPerPage;
-        const endIndex = Math.min(startIndex + studentsPerPage, allStudentList.length);
-        const currentPageStudents = allStudentList.slice(startIndex, endIndex);
-        setStudents(currentPageStudents);
-        
-        // Start background fee data fetching for better user experience
-        if (allStudentList.length > 0) {
-          setTimeout(() => prefetchFeeDataInBackground(allStudentList), 500);
-        }
-        
-      } catch (err) {
-        console.error("API call failed:", err);
-        if (err.response?.status === 401) {
-          setError("Authentication failed. Please log in again.");
-        } else if (err.response?.status === 500) {
-          setError("Server error. Please try again later.");
-        } else if (err.code === "NETWORK_ERROR" || !err.response) {
-          setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
-          );
-        } else {
-          setError(
-            "Failed to load student data. Please check your backend server."
-          );
-        }
-        setAllStudents([]);
-        setStudents([]);
-        setTotalStudents(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudents();
-  }, [debouncedSearchTerm, currentPage]);
 
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
+    
+    // Semester data is already available from the populated student data
+    // No need to fetch separately
     
     // Fetch fee data for the selected student if not already available
     if (!feeData[student._id]) {
@@ -241,7 +99,7 @@ export default function StudentDetails() {
         batch.map(async (student) => {
           try {
             const res = await axios.get(
-              `https://backenderp.tarstech.in/api/insurance/student/${student._id}`,
+              `/api/insurance/student/${student._id}`,
               { headers }
             );
             insuranceMap[student._id] = res.data || [];
@@ -261,6 +119,9 @@ export default function StudentDetails() {
     const feesMap = {};
     const token = localStorage.getItem("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    // Semester data is now directly available from student objects
+    // No need to fetch from separate collection
 
     // Mapping from display format to database format (same as FeeHeads.jsx)
     const batchToDbFormat = {
@@ -314,12 +175,12 @@ export default function StudentDetails() {
       await Promise.all(
         batch.map(async (student) => {
         try {
-          // Get student details
+          // Get student details with semester directly from student object
           const studentStream = student.stream?.name || student.stream || 'B.Tech';
           const studentDepartment = student.department?.name || student.department || 'CS';
-          const currentSemester = student.currentSemester || 1;
+          const currentSemester = student.semester?.number || student.currentSemester?.number || 1;
 
-          // Calculate batch based on current semester
+          // Calculate batch based on current semester from database
           let yearDisplay = '1st Year'; // default
           if (currentSemester >= 7) yearDisplay = '4th Year';
           else if (currentSemester >= 5) yearDisplay = '3rd Year';
@@ -337,7 +198,7 @@ export default function StudentDetails() {
 
           // Fetch department-specific fee heads from FeeHeads API
           const feeRes = await axios.get(
-            `http://localhost:4000/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
+            `/api/fees?stream=${encodeURIComponent(studentStream)}&branch=${encodeURIComponent(branch)}&batch=${encodeURIComponent(studentBatch)}`,
             { headers }
           );
           const departmentFees = feeRes.data;
@@ -353,7 +214,7 @@ export default function StudentDetails() {
 
           // Fetch all payments for the student
           const paymentsRes = await axios.get(
-            `https://backenderp.tarstech.in/api/payments/student/${student._id}`,
+            `/api/payments/student/${student._id}`,
             { headers }
           );
           const payments = paymentsRes.data;
@@ -427,7 +288,7 @@ export default function StudentDetails() {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get("https://backenderp.tarstech.in/api/accounts/financial-summary", { headers });
+      const response = await axios.get("/api/accounts/financial-summary", { headers });
 
       setFinancialSummary(response.data);
     } catch (err) {
@@ -458,7 +319,7 @@ export default function StudentDetails() {
 
         // Fetch students with server-side pagination
         const res = await axios.get(
-          "https://backenderp.tarstech.in/api/students/public",
+          "/api/students/public",
           {
             params: { 
               search: debouncedSearchTerm,
@@ -502,7 +363,7 @@ export default function StudentDetails() {
           setError("Server error. Please try again later.");
         } else if (err.code === "NETWORK_ERROR" || !err.response) {
           setError(
-            "Cannot connect to server. Please check if the backend server is running on https://backenderp.tarstech.in"
+            "Cannot connect to server. Please check if the backend server is running on backenderp.tarstech.in"
           );
         } else {
           setError(
@@ -568,334 +429,58 @@ export default function StudentDetails() {
     }
   };
 
-  // Quick overview builder for instant export (no API calls)
-  const buildQuickOverviewRows = (studentList) => {
-    return studentList.map((s) => {
-      const name = `${s.firstName || ""} ${s.middleName ? s.middleName + " " : ""}${s.lastName || ""}`.trim();
-      const stream = s.stream?.name || s.stream || "N/A";
-      const department = s.department?.name || s.department || "N/A";
-      const casteCategory = s.casteCategory || "N/A";
-      const studentId = s.studentId || "N/A";
-      const enrollmentNumber = s.enrollmentNumber || "N/A";
-      const email = s.email || "N/A";
-      const gender = s.gender || "N/A";
-      const currentSemester = s.currentSemester || "N/A";
-      
-      // Use cached fee data if available, otherwise show "Not loaded"
-      const fees = feeData[s._id];
-      const total = fees ? Number(fees.total || 0) : "Not loaded";
-      const paid = fees ? Number(fees.paid || 0) : "Not loaded";
-      const pending = fees ? Number(fees.pending || 0) : "Not loaded";
-      
-      return { 
-        name, 
-        studentId, 
-        enrollmentNumber, 
-        email, 
-        stream, 
-        department, 
-        casteCategory, 
-        gender, 
-        currentSemester, 
-        total, 
-        paid, 
-        pending 
-      };
-    });
+  const handleEditFeeHead = (feeHead) => {
+    setEditingFeeHead(feeHead._id || feeHead.head);
+    setEditingAmount(feeHead.amount.toString());
   };
 
-  // Export current page's overview (open table view + CSV download) - ASYNC VERSION for detailed export
-  const buildOverviewRows = async (studentList) => {
-    // First ensure we have fee data for all students (like when clicking on student box)
-    const studentsNeedingFeeData = studentList.filter(s => !feeData[s._id]);
-    if (studentsNeedingFeeData.length > 0) {
-      await fetchFeeHeads(studentsNeedingFeeData);
-    }
-    
-    return studentList.map((s) => {
-      const name = `${s.firstName || ""} ${s.middleName ? s.middleName + " " : ""}${s.lastName || ""}`.trim();
-      const stream = s.stream?.name || s.stream || "N/A";
-      const department = s.department?.name || s.department || "N/A";
-      const casteCategory = s.casteCategory || "N/A";
-      
-      // Use the exact same fee data that appears when clicking on student box
-      const fees = feeData[s._id] || {
-        total: 0,
-        paid: 0,
-        pending: 0
-      };
-      
-      const total = Number(fees.total || 0);
-      const paid = Number(fees.paid || 0);
-      const pending = Number(fees.pending || (total - paid) || 0);
-      
-      return { name, stream, department, casteCategory, total, paid, pending };
-    });
+  const handleCancelEdit = () => {
+    setEditingFeeHead(null);
+    setEditingAmount("");
   };
 
-  const downloadCsv = (rows) => {
-    const headers = ["Student Name", "Stream", "Department", "Caste Category", "Total Fees", "Paid Fees", "Pending Fees"];
-    const csvLines = [headers.join(",")];
-    rows.forEach((r) => {
-      // Escape commas and quotes
-      const escape = (v) => {
-        if (v === null || v === undefined) return "";
-        const str = String(v);
-        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-          return '"' + str.replace(/"/g, '""') + '"';
-        }
-        return str;
-      };
-      csvLines.push([
-        escape(r.name),
-        escape(r.stream),
-        escape(r.department),
-        escape(r.casteCategory),
-        escape(r.total),
-        escape(r.paid),
-        escape(r.pending),
-      ].join(","));
-    });
-
-    const csvBlob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(csvBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `student-overview-page-${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  // Instant CSV download with enhanced student data
-  const downloadCsvInstant = (rows, filename) => {
-    const headers = [
-      "Student Name", 
-      "Student ID", 
-      "Enrollment Number", 
-      "Email", 
-      "Stream", 
-      "Department", 
-      "Caste Category", 
-      "Gender", 
-      "Current Semester", 
-      "Total Fees", 
-      "Paid Fees", 
-      "Pending Fees"
-    ];
-    const csvLines = [headers.join(",")];
-    
-    rows.forEach((r) => {
-      // Escape commas and quotes
-      const escape = (v) => {
-        if (v === null || v === undefined) return "";
-        const str = String(v);
-        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-          return '"' + str.replace(/"/g, '""') + '"';
-        }
-        return str;
-      };
-      csvLines.push([
-        escape(r.name),
-        escape(r.studentId),
-        escape(r.enrollmentNumber),
-        escape(r.email),
-        escape(r.stream),
-        escape(r.department),
-        escape(r.casteCategory),
-        escape(r.gender),
-        escape(r.currentSemester),
-        escape(r.total),
-        escape(r.paid),
-        escape(r.pending),
-      ].join(","));
-    });
-
-    const csvBlob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(csvBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${filename}-${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  // Fetch fee data for students who don't have it yet (fast version)
-  const ensureFeeData = async (studentList) => {
-    const studentsNeedingFeeData = studentList.filter(s => !feeData[s._id]);
-    if (studentsNeedingFeeData.length > 0) {
-      await fetchFeeHeads(studentsNeedingFeeData);
-    }
-  };
-
-  // Background fee data prefetching for better performance
-  const prefetchFeeDataInBackground = async (allStudentsList) => {
-    console.log('Starting background fee data prefetch...');
-    
-    // Process in small batches to avoid overwhelming the server
-    const batchSize = 10;
-    for (let i = 0; i < allStudentsList.length; i += batchSize) {
-      const batch = allStudentsList.slice(i, i + batchSize);
-      
-      // Check which students need fee data
-      const studentsNeedingFeeData = batch.filter(s => !feeData[s._id]);
-      
-      if (studentsNeedingFeeData.length > 0) {
-        try {
-          await fetchFeeHeads(studentsNeedingFeeData);
-          console.log(`Prefetched fee data for batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allStudentsList.length/batchSize)}`);
-          
-          // Small delay to prevent overwhelming the API
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (error) {
-          console.error('Error prefetching fee data for batch:', error);
-          // Continue with next batch even if this one fails
-        }
-      }
-    }
-    
-    console.log('Background fee data prefetch completed');
-  };
-
-  const groupStudentsByDepartment = (studentList, targetStream) => {
-    // Filter by stream first
-    const filteredStudents = studentList.filter(s => {
-      const stream = s.stream?.name || s.stream || '';
-      return stream.toLowerCase().includes(targetStream.toLowerCase());
-    });
-
-    // Group by department
-    const grouped = {};
-    filteredStudents.forEach(s => {
-      const dept = s.department?.name || s.department || 'Unknown';
-      if (!grouped[dept]) grouped[dept] = [];
-      grouped[dept].push(s);
-    });
-
-    // Sort departments and flatten into ordered list
-    const deptOrder = ['CS', 'CSE&AIML', 'Civil', 'Mechanical', 'Electrical', 'MBA'];
-    const sortedDepts = Object.keys(grouped).sort((a, b) => {
-      const aIndex = deptOrder.findIndex(d => a.toLowerCase().includes(d.toLowerCase()));
-      const bIndex = deptOrder.findIndex(d => b.toLowerCase().includes(d.toLowerCase()));
-      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    });
-
-    return { grouped, sortedDepts };
-  };
-
-  const openExcelView = async (studentList, streamFilter = null) => {
-    // Fetch real fee data exactly like when clicking on student box
-    const missingFeeData = studentList.filter(s => !feeData[s._id]);
-    if (missingFeeData.length > 0) {
-      console.log(`Fetching fee data for ${missingFeeData.length} students...`);
-      await fetchFeeHeads(missingFeeData);
-    }
-    
-    let rows = [];
-    let title = 'Student Overview';
-    
-    if (streamFilter) {
-      const { grouped, sortedDepts } = groupStudentsByDepartment(allStudents, streamFilter);
-      title = `${streamFilter} Students - Department Wise`;
-      
-      // Build rows department by department
-      for (const dept of sortedDepts) {
-        const deptStudents = grouped[dept];
-        if (deptStudents.length > 0) {
-          // Add department header row
-          rows.push({ isDepartmentHeader: true, department: dept, count: deptStudents.length });
-          // Add student rows with real fee data
-          const deptRows = await buildOverviewRows(deptStudents);
-          rows.push(...deptRows);
-        }
-      }
-    } else {
-      rows = await buildOverviewRows(studentList);
+  const handleSaveFeeHead = async (feeHead) => {
+    if (!editingAmount || isNaN(editingAmount) || editingAmount < 0) {
+      alert("Please enter a valid amount");
+      return;
     }
 
-    const htmlRows = rows.map(r => {
-      if (r.isDepartmentHeader) {
-        return `<tr style="background:#e5e7eb"><td colspan="7" style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#374151">${r.department} Department (${r.count} students)</td></tr>`;
-      }
-      return `
-        <tr>
-          <td style="padding:8px;border:1px solid #ddd">${r.name}</td>
-          <td style="padding:8px;border:1px solid #ddd">${r.stream}</td>
-          <td style="padding:8px;border:1px solid #ddd">${r.department}</td>
-          <td style="padding:8px;border:1px solid #ddd">${r.casteCategory}</td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.total}</td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.paid}</td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right">${r.pending}</td>
-        </tr>`;
-    }).join('\n');
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const dataRows = rows.filter(r => !r.isDepartmentHeader);
+      // Get student details for the fee head context
+      const studentStream = selectedStudent.stream?.name || selectedStudent.stream || 'B.Tech';
+      const currentSemester = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
 
-    const html = `
-      <html>
-        <head>
-          <title>${title} - Excel View</title>
-        </head>
-        <body style="font-family: Arial, Helvetica, sans-serif; padding:20px">
-          <h2>${title}</h2>
-          <p>Showing ${dataRows.length} student(s)${streamFilter ? ` in ${streamFilter}` : ''}</p>
-          <button id="downloadBtn" style="margin-bottom:12px;padding:8px 12px;background:#2563eb;color:#fff;border-radius:6px;border:none;cursor:pointer">Download CSV</button>
-          <div style="overflow:auto">
-            <table style="border-collapse:collapse;width:100%">
-              <thead>
-                <tr>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:left">Student Name</th>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:left">Stream</th>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:left">Department</th>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:left">Caste Category</th>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:right">Total Fees</th>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:right">Paid Fees</th>
-                  <th style="padding:8px;border:1px solid #ddd;background:#f3f4f6;text-align:right">Pending Fees</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${htmlRows}
-              </tbody>
-            </table>
-          </div>
-          <script>
-            const rows = ${JSON.stringify(dataRows)};
-            function downloadCSVFromRows(r) {
-              const headers = ["Student Name","Stream","Department","Caste Category","Total Fees","Paid Fees","Pending Fees"];
-              const lines = [headers.join(',')];
-              r.forEach(x=>{
-                const esc = v => {
-                  if (v===null||v===undefined) return '';
-                  const s = String(v);
-                  if (s.includes(',')||s.includes('"')||s.includes('\n')) return '"'+s.replace(/"/g,'""')+'"';
-                  return s;
-                };
-                lines.push([esc(x.name),esc(x.stream),esc(x.department),esc(x.casteCategory),esc(x.total),esc(x.paid),esc(x.pending)].join(','));
-              });
-              const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');a.href=url;a.download='student-overview-'+${streamFilter ? `'${streamFilter.toLowerCase()}-'` : `''`}+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-            }
-            document.getElementById('downloadBtn').addEventListener('click',()=>downloadCSVFromRows(rows));
-          </script>
-        </body>
-      </html>
-    `;
+      // Calculate batch based on current semester
+      let studentBatch = '2022-2026'; // default
+      if (currentSemester >= 7) studentBatch = '2019-2023';
+      else if (currentSemester >= 5) studentBatch = '2020-2024';
+      else if (currentSemester >= 3) studentBatch = '2021-2025';
 
-    const newWin = window.open('', '_blank');
-    if (newWin) {
-      newWin.document.write(html);
-      newWin.document.close();
-    } else {
-      // Fallback: directly download csv
-      const dataRows = rows.filter(r => !r.isDepartmentHeader);
-      downloadCsv(dataRows);
+      // Update the fee head amount
+      await axios.put(
+        `/api/fees/update`,
+        {
+          stream: studentStream,
+          branch: feeHead.branch,
+          batch: studentBatch,
+          head: feeHead.head,
+          amount: parseFloat(editingAmount)
+        },
+        { headers }
+      );
+
+      // Refresh fee data for the student
+      await fetchFeeHeads([selectedStudent]);
+
+      setEditingFeeHead(null);
+      setEditingAmount("");
+      alert("Fee head amount updated successfully!");
+    } catch (err) {
+      console.error("Error updating fee head:", err);
+      alert("Failed to update fee head amount. Please try again.");
     }
   };
 
@@ -926,14 +511,6 @@ export default function StudentDetails() {
 
   return (
     <div className="space-y-8">
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed top-4 right-4 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 max-w-sm">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-800">{toastMessage}</span>
-          </div>
-        </div>
-      )}
       
       {selectedStudent ? (
         // Detailed Student View
@@ -983,9 +560,21 @@ export default function StudentDetails() {
                 <strong>Section:</strong> {selectedStudent.section || "N/A"}
               </p>
               <p>
+                <strong>Year:</strong>{" "}
+                <span className="bg-green-100 text-green-900 px-2 py-1 rounded font-bold">
+                  {(() => {
+                    const sem = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
+                    if (sem <= 2) return '1st Year';
+                    else if (sem <= 4) return '2nd Year';
+                    else if (sem <= 6) return '3rd Year';
+                    else return '4th Year';
+                  })()}
+                </span>
+              </p>
+              <p>
                 <strong>Current Semester:</strong>{" "}
                 <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded font-bold">
-                  {selectedStudent.currentSemester}
+                  Semester {selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1}
                 </span>
               </p>
               <p>
@@ -1070,7 +659,7 @@ export default function StudentDetails() {
                             <strong> Stream:</strong> {selectedStudent.stream?.name || selectedStudent.stream || "N/A"} | 
                             <strong> Year:</strong> {
                               (() => {
-                                const currentSemester = selectedStudent.currentSemester || 1;
+                                const currentSemester = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
                                 if (currentSemester >= 7) return '4th Year';
                                 else if (currentSemester >= 5) return '3rd Year';
                                 else if (currentSemester >= 3) return '2nd Year';
@@ -1086,7 +675,24 @@ export default function StudentDetails() {
                           </span>
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {fee.heads.map((h, i) => (
+                          {fee.heads
+                            .filter((h) => {
+                              // Filter out tuition fees for reserved caste students and female students
+                              const studentCaste = selectedStudent.casteCategory?.toUpperCase() || '';
+                              const studentGender = selectedStudent.gender?.toLowerCase() || '';
+                              const isReservedCaste = ['SC', 'ST', 'NT', 'SBC', 'VJNT'].includes(studentCaste);
+                              const isFemale = studentGender === 'female' || studentGender === 'f';
+                              const isTuitionFee = h.head?.toLowerCase().trim() === 'tuition fees';
+                              
+                              // Hide tuition fees if student is from reserved caste OR is female
+                              if ((isReservedCaste || isFemale) && isTuitionFee) {
+                                console.log(`Hiding tuition fees for student: ${selectedStudent.firstName} ${selectedStudent.lastName}, Caste: ${studentCaste}, Gender: ${studentGender}, Reserved: ${isReservedCaste}, Female: ${isFemale}`);
+                                return false;
+                              }
+                              
+                              return true;
+                            })
+                            .map((h, i) => (
                             <div
                               key={i}
                               className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm"
@@ -1099,7 +705,7 @@ export default function StudentDetails() {
                                   <p className="text-sm text-gray-600 mt-1">
                                     Department: {h.branch} | Year: {
                                       (() => {
-                                        const currentSemester = selectedStudent.currentSemester || 1;
+                                        const currentSemester = selectedStudent.semester?.number || selectedStudent.currentSemester?.number || 1;
                                         if (currentSemester >= 7) return '4th Year';
                                         else if (currentSemester >= 5) return '3rd Year';
                                         else if (currentSemester >= 3) return '2nd Year';
@@ -1108,10 +714,44 @@ export default function StudentDetails() {
                                     }
                                   </p>
                                 </div>
-                                <div className="text-right ml-3">
-                                  <div className="font-bold text-xl text-green-700">
-                                    ₹{Number(h.amount).toLocaleString()}
-                                  </div>
+                                <div className="text-right ml-3 flex items-center space-x-2">
+                                  {editingFeeHead === (h._id || h.head) ? (
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="number"
+                                        value={editingAmount}
+                                        onChange={(e) => setEditingAmount(e.target.value)}
+                                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        min="0"
+                                        step="0.01"
+                                      />
+                                      <button
+                                        onClick={() => handleSaveFeeHead(h)}
+                                        className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 font-medium"
+                                      >
+                                        ✓
+                                      </button>
+                                      <button
+                                        onClick={handleCancelEdit}
+                                        className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 font-medium"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center space-x-2">
+                                      <div className="font-bold text-xl text-green-700">
+                                        ₹{Number(h.amount).toLocaleString()}
+                                      </div>
+                                      <button
+                                        onClick={() => handleEditFeeHead(h)}
+                                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 font-medium"
+                                        title="Edit amount"
+                                      >
+                                        ✏️ Edit
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1295,43 +935,6 @@ export default function StudentDetails() {
               <div>
                 <h1 className="text-3xl font-bold">🧑 Student Detail Records</h1>
               </div>
-              <div className="flex items-center space-x-2 relative">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Export button clicked, current state:', showExportDropdown);
-                    setShowExportDropdown(!showExportDropdown);
-                  }}
-                  className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center space-x-1"
-                  title="Export student overview"
-                >
-                  <span>Export Overview</span>
-                  <span className={`transform transition-transform ${showExportDropdown ? 'rotate-180' : ''}`}>▼</span>
-                </button>
-                {showExportDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 min-w-[200px]">
-                    <div
-                      onMouseDown={() => handleExportClick('btech')}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b border-gray-200 text-sm cursor-pointer select-none"
-                    >
-                      📥 B.Tech Students CSV (Instant)
-                    </div>
-                    <div
-                      onMouseDown={() => handleExportClick('mba')}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b border-gray-200 text-sm cursor-pointer select-none"
-                    >
-                      📥 MBA Students CSV (Instant)
-                    </div>
-                    <div
-                      onMouseDown={() => handleExportClick('current')}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 text-sm cursor-pointer select-none"
-                    >
-                      📥 Current Page CSV (Instant)
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>            {/* Search Section */}
             <div className="flex gap-4 items-end">
               <div className="flex-1">
@@ -1352,33 +955,6 @@ export default function StudentDetails() {
             <div className="mt-2 text-sm text-gray-600">
               Found {totalStudents} student{totalStudents !== 1 ? "s" : ""} • Showing {startIndex + 1}-{endIndex} of {totalStudents}
             </div>
-
-            {/* Stream-wise Student Count */}
-            {allStudents.length > 0 && (
-              <div className="mt-4">
-                <h2 className="text-lg font-semibold mb-2">
-                  Stream-wise Student Count (Total)
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(
-                    allStudents.reduce((acc, student) => {
-                      const stream =
-                        student.stream?.name || student.stream || "Unknown";
-                      if (!acc[stream]) acc[stream] = 0;
-                      acc[stream] += 1;
-                      return acc;
-                    }, {})
-                  ).map(([stream, count]) => (
-                    <div key={stream} className="bg-blue-50 rounded p-3">
-                      <div className="font-bold text-blue-700">{stream}</div>
-                      <div className="text-sm text-gray-700">
-                        Students: {count} • Page: {students.filter(s => (s.stream?.name || s.stream || "Unknown") === stream).length}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Student Cards in Grid - Show 10 per page */}

@@ -146,11 +146,11 @@ export default function Sidebar() {
           label: "Scholarship",
           roles: ["Student Management", "Scholarship Management"],
         },
-        {
-          to: "/accounting/students/overview",
-          label: "Student Overview",
-          roles: ["Student Management", "Account Section Management"],
-        },
+        // {
+        //   to: "/accounting/students/overview",
+        //   label: "Student Overview",
+        //   roles: ["Student Management", "Account Section Management"],
+        // },
       ],
     },
     {

@@ -2348,6 +2348,150 @@ Please:
       return result.trim();
     };
 
+    // Helper function to generate a single slip HTML
+    const generateSlipHTML = (copyLabel) => `
+      <div class="slip-copy">
+        <div class="copy-badge ${copyLabel.toLowerCase()}">${copyLabel}</div>
+        <div class="slip-container">
+          <div class="header-strip"></div>
+          <div class="institute-header">
+            <div class="institute-name">NAGARJUNA Institute of Engineering, Technology & Management</div>
+            <div class="institute-subtitle">Village Satnavri, Amravati Road, Nagpur 440023</div>
+          </div>
+          
+         
+          
+          <div class="slip-content">
+            <!-- Employee Info -->
+            <div class="employee-info">
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Employee ID:</span>
+                  <span class="info-value">${employeeId}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Employee Name:</span>
+                  <span class="info-value">${facultyName}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Department:</span>
+                  <span class="info-value">${department}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Designation:</span>
+                  <span class="info-value">${designation}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Payment Status:</span>
+                  <span class="info-value">${slip.salaryStatus}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Generated On:</span>
+                  <span class="info-value">${slip.generatedOn}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Salary Details -->
+            <div class="salary-details">
+              <div class="salary-grid">
+                <!-- Earnings Column -->
+                <div class="salary-column">
+                  <div class="column-header">EARNINGS</div>
+                  <div class="column-content">
+                    <div class="salary-item">
+                      <span class="salary-label">Basic Salary</span>
+                      <span class="salary-amount">₹${(slip.basicSalary || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">HRA</span>
+                      <span class="salary-amount">₹${(slip.allowances?.hra || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">DA</span>
+                      <span class="salary-amount">₹${(slip.allowances?.da || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">Medical</span>
+                      <span class="salary-amount">₹${(slip.allowances?.medical || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">Transport</span>
+                      <span class="salary-amount">₹${(slip.allowances?.transport || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">Other Allowances</span>
+                      <span class="salary-amount">₹${((slip.allowances?.cla || 0) + (slip.allowances?.others || 0)).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div class="total-row">
+                    <div class="salary-item" style="border: none;">
+                      <span>GROSS SALARY</span>
+                      <span>₹${(slip.grossSalary || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Deductions Column -->
+                <div class="salary-column">
+                  <div class="column-header">DEDUCTIONS</div>
+                  <div class="column-content">
+                    <div class="salary-item">
+                      <span class="salary-label">PF</span>
+                      <span class="salary-amount">₹${(slip.deductions?.pf || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">ESI</span>
+                      <span class="salary-amount">₹${(slip.deductions?.esi || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">Professional Tax</span>
+                      <span class="salary-amount">₹${(slip.deductions?.professionalTax || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">TDS</span>
+                      <span class="salary-amount">₹${(slip.deductions?.tds || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">Income Tax</span>
+                      <span class="salary-amount">₹${(slip.deductions?.incomeTax || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
+                      <span class="salary-label">Other Deductions</span>
+                      <span class="salary-amount">₹${(slip.deductions?.others || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div class="total-row">
+                    <div class="salary-item" style="border: none;">
+                      <span>TOTAL DEDUCTIONS</span>
+                      <span>₹${(slip.totalDeductions || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Net Salary -->
+              <div class="net-salary-section">
+                <h3 class="net-salary-title">NET SALARY</h3>
+                <p class="net-salary-amount">₹${(slip.netSalary || 0).toLocaleString()}</p>
+              </div>
+              
+              <!-- Salary in Words -->
+              <div class="salary-words">
+                <strong>Net Salary in Words:</strong> ${numberToWords(slip.netSalary || 0)} Rupees Only
+              </div>
+              
+              <!-- Footer -->
+              <div class="footer">
+                <p style="margin: 0;">This is a computer-generated salary slip and does not require a signature.</p>
+                <p style="margin: 2px 0 0 0;">NIETM HR System ${slip.paymentId ? `| Payment ID: ${slip.paymentId}` : ""}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
     const printWindow = window.open("", "_blank");
     const printContent = `
       <!DOCTYPE html>
@@ -2355,17 +2499,56 @@ Please:
         <head>
           <title>Salary Slip - ${facultyName}</title>
           <style>
+            @page {
+              size: A4 landscape;
+              margin: 8mm;
+            }
             body { 
               font-family: 'Arial', sans-serif; 
               margin: 0; 
-              padding: 10px; 
+              padding: 0; 
               background: #ffffff;
-              line-height: 1.2;
+              line-height: 1.3;
               color: #333;
-              font-size: 11px;
+              font-size: 13px;
+            }
+            .print-wrapper {
+              display: flex;
+              flex-direction: row;
+              
+              gap: 0mm;
+              width: 99%;
+              justify-content: space-between;
+              min-height: 100vh;
+            }
+            .slip-copy {
+              position: relative;
+              flex: 1;
+              transform: scale(0.95);
+              transform-origin: top center;
+            }
+            .copy-badge { 
+             position: absolute;
+              top: 4px;
+              left: 0px;
+              padding: 1px 0px;
+              font-weight: bold;
+              font-size: 6px;
+              border-radius: 4px;
+              z-index: 100;
+              background: white;
+        }
+            }
+            .copy-badge.original {
+              color: #d97706;
+              border: 2px solid #d97706;
+            }
+            .copy-badge.duplicate {
+              color: #2563eb;
+              border: 2px solid #2563eb;
             }
             .slip-container {
-              max-width: 750px;
+              max-width: 120%;
               margin: 0 auto;
               background: white;
               border: 1px solid #ddd;
@@ -2383,7 +2566,7 @@ Please:
               text-align: center;
             }
             .institute-name {
-              font-size: 16px;
+              font-size: 18px;
               font-weight: bold;
               margin: 0 0 3px 0;
               color: #495057;
@@ -2392,19 +2575,20 @@ Please:
               color: #6c757d;
               font-weight: 500;
               margin: 0 0 5px 0;
-              font-size: 11px;
+              font-size: 12px;
             }
             .salary-slip-title {
               background: linear-gradient(45deg, #28a745, #20c997);
               color: white;
-              padding: 8px 16px;
+              padding: 10px 18px;
               border-radius: 5px;
-              margin: 8px auto;
+              margin: 10px auto;
               display: inline-block;
-              font-size: 13px;
+              font-size: 15px;
               font-weight: bold;
             }
             .employee-info {
+              margin-top: 10px;
               padding: 10px 15px;
               background: #f8f9fa;
               border-bottom: 1px solid #dee2e6;
@@ -2412,8 +2596,8 @@ Please:
             .info-grid {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
-              gap: 5px;
-              font-size: 10px;
+              gap: 6px;
+              font-size: 11px;
             }
             .info-item {
               display: flex;
@@ -2447,8 +2631,8 @@ Please:
             .column-header {
               background: #6c757d;
               color: white;
-              padding: 6px 10px;
-              font-size: 11px;
+              padding: 7px 12px;
+              font-size: 12px;
               font-weight: bold;
               text-align: center;
             }
@@ -2458,9 +2642,9 @@ Please:
             .salary-item {
               display: flex;
               justify-content: space-between;
-              padding: 3px 0;
+              padding: 4px 0;
               border-bottom: 1px solid #e9ecef;
-              font-size: 10px;
+              font-size: 11px;
             }
             .salary-item:last-child {
               border-bottom: none;
@@ -2476,10 +2660,10 @@ Please:
             .total-row {
               background: #e9ecef;
               color: #495057;
-              padding: 6px 8px;
+              padding: 7px 10px;
               margin: 8px -8px -8px -8px;
               font-weight: bold;
-              font-size: 10px;
+              font-size: 11px;
             }
             .net-salary-section {
               background: #e9ecef;
@@ -2491,25 +2675,25 @@ Please:
               border: 1px solid #dee2e6;
             }
             .net-salary-title {
-              font-size: 12px;
+              font-size: 14px;
               font-weight: bold;
               margin: 0 0 5px 0;
             }
             .net-salary-amount {
-              font-size: 18px;
+              font-size: 20px;
               font-weight: bold;
               margin: 0;
             }
             .salary-words {
               background: #f8f9fa;
               color: #495057;
-              padding: 8px;
+              padding: 10px;
               text-align: center;
               border-radius: 3px;
-              margin: 8px 0;
+              margin: 10px 0;
               font-weight: 500;
               border: 1px solid #dee2e6;
-              font-size: 10px;
+              font-size: 11px;
             }
             .footer {
               text-align: center;
@@ -2526,15 +2710,22 @@ Please:
                 margin: 0;
                 font-size: 10px;
               }
+              .print-wrapper {
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 1mm !important;
+                justify-content: space-between !important;
+                min-height: 100vh !important;
+              }
+              .slip-copy {
+                flex: 1 !important;
+                page-break-inside: avoid;
+              }
               .slip-container { 
                 box-shadow: none; 
                 border: 1px solid #ccc;
                 max-width: 100%;
                 page-break-inside: avoid;
-              }
-              @page { 
-                margin: 0.3in; 
-                size: A4;
               }
               .salary-grid { 
                 break-inside: avoid; 
@@ -2547,197 +2738,9 @@ Please:
           </style>
         </head>
         <body>
-          <div class="slip-container">
-            <!-- Header Strip -->
-            <div class="header-strip"></div>
-            
-            <!-- Institute Header -->
-            <div class="institute-header">
-              <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 8px;">
-                <div style="flex-shrink: 0;">
-                  <img src="/logo1.png" alt="NIETM Logo" style="width: 70px; height: 70px; object-fit: contain; border: 1px solid #ddd; border-radius: 5px; padding: 3px; background: white;" />
-                </div>
-                <div style="text-align: center; flex: 1;">
-                  <div style="font-size: 10px; color: #6c757d; margin-bottom: 2px;">maitrey education society</div>
-                  <h1 class="institute-name">NAGARJUNA</h1>
-                  <p class="institute-subtitle">Institute of Engineering, Technology & Management</p>
-                  <div style="font-size: 9px; color: #6c757d; margin: 2px 0;">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                  <div style="font-size: 9px; color: #6c757d; margin: 2px 0;">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                  <div style="font-size: 8px; color: #6c757d; margin-top: 3px;">maitrey.ngp@gmail.com | www.nietm.in | 07118 322211, 12</div>
-                </div>
-                <div style="flex-shrink: 0;">
-                  <img src="/logo.png" alt="NAAC B++ Accreditation" style="width: 75px; height: 75px; object-fit: contain; border: 2px solid #FFD700; border-radius: 50%; padding: 3px; background: white;" />
-                  <div style="font-size: 7px; color: #B8860B; font-weight: bold; text-align: center; margin-top: 2px;">NAAC B++<br/>ACCREDITED</div>
-                </div>
-              </div>
-              
-              <div style="text-align: center; margin: 8px auto;">
-                <div class="salary-slip-title">SALARY SLIP</div>
-                <p style="margin: 3px 0 0 0; font-size: 10px; color: #6c757d; font-weight: 500;">For the month of ${
-                  slip.month
-                } ${slip.year}</p>
-              </div>
-            </div>
-            
-            <!-- Employee Information --> 
-            <div class="employee-info">
-              <h3 style="margin: 0 0 8px 0; color: #495057; font-size: 11px;">Employee Information</h3>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Employee Name:</span>
-                  <span class="info-value">${facultyName}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Employee ID:</span>
-                  <span class="info-value">${employeeId}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Department:</span>
-                  <span class="info-value">${department}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Designation:</span>
-                  <span class="info-value">${designation}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Payment Status:</span>
-                  <span class="info-value">${slip.salaryStatus}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Generated On:</span>
-                  <span class="info-value">${slip.generatedOn}</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Salary Details -->
-            <div class="salary-details">
-              <div class="salary-grid">
-                <!-- Earnings Column -->
-                <div class="salary-column">
-                  <div class="column-header">EARNINGS</div>
-                  <div class="column-content">
-                    <div class="salary-item">
-                      <span class="salary-label">Basic Salary</span>
-                      <span class="salary-amount">₹${(
-                        slip.basicSalary || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">HRA</span>
-                      <span class="salary-amount">₹${(
-                        slip.allowances?.hra || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">DA</span>
-                      <span class="salary-amount">₹${(
-                        slip.allowances?.da || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">Medical</span>
-                      <span class="salary-amount">₹${(
-                        slip.allowances?.medical || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">Transport</span>
-                      <span class="salary-amount">₹${(
-                        slip.allowances?.transport || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">Other Allowances</span>
-                      <span class="salary-amount">₹${(
-                        (slip.allowances?.cla || 0) +
-                        (slip.allowances?.others || 0)
-                      ).toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <div class="total-row">
-                    <div class="salary-item" style="border: none;">
-                      <span>GROSS SALARY</span>
-                      <span>₹${(slip.grossSalary || 0).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Deductions Column -->
-                <div class="salary-column">
-                  <div class="column-header">DEDUCTIONS</div>
-                  <div class="column-content">
-                    <div class="salary-item">
-                      <span class="salary-label">PF</span>
-                      <span class="salary-amount">₹${(
-                        slip.deductions?.pf || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">ESI</span>
-                      <span class="salary-amount">₹${(
-                        slip.deductions?.esi || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">Professional Tax</span>
-                      <span class="salary-amount">₹${(
-                        slip.deductions?.professionalTax || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">TDS</span>
-                      <span class="salary-amount">₹${(
-                        slip.deductions?.tds || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">Income Tax</span>
-                      <span class="salary-amount">₹${(
-                        slip.deductions?.incomeTax || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                    <div class="salary-item">
-                      <span class="salary-label">Other Deductions</span>
-                      <span class="salary-amount">₹${(
-                        slip.deductions?.others || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <div class="total-row">
-                    <div class="salary-item" style="border: none;">
-                      <span>TOTAL DEDUCTIONS</span>
-                      <span>₹${(
-                        slip.totalDeductions || 0
-                      ).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Net Salary -->
-              <div class="net-salary-section">
-                <h3 class="net-salary-title">NET SALARY</h3>
-                <p class="net-salary-amount">₹${(
-                  slip.netSalary || 0
-                ).toLocaleString()}</p>
-              </div>
-              
-              <!-- Salary in Words -->
-              <div class="salary-words">
-                <strong>Net Salary in Words:</strong> ${numberToWords(
-                  slip.netSalary || 0
-                )} Rupees Only
-              </div>
-              
-              <!-- Footer -->
-              <div class="footer">
-                <p style="margin: 0;">This is a computer-generated salary slip and does not require a signature.</p>
-                <p style="margin: 2px 0 0 0;">NIETM HR System ${
-                  slip.paymentId ? `| Payment ID: ${slip.paymentId}` : ""
-                }</p>
-              </div>
-            </div>
+          <div class="print-wrapper">
+            ${generateSlipHTML('ORIGINAL')}
+            ${generateSlipHTML('DUPLICATE')}
           </div>
           
           <script>

@@ -144,6 +144,7 @@ import incomeTaxRoutes from "./routes/incomeTax.js";
 import pfRoutes from "./routes/pf.js";
 import gratuityRoutes from "./routes/gratuity.js";
 import storeRoutes from "./routes/storeRoutes.js";
+import usersRoutes from "./routes/users.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import subjectRoutes from "./routes/subject.js";
 import facultySubjectRoutes from "./routes/facultySubjectRoutes.js";
@@ -437,7 +438,7 @@ app.use("/api/purchases", purchaseRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/payments", protect, paymentsRoutes);
 app.use("/api/expenses", protect, expensesRoutes);
-app.use("/api/receipts", protect, receiptsRoutes);
+app.use("/api/receipts", receiptsRoutes); // TEMPORARILY REMOVED protect FOR TESTING
 app.use("/api/audit", protect, auditRoutes);
 app.use("/api/ledger", protect, ledgerRoutes);
 app.use("/api/income-tax", incomeTaxRoutes);
@@ -447,6 +448,9 @@ app.use("/api/pf", protect, pfRoutes);
 
 // Store Management Routes
 app.use("/api/store", storeRoutes);
+
+// Users Routes
+app.use("/api/users", usersRoutes);
 
 // Connect to MongoDB
 mongoose

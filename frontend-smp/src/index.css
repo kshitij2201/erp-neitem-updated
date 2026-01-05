@@ -38,6 +38,22 @@
   --shadow-color: rgba(37, 99, 235, 0.1);
 }
 
+/* Custom animations for attendance system */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
 /* Extend Tailwind with custom theme classes */
 @layer utilities {
   .theme-blue\:bg-blue-50 {
