@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import ExcelJS from 'exceljs/dist/exceljs.min.js';
 import { saveAs } from 'file-saver';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
 
 const Receipts = () => {
   const [receipts, setReceipts] = useState([]);

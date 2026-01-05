@@ -25,7 +25,7 @@ const StudentLogin = () => {
 
     try {
       const API_URL =
-        import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
+        import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
 
       console.log("Attempting student login...");
       console.log("Student ID:", studentId);
