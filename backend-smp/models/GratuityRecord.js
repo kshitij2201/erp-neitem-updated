@@ -8,7 +8,8 @@ const gratuityRecordSchema = new mongoose.Schema({
   },
   employeeId: {
     type: String,
-    required: true
+    required: true,
+    index: true
   },
   calculationDate: {
     type: Date,
@@ -109,7 +110,6 @@ const gratuityRecordSchema = new mongoose.Schema({
 
 // Indexes for better query performance
 gratuityRecordSchema.index({ facultyId: 1 });
-gratuityRecordSchema.index({ employeeId: 1 });
 gratuityRecordSchema.index({ financialYear: 1 });
 gratuityRecordSchema.index({ paymentStatus: 1 });
 gratuityRecordSchema.index({ calculationDate: -1 });
