@@ -108,6 +108,11 @@ export default function MarkAttendance() {
   const [monthlyAttendanceLoading, setMonthlyAttendanceLoading] =
     useState(false);
 
+  // Today's records (used for single-record edits)
+  const [todayRecords, setTodayRecords] = useState([]);
+  // Whether user is editing today's attendance
+  const [editingAttendance, setEditingAttendance] = useState(false);
+
   const logsRef = useRef(null);
 
   // Load subjects on mount
@@ -178,18 +183,20 @@ export default function MarkAttendance() {
         response.data.data &&
         response.data.data.length > 0
       ) {
+        const recs = response.data.data;
+        setTodayRecords(recs);
         setAttendanceMarkedToday(true);
 
         // Calculate today's class attendance percentage
-        const todayRecords = response.data.data;
-        const presentCount = todayRecords.filter(
+        const presentCount = recs.filter(
           (record) => record.status === "present"
         ).length;
-        const totalCount = todayRecords.length;
+        const totalCount = recs.length;
         const classPercentage =
           totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
         setTodayClassAttendance(classPercentage);
       } else {
+        setTodayRecords([]);
         setAttendanceMarkedToday(false);
         setTodayClassAttendance(null);
       }
@@ -1005,6 +1012,67 @@ export default function MarkAttendance() {
     }
   };
 
+  // Edit a single student's attendance for today (uses PUT replace endpoint)
+  const editSingleStudentAttendance = async (studentId, targetStatus) => {
+    if (!attendanceMarkedToday) {
+      return alert("Attendance not marked for today. Use mark attendance first.");
+    }
+
+    try {
+      setIsUpdating(true);
+      const token = localStorage.getItem("authToken");
+      const userDataStr = localStorage.getItem("user");
+      const userData = JSON.parse(userDataStr);
+      const facultyId = userData.employeeId;
+      const today = new Date().toISOString().split("T")[0];
+
+      // Compute current present list from today's records
+      const presentIds = (todayRecords || [])
+        .filter(r => r.status === "present")
+        .map(r => r.student?._id || r.student)
+        .filter(Boolean)
+        .map(String);
+
+      let updatedPresent = [...presentIds];
+      const idStr = String(studentId);
+      if (targetStatus === "absent") {
+        updatedPresent = updatedPresent.filter(id => id !== idStr);
+      } else if (targetStatus === "present") {
+        if (!updatedPresent.includes(idStr)) updatedPresent.push(idStr);
+      }
+
+      const attendanceData = {
+        subjectId: expandedSubject,
+        facultyId,
+        selectedStudents: updatedPresent,
+        date: today,
+      };
+
+      const res = await api.put(
+        "/faculty/markattendance",
+        attendanceData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.data.success) {
+        alert("Attendance updated successfully");
+        // Refresh today's records and stats
+        checkTodayAttendance(expandedSubject);
+        fetchAttendanceStats(students, expandedSubject);
+        calculateMonthlyClassAttendance(expandedSubject);
+      } else {
+        alert(res.data.message || "Failed to update attendance");
+      }
+    } catch (err) {
+      console.error("Error editing single student attendance:", err);
+      alert("Failed to update student attendance. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleDownloadReport = async () => {
     if (!logsRef.current) return;
 
@@ -1405,6 +1473,87 @@ export default function MarkAttendance() {
                     <span className="text-green-700 font-medium">
                       Attendance already marked for today
                     </span>
+                    <div className="ml-4">
+                      {!editingAttendance ? (
+                        <button
+                          onClick={() => {
+                            // Pre-select absent students and enter edit mode (selected = absentees)
+                            const absentIds = (todayRecords || [])
+                              .filter(r => r.status === "absent")
+                              .map(r => r.student?._id || r.student)
+                              .filter(Boolean)
+                              .map(id => id.toString());
+                            setSelectedStudents(absentIds);
+                            setEditingAttendance(true);
+                          }}
+                          className="px-3 py-1 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                          title="Select students to mark absent and then Save Changes"
+                        >
+                          Edit Attendance (select absentees)
+                        </button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              // Save edited set
+                              if (selectedStudents.length === 0 && students.length > 0) {
+                                // Allow empty selection (all absent)
+                              }
+                              try {
+                                setIsUpdating(true);
+                                const token = localStorage.getItem("authToken");
+                                const userDataStr = localStorage.getItem("user");
+                                const userData = JSON.parse(userDataStr);
+                                const facultyId = userData.employeeId;
+                                const today = new Date().toISOString().split("T")[0];
+
+                                // Convert selected absentees into present list
+                                const allIds = students.map(s => (s._id || s).toString());
+                                const absentIds = (selectedStudents || []).map(id => id.toString());
+                                const presentList = allIds.filter(id => !absentIds.includes(id));
+
+                                const attendanceData = {
+                                  subjectId: expandedSubject,
+                                  facultyId,
+                                  selectedStudents: presentList,
+                                  date: today,
+                                };
+
+                                const res = await api.put("/faculty/markattendance", attendanceData, { headers: { Authorization: `Bearer ${token}` } });
+                                if (res.data.success) {
+                                  alert("Attendance updated successfully");
+                                  setEditingAttendance(false);
+                                  setSelectedStudents([]);
+                                  checkTodayAttendance(expandedSubject);
+                                  fetchAttendanceStats(students, expandedSubject);
+                                  calculateMonthlyClassAttendance(expandedSubject);
+                                } else {
+                                  alert(res.data.message || "Failed to update attendance");
+                                }
+                              } catch (err) {
+                                console.error("Error saving edited attendance:", err);
+                                alert("Failed to save changes. Please try again.");
+                              } finally {
+                                setIsUpdating(false);
+                              }
+                            }}
+                            disabled={isUpdating}
+                            className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingAttendance(false);
+                              setSelectedStudents([]);
+                            }}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   {todayClassAttendance !== null && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1443,7 +1592,7 @@ export default function MarkAttendance() {
               )}
 
               {/* Batch Actions */}
-              {students.length > 0 && !attendanceMarkedToday && (
+              {students.length > 0 && (!attendanceMarkedToday || editingAttendance) && (
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={selectAllStudents}
@@ -1453,25 +1602,87 @@ export default function MarkAttendance() {
                       ? "Deselect All"
                       : "Select All"}
                   </button>
-                  {selectedStudents.length > 0 && (
+
+                  {editingAttendance ? (
                     <>
                       <button
-                        onClick={() => markAttendance("present")}
+                        onClick={async () => {
+                          try {
+                            setIsUpdating(true);
+                            const token = localStorage.getItem("authToken");
+                            const userDataStr = localStorage.getItem("user");
+                            const userData = JSON.parse(userDataStr);
+                            const facultyId = userData.employeeId;
+                            const today = new Date().toISOString().split("T")[0];
+
+                            // selectedStudents contains ABSENTEES in edit mode, convert to present list
+                            const allIds = students.map(s => (s._id || s).toString());
+                            
+                            const absentIds = (selectedStudents || []).map(id => id.toString());
+                            const presentList = allIds.filter(id => !absentIds.includes(id));
+
+                            const attendanceData = {
+                              subjectId: expandedSubject,
+                              facultyId,
+                              selectedStudents: presentList,
+                              date: today,
+                            };
+
+                            const res = await api.put("/faculty/markattendance", attendanceData, { headers: { Authorization: `Bearer ${token}` } });
+                            if (res.data.success) {
+                              alert("Attendance updated successfully");
+                              setEditingAttendance(false);
+                              setSelectedStudents([]);
+                              checkTodayAttendance(expandedSubject);
+                              fetchAttendanceStats(students, expandedSubject);
+                              calculateMonthlyClassAttendance(expandedSubject);
+                            } else {
+                              alert(res.data.message || "Failed to update attendance");
+                            }
+                          } catch (err) {
+                            console.error("Error saving edited attendance:", err);
+                            alert("Failed to save changes. Please try again.");
+                          } finally {
+                            setIsUpdating(false);
+                          }
+                        }}
                         disabled={isUpdating}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                       >
                         <CheckCircle className="h-4 w-4" />
-                        Mark Present ({selectedStudents.length})
+                        Save Changes ({selectedStudents.length} absentees)
                       </button>
                       <button
-                        onClick={() => markAttendance("absent")}
-                        disabled={isUpdating}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        onClick={() => {
+                          setEditingAttendance(false);
+                          setSelectedStudents([]);
+                        }}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                       >
-                        <XCircle className="h-4 w-4" />
-                        Mark Absent ({selectedStudents.length})
+                        Cancel
                       </button>
                     </>
+                  ) : (
+                    selectedStudents.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => markAttendance("present")}
+                          disabled={isUpdating}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Mark Present ({selectedStudents.length})
+                        </button>
+                        <button
+                          onClick={() => markAttendance("absent")}
+                          disabled={isUpdating}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Mark Absent ({selectedStudents.length})
+                        </button>
+                      </>
+                    )
                   )}
                 </div>
               )}
@@ -1638,53 +1849,57 @@ export default function MarkAttendance() {
                             onChange={(e) =>
                               handleNoteChange(student._id, e.target.value)
                             }
-                            disabled={attendanceMarkedToday}
+                            disabled={attendanceMarkedToday && !editingAttendance}
                           />
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                if (!attendanceMarkedToday) {
-                                  setSelectedStudents([student._id]);
-                                  markAttendance("present");
-                                }
-                              }}
-                              disabled={isUpdating || attendanceMarkedToday}
-                              className={`p-2 rounded-lg transition-colors ${
-                                attendanceMarkedToday
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  : "bg-green-100 hover:bg-green-200 text-green-700"
-                              } disabled:opacity-50`}
-                              title={
-                                attendanceMarkedToday
-                                  ? "Attendance already marked"
-                                  : "Mark Present"
-                              }
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!attendanceMarkedToday) {
-                                  setSelectedStudents([student._id]);
-                                  markAttendance("absent");
-                                }
-                              }}
-                              disabled={isUpdating || attendanceMarkedToday}
-                              className={`p-2 rounded-lg transition-colors ${
-                                attendanceMarkedToday
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  : "bg-red-100 hover:bg-red-200 text-red-700"
-                              } disabled:opacity-50`}
-                              title={
-                                attendanceMarkedToday
-                                  ? "Attendance already marked"
-                                  : "Mark Absent"
-                              }
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
+                            {!attendanceMarkedToday ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setSelectedStudents([student._id]);
+                                    markAttendance("present");
+                                  }}
+                                  disabled={isUpdating}
+                                  className={`p-2 rounded-lg transition-colors bg-green-100 hover:bg-green-200 text-green-700 disabled:opacity-50`}
+                                  title="Mark Present"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedStudents([student._id]);
+                                    markAttendance("absent");
+                                  }}
+                                  disabled={isUpdating}
+                                  className={`p-2 rounded-lg transition-colors bg-red-100 hover:bg-red-200 text-red-700 disabled:opacity-50`}
+                                  title="Mark Absent"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                              </>
+                            ) : (
+                              // Attendance already marked: allow single-record edits
+                              <>
+                                <button
+                                  onClick={() => editSingleStudentAttendance(student._id, "present")}
+                                  disabled={isUpdating}
+                                  className={`p-2 rounded-lg transition-colors bg-green-50 hover:bg-green-100 text-green-700 disabled:opacity-50`}
+                                  title="Set Present"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => editSingleStudentAttendance(student._id, "absent")}
+                                  disabled={isUpdating}
+                                  className={`p-2 rounded-lg transition-colors bg-red-50 hover:bg-red-100 text-red-700 disabled:opacity-50`}
+                                  title="Set Absent"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -2126,12 +2126,29 @@ const BookActions = () => {
           }
         }
 
+        // If author/publisher missing in returnedBook, fetch full book metadata
+        let resolvedAuthor = returnedBook?.author;
+        let resolvedPublisher = returnedBook?.publisher;
+        if (!resolvedAuthor || !resolvedPublisher) {
+          try {
+            const bookInfo = await getBookByACCNO(selectedBookId);
+            // API may return object or array
+            const info = Array.isArray(bookInfo) ? bookInfo[0] : bookInfo;
+            if (info) {
+              resolvedAuthor = resolvedAuthor || info.author || info.AUTHOR || info.Author;
+              resolvedPublisher = resolvedPublisher || info.publisher || info.PUBLISHER || info.Publisher || info.PUBNAME;
+            }
+          } catch (e) {
+            console.warn("Could not fetch book metadata for return slip:", e?.message || e);
+          }
+        }
+
         // Prepare return book details for modal
         const returnBookDetails = {
           ACCNO: selectedBookId,
           bookTitle: returnedBook?.bookTitle || "Unknown Title",
-          author: returnedBook?.author || "Unknown Author",
-          publisher: returnedBook?.publisher || "Unknown Publisher",
+          author: resolvedAuthor || "Unknown Author",
+          publisher: resolvedPublisher || "Unknown Publisher",
           borrowerName: resolvedBorrowerName || "Unknown",
           borrowerId: borrowerId,
           borrowerType: formData.borrowerType,

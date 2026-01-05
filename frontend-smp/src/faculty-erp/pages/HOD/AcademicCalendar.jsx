@@ -54,7 +54,7 @@ const AcademicCalendar = ({ userData }) => {
 
       console.log("[AcademicCalendar] Fetching fresh user profile data...");
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/auth/profile`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/auth/profile`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -244,6 +244,120 @@ router.post("/", async (req, res) => {
   }
 });
 
+// PUT /api/faculty/markattendance - Edit attendance for a date (replace existing records)
+router.put("/", async (req, res) => {
+  try {
+    const { subjectId, facultyId, selectedStudents = [], date } = req.body;
+
+    if (!subjectId || !facultyId) {
+      return res.status(400).json({
+        success: false,
+        message: "subjectId and facultyId are required",
+      });
+    }
+
+    const adminSubject = await AdminSubject.findById(subjectId).populate("department");
+    if (!adminSubject) {
+      return res.status(404).json({ success: false, message: "Subject not found" });
+    }
+
+    const faculty = (await Faculty.findOne({ employeeId: facultyId })) ||
+      (await Faculty.findById(facultyId));
+    if (!faculty) {
+      return res.status(404).json({ success: false, message: "Faculty not found" });
+    }
+
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+
+    // Find students same as in POST
+    let allStudents = [];
+    if (adminSubject.department) {
+      let departmentId = null;
+      if (typeof adminSubject.department === "object" && adminSubject.department._id) {
+        departmentId = adminSubject.department._id;
+      } else if (typeof adminSubject.department === "object" && adminSubject.department.name) {
+        const academicDept = await AcademicDepartment.findOne({
+          name: { $regex: new RegExp(`^${adminSubject.department.name}$`, "i") },
+        });
+        if (academicDept) departmentId = academicDept._id;
+      } else if (mongoose.Types.ObjectId.isValid(adminSubject.department)) {
+        departmentId = adminSubject.department;
+      } else if (typeof adminSubject.department === "string") {
+        const academicDept = await AcademicDepartment.findOne({
+          name: { $regex: new RegExp(`^${adminSubject.department}$`, "i") },
+        });
+        if (academicDept) departmentId = academicDept._id;
+      }
+
+      if (departmentId) {
+        allStudents = await Student.find({ department: departmentId })
+          .select("firstName middleName lastName email studentId enrollmentNumber year section department");
+      } else {
+        allStudents = await Student.find({})
+          .select("firstName middleName lastName email studentId enrollmentNumber year section department");
+      }
+    } else {
+      allStudents = await Student.find({})
+        .select("firstName middleName lastName email studentId enrollmentNumber year section department");
+    }
+
+    if (!allStudents.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No students found for this subject's department.`,
+      });
+    }
+
+    // Remove existing attendance records for this subject/faculty/date
+    await Attendance.deleteMany({
+      subject: adminSubject._id,
+      faculty: faculty._id,
+      date: targetDate,
+    });
+
+    // Determine semester and department ids like in POST
+    let departmentId = adminSubject.department?._id || adminSubject.department;
+    let semesterId = null;
+    if (adminSubject.semester) {
+      const semesterNum = parseInt(adminSubject.semester);
+      if (!isNaN(semesterNum)) {
+        const semesterDoc = await Semester.findOne({ number: semesterNum });
+        if (semesterDoc) semesterId = semesterDoc._id;
+      }
+    }
+    if (!departmentId) departmentId = new mongoose.Types.ObjectId();
+    if (!semesterId) semesterId = new mongoose.Types.ObjectId();
+      // console.log("[EditAttendance] Department ID:", selectedStudents , allStudents);
+    // Prepare new attendance records
+    const records = allStudents.map((student) => (
+      console.log("Selected Students:", selectedStudents.includes(student._id.toString())),
+      {
+      student: student._id,
+      subject: adminSubject._id,
+      faculty: faculty._id,
+      date: targetDate,
+      status: selectedStudents.includes(student._id.toString()) ? "present" : "absent",
+      semester: semesterId,
+      department: departmentId,
+    }));
+
+    await Attendance.insertMany(records);
+
+    res.json({
+      success: true,
+      message: "Attendance updated successfully",
+      data: {
+        totalStudents: allStudents.length,
+        presentStudents: selectedStudents.length,
+      },
+    });
+  } catch (error) {
+    console.error("[EditAttendance] Error:", error);
+    res.status(500).json({ success: false, message: error.message, error: error.toString() });
+  }
+});
+
 // GET /api/faculty/markattendance/subject-details/:subjectId - Get subject details with department, year, section
 router.get("/subject-details/:subjectId", async (req, res) => {
   try {

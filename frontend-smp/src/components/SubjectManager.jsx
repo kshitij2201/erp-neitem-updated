@@ -7,14 +7,41 @@ const SubjectManager = () => {
   const [selectedStreamId, setSelectedStreamId] = useState("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [subjects, setSubjects] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [selectedSemester, setSelectedSemester] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [editingSubjectId, setEditingSubjectId] = useState(null);
   const [editedSubjectName, setEditedSubjectName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const token = localStorage.getItem("token");
+
 
   useEffect(() => {
     fetchStreams();
+    fetchSemesters();
   }, []);
+
+  useEffect(() => {
+    if (semesters.length > 0 && !selectedSemester) {
+      setSelectedSemester(semesters[0].number?.toString() || "");
+    }
+  }, [semesters]);
+
+  const fetchSemesters = async () => {
+    try {
+      const res = await axios.get("https://backenderp.tarstech.in/api/superadmin/semesters", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSemesters(Array.isArray(res.data) ? res.data : []);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setSelectedSemester(res.data[0].number?.toString());
+      }
+    } catch (err) {
+      console.error("Failed to fetch semesters", err);
+    }
+  };
 
   useEffect(() => {
     if (selectedStreamId) {
@@ -77,21 +104,43 @@ const SubjectManager = () => {
   };
 
   const handleAddSubject = async () => {
-    if (!newSubject.trim() || !selectedDepartmentId) return;
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (!newSubject.trim()) {
+      setErrorMsg("Please enter a subject name.");
+      return;
+    }
+    if (!selectedDepartmentId) {
+      setErrorMsg("Please select a department.");
+      return;
+    }
+    if (!selectedSemester) {
+      setErrorMsg("Please select a semester.");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       await axios.post(
         "https://backenderp.tarstech.in/api/superadmin/subjects",
-        { name: newSubject, department: selectedDepartmentId },
+        { name: newSubject, department: selectedDepartmentId, semester: selectedSemester },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       setNewSubject("");
       fetchSubjects(selectedDepartmentId);
+      setSuccessMsg("Subject added successfully.");
+      setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
       console.error("Error adding subject", err);
+      setErrorMsg(err.response?.data?.error || "Failed to add subject.");
+    } finally {
+      setIsSaving(false);
     }
   };
+
 
   const handleDelete = async (id) => {
     try {
@@ -111,7 +160,7 @@ const SubjectManager = () => {
     try {
       await axios.put(
         `https://backenderp.tarstech.in/api/superadmin/subjects/${id}`,
-        { name: editedSubjectName, department: selectedDepartmentId },
+        { name: editedSubjectName, department: selectedDepartmentId, semester: selectedSemester },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -130,7 +179,7 @@ const SubjectManager = () => {
         Manage Subjects
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-2">
             Select Stream
@@ -164,6 +213,21 @@ const SubjectManager = () => {
             ))}
           </select>
         </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700 mb-2">Select Semester</label>
+          <select
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+            className="border border-gray-300 rounded-md py-2 px-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
+          >
+            {semesters.map((sem) => (
+              <option key={sem._id} value={sem.number?.toString()}>
+                {sem.number}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center mb-8">
@@ -176,11 +240,20 @@ const SubjectManager = () => {
         />
         <button
           onClick={handleAddSubject}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition duration-200 ease-in-out shadow-sm"
+          disabled={isSaving || !newSubject.trim() || !selectedDepartmentId || !selectedSemester}
+          className={`bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition duration-200 ease-in-out shadow-sm ${
+            isSaving || !newSubject.trim() || !selectedDepartmentId || !selectedSemester
+              ? "opacity-50 cursor-not-allowed"
+              : ""
+          }`}
         >
-          Add Subject
+          {isSaving ? "Adding..." : "Add Subject"}
         </button>
       </div>
+
+      {errorMsg && <p className="text-sm text-red-600 mt-2">{errorMsg}</p>}
+      {successMsg && <p className="text-sm text-green-600 mt-2">{successMsg}</p>}
+
 
       {subjects.length > 0 ? (
         <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
@@ -215,7 +288,7 @@ const SubjectManager = () => {
                   ) : (
                     <>
                       <span className="text-gray-800 font-medium text-lg">
-                        {subject.name}
+                        {subject.name} {subject.semester ? <span className="text-sm text-gray-500">(Sem {subject.semester})</span> : null}
                       </span>
                       <div className="flex items-center gap-2">
                         <button

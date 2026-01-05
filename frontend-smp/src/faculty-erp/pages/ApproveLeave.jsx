@@ -362,6 +362,43 @@ export default function ApproveLeave() {
           ? `${decision.toLowerCase()} by HOD`
           : `${decision.toLowerCase()} by Principal`;
 
+      // Optimistic local update so the approved/rejected request remains visible immediately
+      if (userRole.toLowerCase() === "principal") {
+        setReceivedRequests((prev) =>
+          prev.map((r) =>
+            r._id === id
+              ? {
+                  ...r,
+                  status: decision,
+                  principalDecision: {
+                    employeeId: employeeId,
+                    decision,
+                    comment,
+                    decidedAt: new Date().toISOString(),
+                  },
+                }
+              : r
+          )
+        );
+      } else if (userRole.toLowerCase() === "hod") {
+        setReceivedRequests((prev) =>
+          prev.map((r) =>
+            r._id === id
+              ? {
+                  ...r,
+                  status: decision === "Approved" ? "HOD Approved" : "HOD Rejected",
+                  hodDecision: {
+                    employeeId: employeeId,
+                    decision,
+                    comment,
+                    decidedAt: new Date().toISOString(),
+                  },
+                }
+              : r
+          )
+        );
+      }
+
       setSuccessMessage(
         `Leave request for ${requestData.firstName} (${requestData.employeeId}) successfully ${actionText}!`
       );

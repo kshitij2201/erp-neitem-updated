@@ -82,7 +82,7 @@ export default function FacultyDashboard() {
       } catch (err) {
         console.error("Fetch faculties error:", err);
         setError(
-          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at https://backenderp.tarstech.in.`
+          `Error fetching faculty data: ${err.message}. Please check if the backend server is running at http://localhost:4000.`
         );
         setLoading(false);
       }
@@ -151,7 +151,7 @@ export default function FacultyDashboard() {
   useEffect(() => {
     const loadSelectedFaculties = async () => {
       try {
-        const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+        const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
         const token = localStorage.getItem("authToken");
 
         console.log('Loading selected faculties from database...');
@@ -211,7 +211,7 @@ export default function FacultyDashboard() {
     if (!confirmed) return;
 
     try {
-      const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+      const API_URL = import.meta.env.REACT_APP_API_URL || "http://localhost:4000";
       const token = localStorage.getItem("authToken");
 
       if (isChecked) {

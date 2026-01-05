@@ -43,11 +43,14 @@ router.get('/bt/:studentId', async (req, res) => {
   }
 });
 
-// Get all students
+// Get all students (populate department, stream, semester for UI)
 router.get('/', async (req, res) => {
   try {
-    const students = await Student.find();
-    res.json({ students }); // <-- should be an array
+    const students = await Student.find()
+      .populate('department', 'name')
+      .populate('stream', 'name')
+      .populate('semester', 'number');
+    res.json({ students }); // <-- returns populated array
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -70,7 +73,11 @@ router.get("/api/students", async (req, res) => {
   const { studentId } = req.query;
 
   try {
-    const student = await Student.findOne({ studentId }); // ✅ not FacultyModel
+    const student = await Student.findOne({ studentId })
+      .populate('department', 'name')
+      .populate('stream', 'name')
+      .populate('semester', 'number'); // Populate fields for accurate display
+
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
