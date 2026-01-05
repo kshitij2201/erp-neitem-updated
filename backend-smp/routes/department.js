@@ -18,6 +18,16 @@ router.post("/", async (req, res) => {
   }
 });
 
+// Get all departments (simple list for forms)
+router.get("/", async (req, res) => {
+  try {
+    const departments = await Department.find({}).populate("stream", "name _id");
+    res.json(departments);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all departments (for dashboard)
 router.get("/all", async (req, res) => {
   try {

@@ -5,6 +5,7 @@ import PF from "../models/PF.js";
 import IncomeTax from "../models/IncomeTax.js";
 import HODHistory from "../models/HODHistory.js";
 import PrincipalHistory from "../models/PrincipalHistory.js";
+import FacultyAllDepartment from "../models/FacultyAllDepartment.js";
 import bcrypt from "bcrypt";
 import { roleLogin } from "../controllers/facultyController.js";
 import { protect } from "../middleware/auth.js";
@@ -427,6 +428,118 @@ router.get("/principal-history", async (req, res) => {
   } catch (err) {
     console.error('Error fetching Principal history:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Faculty All Department routes
+// Get all faculty in all departments
+router.get("/all-departments/faculty", async (req, res) => {
+  try {
+    const facultyAllDept = await FacultyAllDepartment.find()
+      .populate('facultyId', 'firstName lastName employeeId department')
+      .sort({ addedAt: -1 });
+    
+    res.json({
+      success: true,
+      data: facultyAllDept
+    });
+  } catch (err) {
+    console.error('Error fetching faculty all departments:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// Add faculty to all departments
+router.post("/all-departments/faculty", async (req, res) => {
+  try {
+    const { facultyId, facultyName, employeeId, department } = req.body;
+
+    if (!facultyId || !facultyName || !employeeId || !department) {
+      return res.status(400).json({
+        success: false,
+        error: "facultyId, facultyName, employeeId, and department are required"
+      });
+    }
+
+    // Check if faculty already exists in all departments
+    const existingEntry = await FacultyAllDepartment.findOne({ facultyId });
+    if (existingEntry) {
+      return res.status(400).json({
+        success: false,
+        error: "Faculty is already in all departments"
+      });
+    }
+
+    const newEntry = new FacultyAllDepartment({
+      facultyId,
+      facultyName,
+      employeeId,
+      department
+    });
+
+    await newEntry.save();
+
+    res.json({
+      success: true,
+      message: "Faculty added to all departments successfully",
+      data: newEntry
+    });
+  } catch (err) {
+    console.error('Error adding faculty to all departments:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// Remove faculty from all departments
+router.delete("/all-departments/faculty/:facultyId", async (req, res) => {
+  try {
+    const { facultyId } = req.params;
+
+    const deletedEntry = await FacultyAllDepartment.findOneAndDelete({ facultyId });
+
+    if (!deletedEntry) {
+      return res.status(404).json({
+        success: false,
+        error: "Faculty not found in all departments"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Faculty removed from all departments successfully"
+    });
+  } catch (err) {
+    console.error('Error removing faculty from all departments:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// Check if faculty is in all departments
+router.get("/all-departments/faculty/:facultyId/check", async (req, res) => {
+  try {
+    const { facultyId } = req.params;
+
+    const entry = await FacultyAllDepartment.findOne({ facultyId });
+
+    res.json({
+      success: true,
+      isInAllDepartments: !!entry
+    });
+  } catch (err) {
+    console.error('Error checking faculty in all departments:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
   }
 });
 

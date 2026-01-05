@@ -2,6 +2,7 @@ import express from "express";
 const router = express.Router();
 import Payment from "../models/Payment.js";
 import Student from "../models/StudentManagement.js";
+import ExtraStudent from "../models/ExtraStudent.js";
 import Salary from "../models/Salary.js";
 
 // GET: All receipts with pagination and filtering
@@ -49,7 +50,8 @@ router.get("/", async (req, res) => {
           ],
         };
         const matchingStudents = await Student.find(studentQuery).select("_id");
-        const studentIds = matchingStudents.map((s) => s._id);
+        const matchingExtraStudents = await ExtraStudent.find(studentQuery).select("_id");
+        const studentIds = [...matchingStudents.map((s) => s._id), ...matchingExtraStudents.map((s) => s._id)];
 
         studentPaymentQuery = {
           ...studentPaymentQuery,
@@ -65,18 +67,39 @@ router.get("/", async (req, res) => {
       }
 
       const studentPayments = await Payment.find(studentPaymentQuery)
-        .populate(
-          "studentId",
-          "firstName lastName studentId department casteCategory"
-        )
         .populate("feeHead", "title")
         .sort({ paymentDate: -1 })
         .lean();
 
+      // Manually populate student data (handle both regular and extra students)
+      const paymentsWithStudents = await Promise.all(
+        studentPayments.map(async (payment) => {
+          let studentData = null;
+          
+          if (payment.isExtraStudent) {
+            // Fetch from ExtraStudent collection
+            studentData = await ExtraStudent.findById(payment.studentId)
+              .select("firstName lastName studentId department currentSemester")
+              .lean();
+          } else {
+            // Fetch from Student collection
+            studentData = await Student.findById(payment.studentId)
+              .select("firstName lastName studentId department casteCategory currentSemester")
+              .populate("currentSemester", "number")
+              .lean();
+          }
+          
+          return {
+            ...payment,
+            studentData
+          };
+        })
+      );
+
       // Filter by department if specified
       const filteredStudentPayments = department
-        ? studentPayments.filter((p) => p.studentId?.department === department)
-        : studentPayments;
+        ? paymentsWithStudents.filter((p) => p.studentData?.department === department)
+        : paymentsWithStudents;
 
       // Transform student payments
       const transformedStudentReceipts = filteredStudentPayments.map(
@@ -92,19 +115,20 @@ router.get("/", async (req, res) => {
           status: payment.status,
           description:
             payment.description ||
-            `Fee payment for ${payment.studentId?.firstName} ${payment.studentId?.lastName}`,
-          recipientName: `${payment.studentId?.firstName || ""} ${
-            payment.studentId?.lastName || ""
-          }`.trim(),
-          studentId: payment.studentId?.studentId,
-          department: payment.studentId?.department,
-          casteCategory: payment.studentId?.casteCategory,
+            `Fee payment for ${payment.studentData?.firstName || 'Unknown'} ${payment.studentData?.lastName || 'Student'}`,
+          recipientName: `${payment.studentData?.firstName || ""} ${
+            payment.studentData?.lastName || ""
+          }`.trim() || "Unknown",
+          studentId: payment.studentData?.studentId,
+          department: payment.studentData?.department,
+          casteCategory: payment.studentData?.casteCategory,
           feeHead: payment.feeHead?.title,
           transactionId: payment.transactionId,
           utr: payment.utr || (['Online', 'Bank Transfer', 'Card', 'UPI'].includes(payment.paymentMethod) ? payment.transactionId : ''),
           remarks: payment.remarks,
           collectedBy: payment.collectedBy,
-          semester: payment.semester,
+          semester: payment.studentData?.currentSemester?.number || payment.studentData?.currentSemester,
+          isExtraStudent: payment.isExtraStudent || false
         })
       );
 
@@ -190,10 +214,14 @@ router.get("/", async (req, res) => {
 router.get("/student/:id", async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
-      .populate(
-        "studentId",
-        "firstName lastName studentId department casteCategory"
-      )
+      .populate({
+        path: "studentId",
+        select: "firstName lastName studentId department casteCategory currentSemester",
+        populate: {
+          path: "currentSemester",
+          select: "number",
+        },
+      })
       .populate("feeHead", "title");
 
     if (!payment) {
@@ -213,10 +241,14 @@ router.get("/number/:receiptNumber", async (req, res) => {
     const payment = await Payment.findOne({
       receiptNumber: req.params.receiptNumber,
     })
-      .populate(
-        "studentId",
-        "firstName lastName studentId department casteCategory"
-      )
+      .populate({
+        path: "studentId",
+        select: "firstName lastName studentId department casteCategory currentSemester",
+        populate: {
+          path: "currentSemester",
+          select: "number",
+        },
+      })
       .populate("feeHead", "title");
 
     if (!payment) {

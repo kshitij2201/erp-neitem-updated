@@ -105,6 +105,36 @@ function exportToDCR(
 }
 
 function generateDCRHTML(data, dateFrom, dateTo) {
+  // Debug: Log what data we're receiving
+  console.log("🔍 DCR Export - Total data entries:", data.length);
+  console.log("🔍 DCR Export - Payment entries:", data.filter(e => e.type === "Payment").length);
+  console.log("🔍 DCR Export - Expense entries:", data.filter(e => e.type === "Expense").length);
+  console.log("🔍 DCR Export - Deleted entries:", data.filter(e => e.type === "Deleted").length);
+  
+  // Function to get academic session based on date
+  const getAcademicSession = (date) => {
+    const d = new Date(date);
+    const month = d.getMonth(); // 0-11 (0 = January, 2 = March)
+    const year = d.getFullYear();
+    
+    // Academic year changes in March (month index 2)
+    // If month is January (0) or February (1), use previous year as start
+    // If month is March (2) onwards, use current year as start
+    let startYear, endYear;
+    
+    if (month < 2) {
+      // January or February - belongs to session that started last year
+      startYear = year - 1;
+      endYear = year;
+    } else {
+      // March onwards - belongs to session starting this year
+      startYear = year;
+      endYear = year + 1;
+    }
+    
+    return `${startYear}-${endYear}`;
+  };
+
   // Calculate totals
   const totalReceipts = data
     .filter((e) => e.type === "Payment")
@@ -125,9 +155,19 @@ function generateDCRHTML(data, dateFrom, dateTo) {
       0
     );
 
-  // Get receipts data
+  // Get ALL receipts data (including both Payment and Deleted types)
+  const allReceipts = data
+    .filter((e) => e.type === "Payment" || e.type === "Deleted")
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Get only payment receipts for total calculation
   const receipts = data
     .filter((e) => e.type === "Payment")
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Get deleted receipts data for separate summary table
+  const deletedReceipts = data
+    .filter((e) => e.type === "Deleted")
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // Calculate fee head wise totals
@@ -203,21 +243,25 @@ function generateDCRHTML(data, dateFrom, dateTo) {
       <tbody>
   `;
 
-  // Add receipts rows
-  receipts.forEach((entry, index) => {
+  // Add ALL receipts rows (including deleted ones marked with *)
+  allReceipts.forEach((entry, index) => {
+    const session = entry.date ? getAcademicSession(entry.date) : "2025-2026";
+    const isDeleted = entry.type === "Deleted";
+    const deletedMark = isDeleted ? "*" : "";
+    
     html += `
-      <tr>
-        <td>${entry.receiptNumber || index + 1}</td>
-        <td>2024-2025</td>
-        <td>${entry.personName || ""}</td>
+      <tr ${isDeleted ? 'style="background-color: #ffe6e6; color: #cc0000;"' : ''}>
+        <td>${deletedMark}${entry.receiptNumber || index + 1}${deletedMark}</td>
+        <td>${session}</td>
+        <td>${deletedMark}${entry.personName || ""}${deletedMark}</td>
         <td>${entry.course || ""}</td>
         <td>${entry.feeHead || ""}</td>
         <td>${entry.method || ""}</td>
         <td>${entry.type === "Payment" && entry.method !== "Cash" ? (entry.utr || "-") : (entry.reference || "-")}</td>
-        <td>${entry.remarks || ""}</td>
+        <td>${entry.remarks || ""}${isDeleted ? " (DELETED)" : ""}</td>
         <td class="amount">${
           typeof entry.amount === "number" && !isNaN(entry.amount)
-            ? entry.amount.toFixed(2)
+            ? deletedMark + entry.amount.toFixed(2) + deletedMark
             : "0.00"
         }</td>
       </tr>
@@ -225,6 +269,41 @@ function generateDCRHTML(data, dateFrom, dateTo) {
   });
 
   html += `
+      </tbody>
+    </table>
+
+    <!-- Receipt-wise Deleted Entries Summary -->
+    <div class="section-title">Receipt-wise Deleted Entries Summary</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Sr No.</th>
+          <th>Receipt No.</th>
+          <th>Date</th>
+          <th>Person</th>
+          <th>Course</th>
+          <th>Fee Head</th>
+          <th>Amount</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${deletedReceipts.length === 0 ? `
+          <tr>
+            <td colspan="8" style="text-align: center; font-style: italic;">No deleted receipts found</td>
+          </tr>
+        ` : deletedReceipts.map((d, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${d.receiptNumber || "-"}</td>
+            <td>${d.date ? new Date(d.date).toLocaleDateString() : "-"}</td>
+            <td>${d.personName || "-"}</td>
+            <td>${d.course || "-"}</td>
+            <td>${d.feeHead || "-"}</td>
+            <td class="amount">${typeof d.amount === "number" && !isNaN(d.amount) ? d.amount.toFixed(2) : "0.00"}</td>
+            <td>${d.remarks || "-"}</td>
+          </tr>
+        `).join('')}
       </tbody>
     </table>
 
@@ -326,7 +405,7 @@ function generateDCRHTML(data, dateFrom, dateTo) {
         <tr>
           <td>1</td>
           <td>UNION BANK OF INDIA</td>
-          <td>386041180003923</td>
+          <td>366001010036993</td>
           <td class="amount">${totalReceipts.toFixed(2)}</td>
         </tr>
         <tr class="total-row">
@@ -375,8 +454,17 @@ export default function Ledger() {
         }
       : { "Content-Type": "application/json" };
 
-    // Fetch ledger data and fee heads in parallel
+    // Fetch receipts data (all entries) and fee heads in parallel
     Promise.all([
+      // Fetch ALL receipts with very high limit to ensure we get everything
+      fetch("https://backenderp.tarstech.in/api/receipts?limit=999999", { headers }).then(
+        (res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        }
+      ),
       fetch("https://backenderp.tarstech.in/api/ledger", { headers }).then(
         (res) => {
           if (!res.ok) {
@@ -394,14 +482,48 @@ export default function Ledger() {
         }
       ),
     ])
-      .then(([ledgerData, feeHeadsData]) => {
-        console.log("📊 Complete Ledger data received:", ledgerData);
-        console.log("📊 Total entries:", ledgerData.length);
+      .then(([receiptsData, ledgerData, feeHeadsData]) => {
+        console.log("📊 Receipts data received:", receiptsData);
+        console.log("📊 Ledger data received:", ledgerData);
+        
+        // Extract receipts array from response
+        const receiptsArray = Array.isArray(receiptsData.receipts) ? receiptsData.receipts : [];
+        
+        // Convert receipts to ledger format
+        // Note: All receipts from /api/receipts are payments, so we set type as "Payment"
+        const receiptEntries = receiptsArray.map(receipt => ({
+          _id: receipt._id,
+          type: "Payment", // Force all receipts to be Payment type for ledger
+          date: receipt.paymentDate || receipt.date,
+          receiptNumber: receipt.receiptNumber,
+          personName: receipt.recipientName,
+          course: receipt.department || "",
+          description: receipt.description,
+          reference: receipt.transactionId || "",
+          utr: receipt.utr || "",
+          method: receipt.paymentMethod,
+          feeHead: receipt.feeHead,
+          remarks: receipt.remarks,
+          amount: receipt.amount,
+          originalType: receipt.type // Keep original type (student/salary) for reference
+        }));
+        
+        // Filter ledgerData to only include non-Payment entries (Expenses, Deleted)
+        // This prevents duplicates since receiptEntries already has all Payment data
+        const nonPaymentLedgerEntries = ledgerData.filter(entry => entry.type !== "Payment");
+        
+        // Combine receipts with non-payment ledger entries (expenses, deleted receipts)
+        const combinedEntries = [...receiptEntries, ...nonPaymentLedgerEntries];
+        
+        console.log(`📊 Total entries: ${combinedEntries.length}`);
+        console.log(`💰 Receipts from API: ${receiptEntries.length}`);
+        console.log(`📋 Non-payment ledger entries: ${nonPaymentLedgerEntries.length}`);
+        console.log(`📋 Total ledger data received: ${ledgerData.length}`);
         
         // Check for different entry types
-        const paymentEntries = ledgerData.filter(e => e.type === "Payment");
-        const expenseEntries = ledgerData.filter(e => e.type === "Expense");
-        const deletedEntries = ledgerData.filter(e => e.type === "Deleted");
+        const paymentEntries = combinedEntries.filter(e => e.type === "Payment");
+        const expenseEntries = combinedEntries.filter(e => e.type === "Expense");
+        const deletedEntries = combinedEntries.filter(e => e.type === "Deleted");
         console.log(`💰 Payments: ${paymentEntries.length}`);
         console.log(`💸 Expenses: ${expenseEntries.length}`);
         console.log(`🗑️ Deleted: ${deletedEntries.length}`);
@@ -411,8 +533,7 @@ export default function Ledger() {
           console.log("Sample payment UTR:", paymentEntries[0].utr);
         }
         
-        console.log("Sample ledger entry:", ledgerData[0]);
-        setEntries(ledgerData);
+        setEntries(combinedEntries);
         setFeeHeads(Array.isArray(feeHeadsData) ? feeHeadsData : []);
         setLoading(false);
       })
@@ -843,7 +964,7 @@ export default function Ledger() {
             </div>
             <button
               className="ml-auto bg-blue-700 text-white px-4 py-2 rounded shadow hover:bg-blue-800"
-              onClick={() => exportToDCR(sortedEntries, dateFrom, dateTo)}
+              onClick={() => exportToDCR(entries, dateFrom, dateTo)}
             >
               Export DCR (PDF)
             </button>

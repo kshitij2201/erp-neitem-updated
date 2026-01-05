@@ -92,6 +92,7 @@ router.get('/', protect, async (req, res) => {
       .populate('stream', 'name code')
       .populate('department', 'name code')
       .populate('semester', 'number name')
+      .populate('currentSemester', 'number name')
       .populate({
         path: 'subjects',
         select: 'name subjectCode',
@@ -364,9 +365,10 @@ router.get('/public', async (req, res) => {
     
     // Fetch all students with populated data
     let allStudents = await Student.find()
-      .select('firstName middleName lastName studentId enrollmentNumber email department stream gender casteCategory admissionType')
+      .select('firstName middleName lastName studentId enrollmentNumber email department stream semester gender casteCategory admissionType')
       .populate('department', 'name')
       .populate('stream', 'name')
+      .populate('semester', 'number')
       .sort({ createdAt: -1 });
     
     console.log('Total students fetched:', allStudents.length);
@@ -380,8 +382,8 @@ router.get('/public', async (req, res) => {
     }
     
     // Filter by search term if specified
-    if (search) {
-      const searchLower = search.toLowerCase();
+    if (search && search.trim()) {
+      const searchLower = search.trim().toLowerCase();
       const searchNormalized = searchLower.replace(/[^a-z0-9]/g, '');
       console.log('Filtering by search term:', searchLower, 'normalized:', searchNormalized);
       
@@ -441,9 +443,9 @@ router.get('/public', async (req, res) => {
         } else {
           // Otherwise, do broad search across all fields
           allStudents = allStudents.filter(student => 
-            student.firstName?.toLowerCase().includes(searchLower) ||
-            student.middleName?.toLowerCase().includes(searchLower) ||
-            student.lastName?.toLowerCase().includes(searchLower) ||
+            student.firstName?.toLowerCase().startsWith(searchLower) ||
+            student.middleName?.toLowerCase().startsWith(searchLower) ||
+            student.lastName?.toLowerCase().startsWith(searchLower) ||
             student.studentId?.toLowerCase().includes(searchLower) ||
             student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
             student.casteCategory?.toLowerCase().includes(searchLower) ||
@@ -463,9 +465,9 @@ router.get('/public', async (req, res) => {
         console.error('Error during search:', searchError);
         // Fallback to basic search if advanced search fails
         allStudents = allStudents.filter(student => 
-          student.firstName?.toLowerCase().includes(searchLower) ||
-          student.middleName?.toLowerCase().includes(searchLower) ||
-          student.lastName?.toLowerCase().includes(searchLower) ||
+          student.firstName?.toLowerCase().startsWith(searchLower) ||
+          student.middleName?.toLowerCase().startsWith(searchLower) ||
+          student.lastName?.toLowerCase().startsWith(searchLower) ||
           student.studentId?.toLowerCase().includes(searchLower) ||
           student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
           student.casteCategory?.toLowerCase().includes(searchLower) ||
@@ -537,6 +539,56 @@ router.post('/', protect, uploadStudentPhoto.single('photo'), async (req, res) =
     }
     delete studentData['subjects[]']; // Remove the array notation
 
+    // Convert department name to ObjectId
+    if (studentData.department && typeof studentData.department === 'string') {
+      const AcademicDepartment = mongoose.model('AcademicDepartment');
+      const dept = await AcademicDepartment.findOne({ name: studentData.department });
+      if (dept) {
+        studentData.department = dept._id;
+      } else {
+        return res.status(400).json({
+          message: `Department "${studentData.department}" not found`
+        });
+      }
+    }
+
+    // Convert semester number to ObjectId
+    if (studentData.currentSemester && typeof studentData.currentSemester === 'number') {
+      const Semester = mongoose.model('Semester');
+      const semester = await Semester.findOne({ number: studentData.currentSemester });
+      if (semester) {
+        studentData.currentSemester = semester._id;
+      } else {
+        return res.status(400).json({
+          message: `Semester ${studentData.currentSemester} not found`
+        });
+      }
+    }
+
+    // Ensure required fields are present
+    if (!studentData.mobileNumber) {
+      studentData.mobileNumber = '0000000000'; // Default mobile number
+    }
+
+    if (!studentData.middleName || studentData.middleName.trim() === '') {
+      studentData.middleName = 'N/A'; // Default middle name if not provided
+    }
+
+    // Generate a unique default email if not provided
+    if (!studentData.email) {
+      const firstName = studentData.firstName.toLowerCase().replace(/\s+/g, '');
+      const lastName = studentData.lastName.toLowerCase().replace(/\s+/g, '');
+      let baseEmail = `${firstName}.${lastName}@student.edu`;
+      let candidate = baseEmail;
+      let suffix = 1;
+      // Ensure we don't collide with existing emails (collection may still have a unique index)
+      while (await Student.findOne({ email: candidate })) {
+        candidate = `${firstName}.${lastName}${suffix}@student.edu`;
+        suffix += 1;
+      }
+      studentData.email = candidate;
+    }
+
     // Handle photo upload to Cloudinary
     if (req.file) {
       try {
@@ -563,10 +615,18 @@ router.post('/', protect, uploadStudentPhoto.single('photo'), async (req, res) =
     const student = new Student(studentData);
     await student.save();
 
+    // Re-fetch the saved student with populated refs so frontend gets names not ObjectIds
+    const savedStudent = await Student.findById(student._id)
+      .populate('stream', 'name code')
+      .populate('department', 'name code')
+      .populate('semester', 'number name')
+      .populate('currentSemester', 'number name')
+      .populate({ path: 'subjects', select: 'name subjectCode' });
+
     console.log('Student created successfully:', student._id);
     res.status(201).json({
       success: true,
-      data: student,
+      data: savedStudent,
       message: 'Student created successfully'
     });
   } catch (err) {

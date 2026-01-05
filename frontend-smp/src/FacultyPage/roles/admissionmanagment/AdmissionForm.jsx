@@ -181,7 +181,7 @@ function AdmissionForm() {
               },
             }),
             axios.get(
-              "https://backenderp.tarstech.in/api/superadmin/departments",
+              "https://backenderp.tarstech.in/api/superadmin/departments/all",
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
@@ -201,8 +201,10 @@ function AdmissionForm() {
           ]);
 
         const streamsData = Array.isArray(streamRes.data) ? streamRes.data : [];
-        const departmentsData = Array.isArray(departmentRes.data)
-          ? departmentRes.data
+        // Extract departments array from the response object
+        const departmentsResponse = departmentRes.data.departments || departmentRes.data.departmentList || departmentRes.data;
+        const departmentsData = Array.isArray(departmentsResponse)
+          ? departmentsResponse
           : [];
         const semestersData = Array.isArray(semesterRes.data)
           ? semesterRes.data
@@ -215,6 +217,13 @@ function AdmissionForm() {
         setDepartments(departmentsData);
         setSemesters(semestersData);
         setSubjects(subjectsData);
+
+        console.log("Fetched data:", {
+          streams: streamsData,
+          departments: departmentsData,
+          semesters: semestersData,
+          subjects: subjectsData
+        });
 
         const combined = streamsData
           .map((stream) => {
@@ -234,6 +243,7 @@ function AdmissionForm() {
           })
           .filter(Boolean);
 
+        console.log("Combined data:", combined);
         setCombinedData(combined);
       } catch (err) {
         console.error("Failed to fetch academic data:", err);
@@ -274,22 +284,44 @@ function AdmissionForm() {
             }
           );
           const fetchedSubjects = res.data || [];
+          console.log("Fetched subjects for semester/department:", {
+            semester: formData.semester,
+            department: formData.department,
+            subjects: fetchedSubjects
+          });
+          
           if (fetchedSubjects.length === 0) {
-            setFetchError(
-              "No subjects available for the selected semester and department."
-            );
+            console.log("No subjects found for this combination");
           }
+          
+          // Update combined data with the fetched subjects
           setCombinedData((prev) => {
             const updatedCombined = [...prev];
-            const stream = updatedCombined.find(
-              (s) => s._id === formData.stream
-            );
-            if (stream) {
-              const dept = stream.departments.find(
-                (d) => d._id === formData.department
-              );
-              if (dept) dept.subjects = fetchedSubjects;
+            
+            // Find the stream that contains this department or update all streams
+            let updated = false;
+            updatedCombined.forEach(stream => {
+              const dept = stream.departments.find(d => d._id === formData.department);
+              if (dept) {
+                dept.subjects = fetchedSubjects;
+                updated = true;
+              }
+            });
+            
+            // If department not found in any stream, create a temporary entry
+            if (!updated && formData.stream) {
+              const streamIndex = updatedCombined.findIndex(s => s._id === formData.stream);
+              if (streamIndex >= 0) {
+                const dept = departments.find(d => d._id === formData.department);
+                if (dept) {
+                  updatedCombined[streamIndex].departments.push({
+                    ...dept,
+                    subjects: fetchedSubjects
+                  });
+                }
+              }
             }
+            
             return updatedCombined;
           });
           setFormData((prev) => ({
@@ -672,10 +704,7 @@ function AdmissionForm() {
             <DropdownGroup
               label="Department"
               name="department"
-              options={
-                combinedData.find((s) => s._id === formData.stream)
-                  ?.departments || []
-              }
+              options={departments}
               required
               theme={theme}
               themeClasses={currentTheme}
@@ -700,53 +729,6 @@ function AdmissionForm() {
                 >
                   Subjects <span className="text-red-500">*</span>
                 </label>
-                {formData.stream &&
-                 formData.department &&
-                 formData.semester &&
-                 (
-                   combinedData
-                     .find((s) => s._id === formData.stream)
-                     ?.departments.find((d) => d._id === formData.department)
-                     ?.subjects || []
-                 ).length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const availableSubjects = combinedData
-                        .find((s) => s._id === formData.stream)
-                        ?.departments.find((d) => d._id === formData.department)
-                        ?.subjects || [];
-                      const allSelected = availableSubjects.every(sub =>
-                        Array.isArray(formData.subjects) && formData.subjects.includes(sub._id)
-                      );
-                      if (allSelected) {
-                        // Deselect all
-                        setFormData((prev) => ({
-                          ...prev,
-                          subjects: [],
-                        }));
-                      } else {
-                        // Select all
-                        setFormData((prev) => ({
-                          ...prev,
-                          subjects: availableSubjects.map(sub => sub._id),
-                        }));
-                      }
-                    }}
-                    className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-                  >
-                    {(() => {
-                      const availableSubjects = combinedData
-                        .find((s) => s._id === formData.stream)
-                        ?.departments.find((d) => d._id === formData.department)
-                        ?.subjects || [];
-                      const allSelected = availableSubjects.every(sub =>
-                        Array.isArray(formData.subjects) && formData.subjects.includes(sub._id)
-                      );
-                      return allSelected ? "Deselect All" : "Select All";
-                    })()}
-                  </button>
-                )}
               </div>
               <div
                 className={`p-4 ${currentTheme.cardBorder} rounded-xl bg-gray-800 max-h-[12rem] overflow-y-auto transition-all`}
@@ -758,51 +740,75 @@ function AdmissionForm() {
                       Loading subjects...
                     </span>
                   </div>
-                ) : formData.stream &&
-                  formData.department &&
-                  formData.semester ? (
-                  (
-                    combinedData
-                      .find((s) => s._id === formData.stream)
-                      ?.departments.find((d) => d._id === formData.department)
-                      ?.subjects || []
-                  ).length > 0 ? (
-                    combinedData
-                      .find((s) => s._id === formData.stream)
-                      ?.departments.find((d) => d._id === formData.department)
-                      ?.subjects.map((sub) => (
-                        <div key={sub._id} className="flex items-center mb-2">
-                          <input
-                            type="checkbox"
-                            id={`subject-${sub._id}`}
-                            name="subjects"
-                            value={sub._id}
-                            checked={
-                              Array.isArray(formData.subjects) &&
-                              formData.subjects.includes(sub._id)
-                            }
-                            onChange={handleCheckboxChange}
-                            disabled={loading}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label
-                            htmlFor={`subject-${sub._id}`}
-                            className="ml-2 text-gray-200"
-                          >
-                            {sub.name}
-                          </label>
+                ) : formData.department && formData.semester ? (
+                  // Show subjects from the semester-department fetch
+                  (() => {
+                    // Try to find subjects from the combined data first
+                    const streamData = combinedData.find((s) => s._id === formData.stream);
+                    const deptData = streamData?.departments.find((d) => d._id === formData.department);
+                    const availableSubjects = deptData?.subjects || [];
+                    
+                    if (availableSubjects.length > 0) {
+                      return (
+                        <>
+                          <div className="mb-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const allSelected = availableSubjects.every(sub =>
+                                  Array.isArray(formData.subjects) && formData.subjects.includes(sub._id)
+                                );
+                                if (allSelected) {
+                                  setFormData((prev) => ({ ...prev, subjects: [] }));
+                                } else {
+                                  setFormData((prev) => ({ ...prev, subjects: availableSubjects.map(sub => sub._id) }));
+                                }
+                              }}
+                              className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                            >
+                              {availableSubjects.every(sub =>
+                                Array.isArray(formData.subjects) && formData.subjects.includes(sub._id)
+                              ) ? "Deselect All" : "Select All"}
+                            </button>
+                          </div>
+                          {availableSubjects.map((sub) => (
+                            <div key={sub._id} className="flex items-center mb-2">
+                              <input
+                                type="checkbox"
+                                id={`subject-${sub._id}`}
+                                name="subjects"
+                                value={sub._id}
+                                checked={
+                                  Array.isArray(formData.subjects) &&
+                                  formData.subjects.includes(sub._id)
+                                }
+                                onChange={handleCheckboxChange}
+                                disabled={loading}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <label
+                                htmlFor={`subject-${sub._id}`}
+                                className="ml-2 text-gray-200"
+                              >
+                                {sub.name}
+                              </label>
+                            </div>
+                          ))}
+                        </>
+                      );
+                    } else {
+                      return (
+                        <div className="text-yellow-400 py-2">
+                          Loading subjects for {departments.find(d => d._id === formData.department)?.name} - Semester {semesters.find(s => s._id === formData.semester)?.number}...
+                          <br />
+                          <small className="text-gray-400">If subjects don't appear, they may need to be configured for this combination.</small>
                         </div>
-                      ))
-                  ) : (
-                    <div className="text-red-400 py-2">
-                      No subjects available for this semester and department.
-                      Please select a different combination.
-                    </div>
-                  )
+                      );
+                    }
+                  })()
                 ) : (
                   <div className="text-gray-400 py-2">
-                    Please select stream, department, and semester to view
-                    subjects.
+                    Please select department and semester to view subjects.
                   </div>
                 )}
               </div>

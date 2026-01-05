@@ -247,7 +247,7 @@ const AddBook = ({ initialData }) => {
       };
 
       const response = await axios.post(
-        "https://backenderp.tarstech.in/api/books",
+        "/api/books",
         formattedData
       );
       setModalMessage("Book added successfully!");

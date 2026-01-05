@@ -21,7 +21,7 @@ const StudentBooks = () => {
 
       // Use the history endpoint to get the most recent transactions
       const response = await axios.get(
-        `backenderp.tarstech.in/api/issues/history`,
+        `https://backenderp.tarstech.in/api/issues/history`,
         {
           params: {
             studentId: studentId,
@@ -177,7 +177,7 @@ const StudentBooks = () => {
 
           try {
             const response = await axios.get(
-              `backenderp.tarstech.in/api/students`
+              `https://backenderp.tarstech.in/api/students`
             );
             const students = Array.isArray(response.data) ? response.data : [];
 
@@ -303,11 +303,12 @@ const StudentBooks = () => {
   useEffect(() => {
     const handleBookRenewal = (event) => {
       try {
-        const { borrowerId, borrowerType, bookId, timestamp } = event.detail;
+        const { borrowerId, borrowerType, bookId, newDueDate, timestamp } = event.detail;
         console.log("📚 Book renewal event received in StudentBooks:", {
           borrowerId,
           borrowerType,
           bookId,
+          newDueDate,
           timestamp,
         });
         console.log("🔍 Current student ID:", studentId);
@@ -315,13 +316,36 @@ const StudentBooks = () => {
         // Check if this renewal is for the current student
         if (borrowerType === "student" && borrowerId === studentId) {
           console.log(
-            `🔄 Renewal detected for current student ${studentId}, refreshing books...`
+            `🔄 Renewal detected for current student ${studentId}, updating due date to ${newDueDate}...`
           );
-          // Refresh books after a short delay to ensure backend is updated
+          
+          // Immediately update the local state with new due date
+          setStudentData(prevData => {
+            if (!prevData || !prevData.books) return prevData;
+            
+            const updatedBooks = prevData.books.map(book => {
+              if (book.ACCNO === bookId || book.bookId === bookId || book._id === bookId) {
+                console.log(`📅 Updating due date for book ${bookId} from ${book.dueDate} to ${newDueDate}`);
+                return {
+                  ...book,
+                  dueDate: newDueDate,
+                  lastRenewed: timestamp
+                };
+              }
+              return book;
+            });
+            
+            return {
+              ...prevData,
+              books: updatedBooks
+            };
+          });
+          
+          // Also refresh from API after a delay to ensure consistency
           setTimeout(() => {
-            console.log("⏰ Executing delayed refresh for student books...");
+            console.log("⏰ Executing delayed API refresh for student books...");
             fetchFreshBorrowedBooks(studentId);
-          }, 1000);
+          }, 500);
         } else {
           console.log(
             `ℹ️ Renewal event for different student (${borrowerId}), ignoring...`
@@ -387,6 +411,33 @@ const StudentBooks = () => {
       }
     };
 
+    // Handle generic refresh student data events
+    const handleRefreshStudentData = (event) => {
+      try {
+        const { borrowerId, borrowerType, action, timestamp } = event.detail;
+        console.log("🔄 Refresh student data event received:", {
+          borrowerId,
+          borrowerType,
+          action,
+          timestamp,
+        });
+
+        if (borrowerType === "student" && borrowerId === studentId) {
+          console.log(
+            `🔄 Refresh detected for current student ${studentId}, refreshing books...`
+          );
+          setTimeout(() => {
+            fetchFreshBorrowedBooks(studentId);
+          }, 500);
+        }
+      } catch (error) {
+        console.error(
+          "❌ Error handling refresh student data event:",
+          error
+        );
+      }
+    };
+
     // 🔍 DEBUG: Add test listener to verify events are working
     const testEventListener = (event) => {
       console.log(
@@ -400,6 +451,7 @@ const StudentBooks = () => {
     window.addEventListener("bookRenewed", handleBookRenewal);
     window.addEventListener("bookIssued", handleBookIssue);
     window.addEventListener("bookReturned", handleBookReturn);
+    window.addEventListener("refreshStudentData", handleRefreshStudentData);
     window.addEventListener("bookRenewed", testEventListener);
     window.addEventListener("bookIssued", testEventListener);
     window.addEventListener("bookReturned", testEventListener);
@@ -411,6 +463,7 @@ const StudentBooks = () => {
       window.removeEventListener("bookRenewed", handleBookRenewal);
       window.removeEventListener("bookIssued", handleBookIssue);
       window.removeEventListener("bookReturned", handleBookReturn);
+      window.removeEventListener("refreshStudentData", handleRefreshStudentData);
       window.removeEventListener("bookRenewed", testEventListener);
       window.removeEventListener("bookIssued", testEventListener);
       window.removeEventListener("bookReturned", testEventListener);

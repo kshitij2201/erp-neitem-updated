@@ -447,16 +447,27 @@ const BookList = () => {
   useEffect(() => {
     let processedBooks = books;
    
-    // First filter by search term if exists
+    // First filter by search term if exists based on searchBy option
     if (processedBooks.length > 0 && searchTerm.trim()) {
-      processedBooks = filterBooksByTitle(processedBooks, searchTerm);
+      const searchLower = searchTerm.toLowerCase().trim();
+      
+      processedBooks = processedBooks.filter((book) => {
+        if (searchBy === "Title") {
+          return book.TITLENAME && book.TITLENAME.toLowerCase().includes(searchLower);
+        } else if (searchBy === "Author") {
+          return book.AUTHOR && book.AUTHOR.toLowerCase().includes(searchLower);
+        } else if (searchBy === "AccessionNo") {
+          return book.ACCNO && book.ACCNO.toLowerCase().includes(searchLower);
+        }
+        return false;
+      });
     }
    
     // Then group by title to show unique books
     processedBooks = groupBooksByTitle(processedBooks);
    
     setFilteredBooks(processedBooks);
-  }, [searchTerm, books]);
+  }, [searchTerm, books, searchBy]);
 
   // Listen for book issue/return events to refresh book data
   useEffect(() => {

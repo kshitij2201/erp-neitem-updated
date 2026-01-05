@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const StudentList = () => {
   const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]); // Store all students for filtering
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -441,6 +442,16 @@ const StudentList = () => {
       setLoading(true);
       setError(null);
 
+      // Check for authentication token
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required. Please login to view students.");
+        setLoading(false);
+        return;
+      }
+
+      console.log("🔑 Token exists, making API request...");
+
       // First, get ALL students from the API (server doesn't seem to support pagination)
       const response = await axios.get(
         "https://backenderp.tarstech.in/api/students",
@@ -450,7 +461,8 @@ const StudentList = () => {
             limit: 1000, // Get all students
           },
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
           },
         }
       );
@@ -576,54 +588,43 @@ const StudentList = () => {
         };
       });
 
-      // Now implement CLIENT-SIDE pagination since server doesn't support it properly
-      const allStudents = formattedStudents;
+      // Store all students for filtering - sort alphabetically by name
+      const allStudentsData = formattedStudents.sort((a, b) => {
+        const nameA = (a.name || "").toLowerCase();
+        const nameB = (b.name || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      setAllStudents(allStudentsData);
+      
       // Compute department list and total departments across ALL students
       const deptSet = new Set(
-        allStudents.map((s) => (s.department ? String(s.department) : "Unknown"))
+        allStudentsData.map((s) => (s.department ? String(s.department) : "Unknown"))
       );
       const deptArray = Array.from(deptSet).sort();
       setDepartmentsList(deptArray);
       setTotalDepartments(deptArray.length);
-      const totalCount = allStudents.length;
+      setTotalStudents(allStudentsData.length);
       
-      // Calculate pagination
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      const paginatedStudents = allStudents.slice(startIndex, endIndex);
-      
-      console.log("📄 Client-side pagination:", {
-        totalStudents: totalCount,
-        currentPage: page,
-        itemsPerPage: limit,
-        startIndex,
-        endIndex,
-        showingStudents: paginatedStudents.length,
-        allStudentsCount: allStudents.length
-      });
-
-      // Set the paginated students for display
-      setStudents(paginatedStudents);
-
-      // Update pagination state with real counts
-      const totalPagesCalc = Math.ceil(totalCount / limit);
-      setTotalPages(totalPagesCalc);
-      setTotalStudents(totalCount);
-      
-      console.log("✅ Pagination state updated:", {
-        totalPages: totalPagesCalc,
-        totalStudents: totalCount,
-        currentPage: page,
-        itemsPerPage: limit
+      console.log("📄 All students loaded:", {
+        totalStudents: allStudentsData.length,
+        departmentCount: deptArray.length
       });
     } catch (error) {
       console.error("Error fetching students:", error);
       if (error.response) {
-        setError(
-          `Server error: ${error.response.status} - ${
-            error.response.data.message || "Unknown error"
-          }`
-        );
+        if (error.response.status === 401) {
+          setError("Authentication failed. Please login again to access student data.");
+          // Optionally redirect to login
+          // navigate('/login');
+        } else if (error.response.status === 403) {
+          setError("Access denied. You don't have permission to view student data.");
+        } else {
+          setError(
+            `Server error: ${error.response.status} - ${
+              error.response.data.message || "Unknown error"
+            }`
+          );
+        }
       } else if (error.request) {
         setError(
           "No response from server. Please check your internet connection."
@@ -718,11 +719,12 @@ const StudentList = () => {
   // 🔄 Listen for book renewal and issue events to update specific student data
   useEffect(() => {
     const handleBookRenewal = (event) => {
-      const { borrowerId, borrowerType, bookId, timestamp } = event.detail;
+      const { borrowerId, borrowerType, bookId, timestamp, newDueDate } = event.detail;
       console.log("📚 Book renewal event received in StudentList:", {
         borrowerId,
         borrowerType,
         bookId,
+        newDueDate,
         timestamp,
       });
       console.log(
@@ -732,11 +734,37 @@ const StudentList = () => {
 
       // Only update if it's a student renewal
       if (borrowerType === "student") {
-        // Re-fetch books for the specific student who renewed the book
+        // Re-fetch books for the specific student who renewed the book to get updated due date
         console.log(
-          `🔄 About to refresh books for student ${borrowerId} after renewal`
+          `🔄 About to refresh books for student ${borrowerId} after renewal with new due date: ${newDueDate}`
         );
-        fetchBorrowedBooks(borrowerId, "student");
+        
+        // First update the local state immediately for better UX
+        setBorrowedBooks(prev => {
+          const studentBooks = prev[borrowerId] || [];
+          const updatedBooks = studentBooks.map(book => {
+            if (book.ACCNO === bookId || book._id === bookId) {
+              return {
+                ...book,
+                dueDate: newDueDate,
+                lastRenewed: timestamp
+              };
+            }
+            return book;
+          });
+          
+          console.log(`📝 Updated local state for student ${borrowerId} with new due date`);
+          return {
+            ...prev,
+            [borrowerId]: updatedBooks
+          };
+        });
+        
+        // Then fetch fresh data from API to ensure consistency
+        setTimeout(() => {
+          fetchBorrowedBooks(borrowerId, "student");
+        }, 500);
+        
         console.log(
           `🔄 Refreshed books for student ${borrowerId} after renewal`
         );
@@ -783,10 +811,28 @@ const StudentList = () => {
       }
     };
 
+    const handleRefreshStudentData = (event) => {
+      const { borrowerId, borrowerType, action, timestamp } = event.detail;
+      console.log("🔄 Student data refresh event received:", {
+        borrowerId,
+        borrowerType,
+        action,
+        timestamp,
+      });
+
+      // Only update if it's a student action
+      if (borrowerType === "student") {
+        // Re-fetch books for the specific student to get updated data
+        console.log(`🔄 Refreshing data for student ${borrowerId} after ${action}`);
+        fetchBorrowedBooks(borrowerId, "student");
+      }
+    };
+
     // Add event listeners for book renewals, issues, and returns
     window.addEventListener("bookRenewed", handleBookRenewal);
     window.addEventListener("bookIssued", handleBookIssue);
     window.addEventListener("bookReturned", handleBookReturn);
+    window.addEventListener("refreshStudentData", handleRefreshStudentData);
 
     // 🔍 DEBUG: Add test listener to verify events are working
     const testEventListener = (event) => {
@@ -799,15 +845,18 @@ const StudentList = () => {
     window.addEventListener("bookRenewed", testEventListener);
     window.addEventListener("bookIssued", testEventListener);
     window.addEventListener("bookReturned", testEventListener);
+    window.addEventListener("refreshStudentData", testEventListener);
 
     // Cleanup event listeners
     return () => {
       window.removeEventListener("bookRenewed", handleBookRenewal);
       window.removeEventListener("bookIssued", handleBookIssue);
       window.removeEventListener("bookReturned", handleBookReturn);
+      window.removeEventListener("refreshStudentData", handleRefreshStudentData);
       window.removeEventListener("bookRenewed", testEventListener);
       window.removeEventListener("bookIssued", testEventListener);
       window.removeEventListener("bookReturned", testEventListener);
+      window.removeEventListener("refreshStudentData", testEventListener);
     };
   }, []); // Empty dependency array since we only want to set up the listener once
 
@@ -843,23 +892,56 @@ const StudentList = () => {
     };
   };
 
-  const filteredStudents = students.filter((student) => {
-    if (!student) return false;
-    const searchTermLower = searchTerm.toLowerCase();
-    const studentName = String(student.name || "").toLowerCase();
-    const studentBtNumber = String(student.studentId || "").toLowerCase();
-    const studentRollNo = String(student.rollNo || "").toLowerCase();
+  // Apply filtering to all students first
+  const filteredAllStudents = useMemo(() => {
+    return allStudents.filter((student) => {
+      if (!student) return false;
+      const searchTermLower = searchTerm.toLowerCase();
+      
+      // Extract first name from full name
+      const fullName = String(student.name || "");
+      const firstName = fullName.split(" ")[0].toLowerCase(); // Get only first name
 
-    const matchesSearch =
-      studentName.includes(searchTermLower) ||
-      studentBtNumber.includes(searchTermLower) ||
-      studentRollNo.includes(searchTermLower);
+      const matchesSearch =
+        !searchTerm || // If no search term, include all
+        firstName.startsWith(searchTermLower); // Search by first letter(s) of first name
 
-    const matchesDepartment =
-      filterDepartment === "all" || student.department === filterDepartment;
+      const matchesDepartment =
+        filterDepartment === "all" || student.department === filterDepartment;
 
-    return matchesSearch && matchesDepartment;
-  });
+      return matchesSearch && matchesDepartment;
+    });
+  }, [allStudents, searchTerm, filterDepartment]);
+
+  // Then apply pagination to filtered results
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredAllStudents.slice(startIndex, endIndex);
+  }, [filteredAllStudents, currentPage, itemsPerPage]);
+
+  // Update pagination when filter results change
+  useEffect(() => {
+    const newTotalPages = Math.ceil(filteredAllStudents.length / itemsPerPage);
+    setTotalPages(newTotalPages);
+    
+    // Reset to first page when search/filter changes
+    if (currentPage > newTotalPages && newTotalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [filteredAllStudents.length, itemsPerPage, currentPage]);
+
+  // Reset to first page when search term or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterDepartment]);
+
+  // Update students state with paginated filtered results
+  useEffect(() => {
+    setStudents(paginatedStudents);
+  }, [paginatedStudents]);
+
+  const filteredStudents = paginatedStudents;
 
   if (loading) {
     return (
@@ -939,7 +1021,7 @@ const StudentList = () => {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search by name, BT number, or roll number..."
+                placeholder="Search by first letter of name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -963,9 +1045,18 @@ const StudentList = () => {
         </div>
 
         <div className="mb-4 text-gray-600 flex justify-between items-center">
-          <span>Showing {filteredStudents.length} of {students.length} students</span>
+          <span>
+            {searchTerm || filterDepartment !== "all" 
+              ? `Found ${filteredAllStudents.length} matching students` 
+              : `Showing ${filteredAllStudents.length} students`
+            }
+            {totalPages > 1 ? ` (Page ${currentPage} of ${totalPages})` : ''}
+          </span>
           <span className="text-sm text-blue-600">
-            Page {currentPage} of {totalPages} | Total: {totalStudents}
+            {searchTerm || filterDepartment !== "all" 
+              ? `${filteredAllStudents.length} of ${totalStudents} total`
+              : `Total: ${totalStudents}`
+            }
           </span>
         </div>
 
@@ -1217,7 +1308,9 @@ const StudentList = () => {
           <div className="mt-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-700">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalStudents)} of {totalStudents} students
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAllStudents.length)} of {filteredAllStudents.length} 
+                {searchTerm || filterDepartment !== "all" ? ` filtered` : ``} students
+                {searchTerm || filterDepartment !== "all" ? ` (${totalStudents} total)` : ``}
               </span>
               <div className="flex items-center gap-2">
                 <label htmlFor="itemsPerPage" className="text-sm text-gray-600">

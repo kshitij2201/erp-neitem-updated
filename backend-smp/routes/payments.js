@@ -4,6 +4,7 @@ const router = express.Router();
 
 import Payment from '../models/Payment.js';
 import Student from '../models/StudentManagement.js';
+import ExtraStudent from '../models/ExtraStudent.js';
 import FeeHead from '../models/FeeHead.js';
 import Salary from '../models/Salary.js';
 import Expense from '../models/Expense.js';
@@ -490,7 +491,9 @@ router.post('/', async (req, res) => {
       admissionCategory,
       examType,
       examSemester,
-      examSubjectCount
+      examSubjectCount,
+      selectedFeeCategories,
+      multipleFees
     } = req.body;
 
     // Validate required fields
@@ -523,14 +526,21 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: `UTR Number is required for ${paymentMethod} payments` });
     }
 
-    // Check if student exists
-    const student = await Student.findById(studentId);
+    // Check if student exists (check both regular students and extra students)
+    let student = await Student.findById(studentId);
+    let isExtraStudent = false;
+    
     if (!student) {
-      console.log('Student not found:', studentId);
+      student = await ExtraStudent.findById(studentId);
+      isExtraStudent = true;
+    }
+    
+    if (!student) {
+      console.log('Student not found in either collection:', studentId);
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    console.log('Found student:', student.firstName, student.lastName);
+    console.log('Found student:', student.firstName, student.lastName, isExtraStudent ? '(extra student)' : '(regular student)');
 
     // Validate and verify fee head if provided
     let feeHeadDetails = null;
@@ -551,6 +561,7 @@ router.post('/', async (req, res) => {
     const payment = new Payment({
       studentId,
       studentName: `${student.firstName} ${student.lastName}`.trim(),
+      isExtraStudent: isExtraStudent,
       amount: parseFloat(amount),
       paymentMethod,
       feeHead: feeHead && feeHead !== '' ? feeHead : undefined,
@@ -564,7 +575,10 @@ router.post('/', async (req, res) => {
       admissionCategory: admissionCategory || undefined,
       examType: examType || undefined,
       examSemester: examSemester ? parseInt(examSemester) : undefined,
-      examSubjectCount: examSubjectCount ? parseInt(examSubjectCount) : undefined
+      examSubjectCount: examSubjectCount ? parseInt(examSubjectCount) : undefined,
+      // Fee categories
+      selectedFeeCategories: selectedFeeCategories || [],
+      multipleFees: multipleFees || []
     });
 
     console.log('🔍 UTR Debug - Received from form:', utr);
@@ -603,8 +617,8 @@ router.post('/', async (req, res) => {
     // First, check if pendingAmount needs to be initialized
     let currentPendingAmount = student.pendingAmount || 0;
     
-    // If pendingAmount is 0, initialize it with total applicable fees
-    if (currentPendingAmount === 0) {
+    // If pendingAmount is 0, initialize it with total applicable fees (only for regular students, not extra students)
+    if (currentPendingAmount === 0 && !isExtraStudent) {
       try {
         // Get applicable fee heads for this student
         const FeeHead = (await import('../models/FeeHead.js')).default;
@@ -660,19 +674,28 @@ router.post('/', async (req, res) => {
     const updatedFeesPaid = (student.feesPaid || 0) + parseFloat(amount);
     const updatedPendingAmount = Math.max(0, currentPendingAmount - parseFloat(amount));
     
-    await Student.findByIdAndUpdate(
+    // Update the appropriate model based on whether it's an extra student or regular student
+    const StudentModel = isExtraStudent ? ExtraStudent : Student;
+    await StudentModel.findByIdAndUpdate(
       student._id,
       {
+        paidFees: updatedFeesPaid,
+        pendingFees: updatedPendingAmount,
+        // Also update old field names for backwards compatibility
         feesPaid: updatedFeesPaid,
         pendingAmount: updatedPendingAmount
       },
       { runValidators: false } // Skip validation for this update
     );
-    console.log('Student updated:', { feesPaid: updatedFeesPaid, pendingAmount: updatedPendingAmount });
+    console.log(`${isExtraStudent ? 'Extra student' : 'Student'} updated:`, { feesPaid: updatedFeesPaid, pendingAmount: updatedPendingAmount });
 
-    // Populate payment for response with complete details
-    await payment.populate('studentId', 'firstName lastName studentId department casteCategory');
-    await payment.populate('feeHead', 'title amount description applyTo filters totalCollected collectionCount lastCollectionDate');
+    // Populate feeHead for response (feeHead is always from FeeHead collection)
+    if (payment.feeHead) {
+      await payment.populate('feeHead', 'title amount description applyTo filters totalCollected collectionCount lastCollectionDate');
+    }
+    
+    // Note: We already have the student data from earlier, no need to populate
+    // (populate would fail for ExtraStudent anyway since Payment model references Student)
 
     res.status(201).json({
       message: 'Payment recorded successfully',
@@ -688,6 +711,7 @@ router.post('/', async (req, res) => {
         transactionId: payment.transactionId,
         collectedBy: payment.collectedBy,
         remarks: payment.remarks,
+        utr: payment.utr,
         // New fields for admission and exam fees
         admissionType: payment.admissionType,
         admissionCategory: payment.admissionCategory,
@@ -695,13 +719,15 @@ router.post('/', async (req, res) => {
         examSemester: payment.examSemester,
         examSubjectCount: payment.examSubjectCount,
         student: {
-          id: payment.studentId._id,
-          studentId: payment.studentId.studentId,
-          name: `${payment.studentId.firstName} ${payment.studentId.lastName}`,
-          firstName: payment.studentId.firstName,
-          lastName: payment.studentId.lastName,
-          department: payment.studentId.department,
-          casteCategory: payment.studentId.casteCategory
+          id: student._id,
+          studentId: student.studentId,
+          name: `${student.firstName} ${student.lastName}`,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          department: student.department,
+          casteCategory: student.casteCategory || student.caste,
+          program: student.program,
+          isExtraStudent: isExtraStudent
         },
         studentName: payment.studentName,
         feeHead: payment.feeHead ? {

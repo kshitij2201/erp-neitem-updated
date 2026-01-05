@@ -195,7 +195,14 @@ router.get("/profile", async (req, res) => {
     const student = await Student.findById(decoded.id)
       .populate("stream", "name")
       .populate("department", "name")
-      .populate("semester", "number")
+      .populate({
+        path: "semester",
+        select: "number subjects",
+        populate: {
+          path: "subjects",
+          select: "name subjectCode code"
+        }
+      })
       .populate({
         path: "subjects",
         select: "name subjectCode code year department" // Include all relevant subject fields
@@ -209,7 +216,6 @@ router.get("/profile", async (req, res) => {
         path: "backlogs.subject",
         select: "name subjectCode code year department" // Include all relevant subject fields
       })
-      .populate("backlogs.semester", "number");
 
     if (!student) {
       return res.status(404).json({

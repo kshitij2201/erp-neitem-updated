@@ -19,6 +19,9 @@ import { errorHandler } from "./utils/errorHandler.js";
 // Import Auth Middleware
 import { protect } from "./middleware/auth.js";
 
+// Import Database Connection
+import connectDB from "./config/db.js";
+
 // Import Routes
 /*
 // These imports are temporarily commented out to avoid conflicts
@@ -82,7 +85,7 @@ import integrationRoutes from "./routes/integration.js";
 import ledgerRoutes from "./routes/ledger.js";
 import maintenanceRoutes from "./routes/maintenance.js";
 import notificationsRoutes from "./routes/notifications.js";
-import paymentsRoutes from "./routes/payments.js";
+// import paymentsRoutes from "./routes/payments.js";
 import pfRoutes from "./routes/pf.js";
 import purchaseRoutes from "./routes/purchase.js";
 import receiptsRoutes from "./routes/receipts.js";
@@ -118,6 +121,7 @@ import attendanceRoutes from "./routes/attendancelogRoutes.js";
 import announcementRoutes from "./routes/Announcement.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import studentsFeeRoutes from "./routes/students.js";
+import extraStudentsRoutes from "./routes/extraStudents.js";
 import ccRoutes from "./routes/ccRoutes.js";
 import markattendanceRoutes from "./routes/markattendance.js";
 import attendanceQueryRoutes from "./routes/attendanceQuery.js";
@@ -192,6 +196,9 @@ if (process.env.JWT_SECRET.length < 32) {
   );
   process.exit(1);
 }
+
+// Connect to Database
+connectDB();
 
 // Create Express App
 const app = express();
@@ -386,6 +393,7 @@ app.use("/api/faculty/auth", facultyAuthRoutes);
 app.use("/api/student/auth", studentAuthRoutes);
 // Mount public student routes first (without protection for /public endpoint)
 app.use("/api/students", studentsFeeRoutes);
+app.use("/api/extrastudents", protect, extraStudentsRoutes);
 app.use("/api/students/management", protect, studentManagementRoutes);
 app.use("/api/accounts", accountsRoutes);
 app.use("/api/account", accountRoutes);
@@ -449,6 +457,7 @@ app.use("/api/pf", protect, pfRoutes);
 // Store Management Routes
 app.use("/api/store", storeRoutes);
 
+<<<<<<< HEAD
 // Users Routes
 app.use("/api/users", usersRoutes);
 
@@ -483,6 +492,8 @@ async function initializeCounters() {
   }
 }
 
+=======
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
 // Cron Job to delete expired announcements
 cron.schedule("0 0 * * *", async () => {
   try {

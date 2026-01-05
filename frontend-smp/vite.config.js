@@ -35,7 +35,11 @@ export default defineConfig(({ mode }) => {
       ],
     proxy: {
       "/api": {
+<<<<<<< HEAD
         target: "https://backenderp.tarstech.in", // Local backend server
+=======
+        target: isDevelopment ? "https://backenderp.tarstech.in" : "https://backenderp.tarstech.in", // Local backend server for dev, production for build
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, "/api"), // Keep /api in path

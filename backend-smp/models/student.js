@@ -138,6 +138,18 @@ const studentSchema = new mongoose.Schema({
   photo: {
     type: String,
   },
+  totalFees: {
+    type: Number,
+    default: 0,
+  },
+  paidFees: {
+    type: Number,
+    default: 0,
+  },
+  pendingFees: {
+    type: Number,
+    default: 0,
+  },
 }, {
   timestamps: true,
 });

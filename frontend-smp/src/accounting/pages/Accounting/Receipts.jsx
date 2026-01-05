@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
+// Use ExcelJS browser-friendly build to avoid CJS resolution issues with Vite
+import ExcelJS from 'exceljs/dist/exceljs.min.js';
+import { saveAs } from 'file-saver';
 
-const API_URL = "https://backenderp.tarstech.in";
+const API_URL = import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in";
 
 const Receipts = () => {
   const [receipts, setReceipts] = useState([]);
@@ -26,6 +29,7 @@ const Receipts = () => {
   });
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+<<<<<<< HEAD
   const [exportLoading, setExportLoading] = useState(false);
   const [showExportFormModal, setShowExportFormModal] = useState(false);
   const [exportForm, setExportForm] = useState({
@@ -34,9 +38,23 @@ const Receipts = () => {
     department: "",
     year: "",
   });
+=======
+  const [showExportForm, setShowExportForm] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportFormData, setExportFormData] = useState({
+    stream: '',
+    department: '',
+    year: '',
+    semester: '',
+    feeTypes: []
+  });
+  const [semesters, setSemesters] = useState([]);
+  const [semestersLoading, setSemestersLoading] = useState(false);
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
 
   useEffect(() => {
     fetchReceipts();
+    fetchSemesters();
   }, [currentPage]);
 
   // Prevent body scrolling when modal is open
@@ -50,6 +68,43 @@ const Receipts = () => {
       document.body.style.overflow = 'unset';
     };
   }, [showReceiptModal]);
+
+  // Close export form when pressing ESC
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showExportForm) {
+        setShowExportForm(false);
+      }
+    };
+
+    if (showExportForm) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showExportForm]);
+
+  const fetchSemesters = async () => {
+    try {
+      setSemestersLoading(true);
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await fetch(`${API_URL}/api/superadmin/semesters`, { headers });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Filter semesters where _id is "68e4bbaa006a2091da093713" as per user requirement
+      const filteredSemesters = Array.isArray(data) ? data.filter(sem => sem._id === "68e4bbaa006a2091da093713") : [];
+      setSemesters(filteredSemesters);
+    } catch (err) {
+      console.error("Fetch semesters error:", err);
+      setSemesters([]);
+    } finally {
+      setSemestersLoading(false);
+    }
+  };
 
   const fetchReceipts = async () => {
     try {
@@ -90,16 +145,33 @@ const Receipts = () => {
         console.warn("Found receipts with invalid structure:", invalidReceipts);
       }
 
-      // Log receipt IDs for debugging
-      const validReceipts = receiptsArray.filter(
-        (r) => r && typeof r === "object" && r._id
-      );
-      console.log(
-        "Valid receipt IDs loaded:",
-        validReceipts.map((r) => r._id)
-      );
+      // Remove duplicate receipts based on _id and receiptNumber
+      const uniqueReceipts = [];
+      const seenIds = new Set();
+      const seenReceiptNumbers = new Set();
+      
+      receiptsArray.forEach((receipt) => {
+        if (receipt && receipt._id) {
+          // Use both _id and receiptNumber to identify duplicates
+          const uniqueKey = receipt.receiptNumber || receipt._id;
+          
+          if (!seenIds.has(receipt._id) && !seenReceiptNumbers.has(uniqueKey)) {
+            seenIds.add(receipt._id);
+            if (receipt.receiptNumber) {
+              seenReceiptNumbers.add(receipt.receiptNumber);
+            }
+            uniqueReceipts.push(receipt);
+          }
+        }
+      });
 
-      setReceipts(receiptsArray);
+      console.log(`📊 Total receipts: ${receiptsArray.length}, Unique receipts: ${uniqueReceipts.length}, Duplicates removed: ${receiptsArray.length - uniqueReceipts.length}`);
+      
+      if (uniqueReceipts.length > 0) {
+        console.log("Sample receipt:", uniqueReceipts[0]);
+      }
+
+      setReceipts(uniqueReceipts);
       setPagination(
         data.pagination || {
           totalPages: 0,
@@ -141,6 +213,9 @@ const Receipts = () => {
         }
         const paymentData = await paymentResponse.json();
 
+        console.log("🔍 Payment Data from Backend:", paymentData);
+        console.log("🔍 Selected Fee Categories:", paymentData.selectedFeeCategories);
+
         // Create receipt data and show modal
         const formattedReceipt = {
           receiptNumber:
@@ -163,6 +238,7 @@ const Receipts = () => {
             department: paymentData.studentId?.department || "N/A",
             program: paymentData.studentId?.program || "N/A",
             caste: paymentData.studentId?.casteCategory || "N/A",
+            casteCategory: paymentData.studentId?.casteCategory || "N/A",
             rollNumber: paymentData.studentId?.rollNo || "N/A",
             section: paymentData.studentId?.section || "N/A"
           },
@@ -170,6 +246,8 @@ const Receipts = () => {
           paymentType: "specific",
           collectedBy: paymentData.collectedBy || "Cashier",
           remarks: paymentData.remarks || "",
+          selectedFeeCategories: paymentData.selectedFeeCategories || [],
+          multipleFees: paymentData.multipleFees || [],
         };
         
         setReceiptData(formattedReceipt);
@@ -990,9 +1068,660 @@ const Receipts = () => {
     }
   };
 
-  const handleEditFormCancel = () => {
-    setEditModalOpen(false);
-    setEditReceipt(null);
+  const handleExportFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      const newFeeTypes = checked 
+        ? [...exportFormData.feeTypes, value]
+        : exportFormData.feeTypes.filter(type => type !== value);
+      
+      // Reset year and semester when fee type changes
+      setExportFormData(prev => ({
+        ...prev,
+        feeTypes: newFeeTypes,
+        year: '',
+        semester: ''
+      }));
+    } else {
+      setExportFormData(prev => ({
+        ...prev,
+        [name]: value,
+        // Reset department when stream changes
+        ...(name === 'stream' && { department: '' })
+      }));
+    }
+  };
+
+  const handleExportDownload = async () => {
+    // Validation based on fee type
+    const isExamFee = exportFormData.feeTypes.includes('Exam');
+    const isAdmissionFee = exportFormData.feeTypes.includes('Admission');
+    const isAllDepartments = exportFormData.department === 'All';
+    
+    if (!exportFormData.stream || !exportFormData.department || exportFormData.feeTypes.length === 0) {
+      alert('Please fill all fields and select at least one fee type.');
+      return;
+    }
+    
+    // If Exam fee is selected, require semester
+    if (isExamFee && !exportFormData.semester) {
+      alert('Please select a semester for Exam fees.');
+      return;
+    }
+    
+    // If Admission fee is selected, require year
+    if (isAdmissionFee && !exportFormData.year) {
+      alert('Please select a year for Admission fees.');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      // Step 1: Fetch all semesters from semesters database
+      console.log('Fetching semesters data...');
+      const semestersResponse = await fetch(`${API_URL}/api/superadmin/semesters`, { headers });
+      if (!semestersResponse.ok) {
+        throw new Error('Failed to fetch semesters data');
+      }
+      const semestersData = await semestersResponse.json();
+      const semesters = Array.isArray(semestersData) ? semestersData : semestersData.data || [];
+      
+      console.log('Semesters fetched:', semesters.length);
+
+      console.log(exportFormData);
+      // Step 2: Determine which semester numbers to filter based on year or semester dropdown
+      let targetSemesterNumbers = [];
+      
+      // If Exam fee is selected, use semester dropdown value
+      if (exportFormData.feeTypes.includes('Exam') && exportFormData.semester) {
+        targetSemesterNumbers = [parseInt(exportFormData.semester)];
+      }
+      // If Admission fee is selected, use year dropdown to determine both semesters
+      else if (exportFormData.feeTypes.includes('Admission') && exportFormData.year) {
+        if (exportFormData.year.toLowerCase() === '1st year') targetSemesterNumbers = [1, 2];
+        else if (exportFormData.year.toLowerCase() === '2nd year') targetSemesterNumbers = [3, 4];
+        else if (exportFormData.year.toLowerCase() === '3rd year') targetSemesterNumbers = [5, 6];
+        else if (exportFormData.year.toLowerCase() === '4th year') targetSemesterNumbers = [7, 8];
+      }
+
+      console.log(`Looking for semester numbers: ${targetSemesterNumbers.join(', ')}`);
+
+      // Step 3: Find the semester _ids that match the target semester numbers
+      const targetSemesters = semesters.filter(sem => 
+        targetSemesterNumbers.includes(sem.semesterNumber) || 
+        targetSemesterNumbers.includes(sem.number) ||
+        targetSemesterNumbers.includes(sem.semester)
+      );
+
+      if (targetSemesters.length === 0) {
+        throw new Error(`No semesters found for ${exportFormData.year} year (semesters ${targetSemesterNumbers.join(', ')})`);
+      }
+
+      const targetSemesterIds = targetSemesters.map(sem => sem._id);
+      console.log(`Target semester _ids: ${targetSemesterIds.join(', ')}`);
+
+      // Check if "All" departments is selected
+      if (isAllDepartments) {
+        await exportAllDepartments(exportFormData.stream, targetSemesterIds, targetSemesterNumbers, headers);
+        return;
+      }
+
+      // Step 4: Fetch all students
+      console.log('Fetching students data...');
+      const studentsResponse = await fetch(`${API_URL}/api/students`, { headers });
+      if (!studentsResponse.ok) {
+        throw new Error('Failed to fetch students data');
+      }
+      const studentsDataRaw = await studentsResponse.json();
+      const allStudents = Array.isArray(studentsDataRaw) ? studentsDataRaw : 
+                         studentsDataRaw.data || studentsDataRaw.students || [];
+      
+      console.log('Total students fetched:', allStudents.length);
+
+      // Step 5: Fetch fee summaries from feesummeries collection (for Admission fees)
+      console.log('Fetching fee summaries data...');
+      const feeSummariesResponse = await fetch(`${API_URL}/api/fees/summaries`, { headers });
+      if (!feeSummariesResponse.ok) {
+        throw new Error('Failed to fetch fee summaries data');
+      }
+      const feeSummariesDataRaw = await feeSummariesResponse.json();
+      const allFeeSummaries = Array.isArray(feeSummariesDataRaw) ? feeSummariesDataRaw : 
+                              feeSummariesDataRaw.data || feeSummariesDataRaw.summaries || [];
+      
+      console.log('Total fee summaries fetched:', allFeeSummaries.length);
+
+      // Step 5.1: Fetch exam fees from examfees collection (if Exam fee type selected)
+      let allExamFees = [];
+      if (exportFormData.feeTypes.includes('Exam')) {
+        console.log('Fetching exam fees data...');
+        const examFeesResponse = await fetch(`${API_URL}/api/exam-fees`, { headers });
+        if (!examFeesResponse.ok) {
+          console.warn('Failed to fetch exam fees data');
+        } else {
+          const examFeesDataRaw = await examFeesResponse.json();
+          allExamFees = Array.isArray(examFeesDataRaw) ? examFeesDataRaw : 
+                        examFeesDataRaw.data || examFeesDataRaw.examFees || [];
+          console.log('Total exam fees fetched:', allExamFees.length);
+        }
+      }
+
+      // Step 6: Create maps for fee lookup
+      const feeSummaryMap = {};
+      allFeeSummaries.forEach(summary => {
+        const studentId = summary.studentId?._id || summary.studentId;
+        if (studentId) {
+          feeSummaryMap[studentId] = summary;
+        }
+      });
+
+      const examFeeMap = {};
+      allExamFees.forEach(examFee => {
+        const studentId = examFee.student?._id || examFee.student || examFee.studentId;
+        if (studentId) {
+          examFeeMap[studentId] = examFee;
+        }
+      });
+
+      // Step 7: Filter students based on stream, department, and semester _id match
+      const filteredStudents = allStudents.filter(student => {
+        // Check stream
+        const studentStream = student.stream?.name || student.stream || '';
+        const streamMatch = studentStream.toLowerCase() === exportFormData.stream.toLowerCase();
+
+        // Check department - normalize for special characters like &
+        const studentDept = student.department?.name || student.department || '';
+        const normalizeDept = (dept) => dept.toLowerCase().replace(/\s+/g, '').replace(/[&]/g, '');
+        const deptMatch = normalizeDept(studentDept) === normalizeDept(exportFormData.department);
+
+        // Check if semester _id matches any of the target semester IDs
+        const studentSemesterId = typeof student.semester === 'object' ? student.semester._id : student.semester;
+        // Convert both to strings for comparison
+        const semesterMatch = targetSemesterIds.some(targetId => 
+          String(targetId) === String(studentSemesterId)
+        );
+
+        return streamMatch && deptMatch && semesterMatch;
+      });
+
+      console.log(`Filtered students count: ${filteredStudents.length}`);
+      console.log(`Sample filtered student semesters:`, filteredStudents.slice(0, 5).map(s => ({
+        name: s.firstName,
+        semester: s.semester?.number || s.semester?.semesterNumber || 'unknown',
+        semesterId: typeof s.semester === 'object' ? s.semester._id : s.semester
+      })));
+
+      if (filteredStudents.length === 0) {
+        alert(`No students found matching the criteria:\n- Stream: ${exportFormData.stream}\n- Department: ${exportFormData.department}\n- Year: ${exportFormData.year} (Semesters ${targetSemesterNumbers.join(', ')})`);
+        setExportLoading(false);
+        return;
+      }
+
+      // Step 8: Prepare data for export with fee data based on selected fee type
+      const exportData = filteredStudents.map((student, index) => {
+        let totalFee = 0;
+        let paidFee = 0;
+        let pendingFee = 0;
+
+        // If Admission fee type is selected, use feesummeries data
+        if (exportFormData.feeTypes.includes('Admission')) {
+          const feeSummary = feeSummaryMap[student._id] || {};
+          totalFee = feeSummary.totalFees || 0;
+          paidFee = feeSummary.paidFees || 0;
+          pendingFee = feeSummary.pendingFees || 0;
+        }
+        
+        // If Exam fee type is selected, use examfees data
+        if (exportFormData.feeTypes.includes('Exam')) {
+          const examFee = examFeeMap[student._id] || {};
+          totalFee = examFee.totalAmount || examFee.amount || 0;
+          paidFee = examFee.paidAmount || 0;
+          pendingFee = examFee.pendingAmount || (totalFee - paidFee) || 0;
+        }
+        
+        return {
+          'Sr.': index + 1,
+          'Student ID': student.studentId || student._id || '',
+          'Name of Students': `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+          'Regular / CAP': student.admissionType || 'Regular',
+          'Category': student.casteCategory || 'OPEN',
+          'Stream': student.stream?.name || student.stream || '',
+          'Department': student.department?.name || student.department || '',
+          'Semester': student.semester?.number || 'N/A',
+          'Total Fee': totalFee,
+          'Paid Fee': paidFee,
+          'Pending Fee': pendingFee,
+          'Receipt No.': student.receiptNumber || ''
+        };
+      });
+
+      // Step 9: Create Professional Excel Workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Fee Summary');
+
+      // Set column widths
+      worksheet.columns = [
+        { key: 'sr', width: 8 },
+        { key: 'studentId', width: 15 },
+        { key: 'name', width: 30 },
+        { key: 'admissionType', width: 15 },
+        { key: 'category', width: 12 },
+        { key: 'stream', width: 15 },
+        { key: 'department', width: 20 },
+        { key: 'semester', width: 12 },
+        { key: 'totalFee', width: 15 },
+        { key: 'paidFee', width: 15 },
+        { key: 'pendingFee', width: 15 },
+        { key: 'receiptNo', width: 18 }
+      ];
+
+      // Add Institute Header (Merged)
+      worksheet.mergeCells('A1:L1');
+      const titleRow1 = worksheet.getCell('A1');
+      titleRow1.value = 'NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY AND MANAGEMENT';
+      titleRow1.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF000000' } };
+      titleRow1.alignment = { vertical: 'middle', horizontal: 'center' };
+      titleRow1.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      worksheet.getRow(1).height = 25;
+
+      // Add Address (Merged)
+      worksheet.mergeCells('A2:L2');
+      const titleRow2 = worksheet.getCell('A2');
+      titleRow2.value = 'Village Satnavri, Amravati Road, Nagpur - 440023';
+      titleRow2.font = { name: 'Arial', size: 11, italic: true };
+      titleRow2.alignment = { vertical: 'middle', horizontal: 'center' };
+      titleRow2.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      worksheet.getRow(2).height = 20;
+
+      // Add Report Title (Merged)
+      worksheet.mergeCells('A3:L3');
+      const titleRow3 = worksheet.getCell('A3');
+      titleRow3.value = `Fee Summary Report - ${exportFormData.stream} - ${exportFormData.department}, ${exportFormData.year}, Session 2025-26`;
+      titleRow3.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF0066CC' } };
+      titleRow3.alignment = { vertical: 'middle', horizontal: 'center' };
+      titleRow3.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF0F8FF' }
+      };
+      worksheet.getRow(3).height = 22;
+
+      // Add empty row
+      worksheet.addRow([]);
+
+      // Add Table Headers (Row 5)
+      const headerRow = worksheet.addRow([
+        'Sr.',
+        'Student ID',
+        'Name of Students',
+        'Regular/CAP',
+        'Category',
+        'Stream',
+        'Department',
+        'Semester',
+        'Total Fee (₹)',
+        'Paid Fee (₹)',
+        'Pending Fee (₹)',
+        'Receipt No.'
+      ]);
+
+      // Style header row
+      headerRow.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      headerRow.height = 30;
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4472C4' }
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+      });
+
+      // Add data rows
+      let totalFeeSum = 0;
+      let paidFeeSum = 0;
+      let pendingFeeSum = 0;
+
+      exportData.forEach((data, index) => {
+        const row = worksheet.addRow([
+          data['Sr.'],
+          data['Student ID'],
+          data['Name of Students'],
+          data['Regular / CAP'],
+          data['Category'],
+          data['Stream'],
+          data['Department'],
+          data['Semester'],
+          data['Total Fee'],
+          data['Paid Fee'],
+          data['Pending Fee'],
+          data['Receipt No.']
+        ]);
+
+        // Accumulate totals
+        totalFeeSum += data['Total Fee'];
+        paidFeeSum += data['Paid Fee'];
+        pendingFeeSum += data['Pending Fee'];
+
+        // Style data rows with alternating colors
+        const fillColor = index % 2 === 0 ? 'FFFFFFFF' : 'FFF5F5F5';
+        row.eachCell((cell, colNumber) => {
+          cell.alignment = { vertical: 'middle', horizontal: colNumber === 3 ? 'left' : 'center' };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: fillColor }
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+            left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+            bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+            right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
+          };
+
+          // Format currency columns
+          if (colNumber === 9 || colNumber === 10 || colNumber === 11) {
+            cell.numFmt = '₹#,##0.00';
+          }
+        });
+      });
+
+      // Add Total Row
+      const totalRow = worksheet.addRow([
+        '', '', '', '', '', '', '', 'TOTAL:',
+        totalFeeSum,
+        paidFeeSum,
+        pendingFeeSum,
+        ''
+      ]);
+
+      totalRow.font = { name: 'Arial', size: 12, bold: true };
+      totalRow.eachCell((cell, colNumber) => {
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFD966' }
+        };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'medium', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+
+        // Format currency columns in total row
+        if (colNumber === 9 || colNumber === 10 || colNumber === 11) {
+          cell.numFmt = '₹#,##0.00';
+        }
+      });
+
+      // Add footer note
+      worksheet.addRow([]);
+      const footerRow = worksheet.addRow(['', `Generated on: ${new Date().toLocaleString('en-IN')}`, '', '', '', '', '', '', '', '', '', `Total Students: ${filteredStudents.length}`]);
+      footerRow.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF666666' } };
+      worksheet.mergeCells(footerRow.number, 2, footerRow.number, 6);
+      worksheet.mergeCells(footerRow.number, 9, footerRow.number, 12);
+      footerRow.getCell(12).alignment = { horizontal: 'right' };
+
+      // Generate Excel file and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const fileName = `Fee_Summary_${exportFormData.stream}_${exportFormData.department}_${exportFormData.year}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(blob, fileName);
+
+      console.log('✅ Excel exported successfully!');
+      setShowExportForm(false);
+      setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Export failed: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Export all departments in separate sheets
+  const exportAllDepartments = async (stream, targetSemesterIds, targetSemesterNumbers, headers) => {
+    try {
+      // Define departments based on stream
+      const departments = stream === 'B.Tech'
+        ? ['CS', 'Electrical', 'Mechancial', 'Civil', 'CSE&AIML']
+        : stream === 'MBA'
+        ? ['MBA']
+        : [];
+
+      if (departments.length === 0) {
+        alert('No departments found for the selected stream.');
+        setExportLoading(false);
+        return;
+      }
+
+      // Step 1: Fetch all students
+      console.log('Fetching all students data...');
+      const studentsResponse = await fetch(`${API_URL}/api/students`, { headers });
+      if (!studentsResponse.ok) {
+        throw new Error('Failed to fetch students data');
+      }
+      const studentsDataRaw = await studentsResponse.json();
+      const allStudents = Array.isArray(studentsDataRaw) ? studentsDataRaw :
+                         studentsDataRaw.data || studentsDataRaw.students || [];
+      
+      console.log('Total students fetched:', allStudents.length);
+
+      // Step 2: Fetch fee summaries
+      console.log('Fetching fee summaries data...');
+      const feeSummariesResponse = await fetch(`${API_URL}/api/fees/summaries`, { headers });
+      if (!feeSummariesResponse.ok) {
+        throw new Error('Failed to fetch fee summaries data');
+      }
+      const feeSummariesDataRaw = await feeSummariesResponse.json();
+      const allFeeSummaries = Array.isArray(feeSummariesDataRaw) ? feeSummariesDataRaw :
+                              feeSummariesDataRaw.data || feeSummariesDataRaw.summaries || [];
+      
+      console.log('Total fee summaries fetched:', allFeeSummaries.length);
+
+      // Step 3: Fetch exam fees if needed
+      let allExamFees = [];
+      if (exportFormData.feeTypes.includes('Exam')) {
+        console.log('Fetching exam fees data...');
+        const examFeesResponse = await fetch(`${API_URL}/api/exam-fees`, { headers });
+        if (!examFeesResponse.ok) {
+          console.warn('Failed to fetch exam fees data');
+        } else {
+          const examFeesDataRaw = await examFeesResponse.json();
+          allExamFees = Array.isArray(examFeesDataRaw) ? examFeesDataRaw :
+                        examFeesDataRaw.data || examFeesDataRaw.examFees || [];
+          console.log('Total exam fees fetched:', allExamFees.length);
+        }
+      }
+
+      // Step 4: Create maps for fee lookup
+      const feeSummaryMap = {};
+      allFeeSummaries.forEach(summary => {
+        const studentId = summary.studentId?._id || summary.studentId;
+        if (studentId) {
+          feeSummaryMap[studentId] = summary;
+        }
+      });
+
+      const examFeeMap = {};
+      allExamFees.forEach(examFee => {
+        const studentId = examFee.student?._id || examFee.student || examFee.studentId;
+        if (studentId) {
+          examFeeMap[studentId] = examFee;
+        }
+      });
+
+      // Step 5: Create workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'NIETM';
+      workbook.created = new Date();
+
+      // Step 6: Process each department
+      for (const department of departments) {
+        console.log(`Processing department: ${department}`);
+
+        // Filter students for this department
+        const departmentStudents = allStudents.filter(student => {
+          const studentStream = student.stream?.name || student.stream || '';
+          const studentDept = student.department?.name || student.department || '';
+          const studentSemesterId = typeof student.semester === 'object' ? student.semester._id : student.semester;
+          
+          // Normalize department names for comparison (handle special characters)
+          const normalizeDept = (dept) => dept.toLowerCase().replace(/\s+/g, '').replace(/[&]/g, '');
+          
+          const streamMatch = studentStream.toLowerCase() === stream.toLowerCase();
+          const deptMatch = normalizeDept(studentDept) === normalizeDept(department);
+          const semesterMatch = targetSemesterIds.some(targetId => 
+            String(targetId) === String(studentSemesterId)
+          );
+
+          return streamMatch && deptMatch && semesterMatch;
+        });
+
+        console.log(`Students in ${department}: ${departmentStudents.length}`);
+
+        if (departmentStudents.length === 0) {
+          console.log(`No students found for ${department}, skipping...`);
+          continue;
+        }
+
+        // Prepare data for this department
+        const exportData = departmentStudents.map((student, index) => {
+          let totalFee = 0;
+          let paidFee = 0;
+          let pendingFee = 0;
+
+          if (exportFormData.feeTypes.includes('Admission')) {
+            const feeSummary = feeSummaryMap[student._id] || {};
+            totalFee = feeSummary.totalFees || 0;
+            paidFee = feeSummary.paidFees || 0;
+            pendingFee = feeSummary.pendingFees || 0;
+          }
+          
+          if (exportFormData.feeTypes.includes('Exam')) {
+            const examFee = examFeeMap[student._id] || {};
+            totalFee = examFee.totalAmount || examFee.amount || 0;
+            paidFee = examFee.paidAmount || 0;
+            pendingFee = examFee.pendingAmount || (totalFee - paidFee) || 0;
+          }
+          
+          return {
+            'Sr.': index + 1,
+            'Student ID': student.studentId || student._id || '',
+            'Name of Students': `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+            'Regular / CAP': student.admissionType || 'Regular',
+            'Category': student.casteCategory || 'OPEN',
+            'Stream': student.stream?.name || student.stream || '',
+            'Department': student.department?.name || student.department || '',
+            'Semester': student.semester?.number || 'N/A',
+            'Total Fee': totalFee,
+            'Paid Fee': paidFee,
+            'Pending Fee': pendingFee,
+            'Receipt No.': student.receiptNumber || ''
+          };
+        });
+
+        // Create worksheet for this department
+        const worksheet = workbook.addWorksheet(department, {
+          pageSetup: { paperSize: 9, orientation: 'landscape' }
+        });
+
+        // Add header rows
+        worksheet.mergeCells('A1:L1');
+        const titleRow = worksheet.getCell('A1');
+        titleRow.value = 'NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY AND MANAGEMENT';
+        titleRow.font = { size: 14, bold: true };
+        titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        worksheet.mergeCells('A2:L2');
+        const addressRow = worksheet.getCell('A2');
+        addressRow.value = 'VILLAGE SATNAWARI, AMBAVATI ROAD, NAGPUR';
+        addressRow.font = { size: 11 };
+        addressRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        worksheet.mergeCells('A3:L3');
+        const sessionRow = worksheet.getCell('A3');
+        sessionRow.value = `${stream} - ${department} Department, ${exportFormData.year || `Semesters ${targetSemesterNumbers.join(', ')}`}, Session 2025-26`;
+        sessionRow.font = { size: 12, bold: true };
+        sessionRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        worksheet.addRow([]);
+
+        // Add data headers
+        const headerRow = worksheet.addRow(Object.keys(exportData[0] || {}));
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4472C4' }
+        };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        // Add data rows
+        exportData.forEach(row => {
+          worksheet.addRow(Object.values(row));
+        });
+
+        // Set column widths
+        worksheet.columns.forEach((column, index) => {
+          column.width = index === 2 ? 25 : 15;
+        });
+
+        // Add borders to all cells
+        worksheet.eachRow((row, rowNumber) => {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          });
+        });
+      }
+
+      // Generate and download file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${stream}-All-Departments-${exportFormData.year || 'Multi-Semester'}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ Excel exported successfully!');
+      alert(`Successfully exported ${departments.length} department sheets!`);
+      setShowExportForm(false);
+      setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
+    } catch (error) {
+      console.error('Export all departments error:', error);
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const handleDeleteReceipt = async (receipt) => {
@@ -1232,6 +1961,7 @@ const Receipts = () => {
     }
   };
 
+<<<<<<< HEAD
   // Handle export form submission
   const handleExportFormSubmit = async () => {
     const { feeType, stream, department, year } = exportForm;
@@ -1505,6 +2235,8 @@ const Receipts = () => {
     }
   };
 
+=======
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
   // Fetch student data and export professionally by department
   const fetchAndExportStudentData = async (type) => {
     try {
@@ -1875,31 +2607,189 @@ const Receipts = () => {
   const printReceipt = () => {
     if (!receiptData) return;
 
+    console.log("🖨️ Receipt Data for Print:", receiptData);
+    console.log("🖨️ Selected Fee Categories:", receiptData.selectedFeeCategories);
+
+    // Get absolute logo URLs for reliable loading
+    const baseUrl = window.location.origin;
+    const logo1Url = `${baseUrl}/logo1.png`;
+    const logoUrl = `${baseUrl}/logo.png`;
+    
+    // Function to generate single receipt with label
+    const generateReceipt = (label) => `
+      <div class="receipt-container">
+        <div class="receipt-header-box">
+          <div class="duplicate-label">${label}</div>
+          <div class="institute-header-simple">
+            <div class="logo-left">
+              <img src="${logo1Url}" alt="Logo" />
+            </div>
+            <div class="header-text">
+              <div class="society-name-simple">Maitrey Educational Society's</div>
+              <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+              <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
+            </div>
+            <div class="logo-right">
+              <img src="${logoUrl}" alt="Logo" />
+            </div>
+          </div>
+        </div>
+
+        <table class="receipt-info-table">
+          <tr>
+            <td class="label-cell">Rec. No.</td>
+            <td class="value-cell">: ${receiptData.receiptNumber}</td>
+            <td class="label-cell">Date</td>
+            <td class="value-cell">: ${receiptData.date}</td>
+          </tr>
+          <tr>
+            <td class="label-cell" style="font-weight: bold">Class</td>
+            <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
+            <td class="label-cell">Adm. No.</td>
+            <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Category</td>
+            <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
+            <td class="label-cell">Student Id.</td>
+            <td class="value-cell">: ${receiptData.student?.studentId}</td>
+          </tr>
+          <tr>
+            <td class="label-cell" style="font-weight: bold">Name</td>
+            <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Roll No</td>
+            <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
+            <td class="label-cell">Section</td>
+            <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
+          </tr>
+        </table>
+        
+        <div class="received-section">
+          <div class="received-label">Received the following:</div>
+          <div class="amount-label">(₹)Amount</div>
+        </div>
+        
+          <div class="fee-details-table">
+          <table>
+            <tbody>
+              ${
+                receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
+                  ? receiptData.selectedFeeCategories
+                      .filter(category => parseFloat(category.amount) > 0)
+                      .map(
+                        (category, index) => `
+              <tr>
+                <td class="fee-name">${category.name}</td>
+                <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            `
+                      )
+                      .join("")
+                  : receiptData.multipleFees && receiptData.multipleFees.length > 0
+                  ? receiptData.multipleFees
+                      .map(
+                        (fee, index) => `
+              <tr>
+                <td class="fee-name">${fee.feeHead}</td>
+                <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            `
+                      )
+                      .join("")
+                  : `
+              <tr>
+                <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
+                <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            `
+              }
+            </tbody>
+          </table>
+          <div class="logo-section">
+            <img src="${logoUrl}" alt="NIETM Logo" class="center-logo" />
+          </div>
+        </div>
+
+        <div class="summary-box">
+          <div class="total-section">
+            <div class="total-label">Total :</div>
+            <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+
+          <div class="amount-in-words">
+            <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} 
+          </div>
+
+          <div class="payment-details-footer">
+            <div class="payment-info">Med : ENG, Subject : BSE1-1T,BSE1-2T,BSE1-3T,BSE1-4T,BSE1-5T,BSE1-6T,<br>BSE1-2P,BSE1-3P,BSE1-4P,BSE1-5P</div>
+            ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' ? `
+            <div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
+            <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>
+            ` : ''}
+            <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
+          </div>
+
+          <div class="footer-signature">
+            <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
+            <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
+            <div class="signature-label">RECEIVER'S SIGNATURE</div>
+          </div>
+
+          <div class="page-number">Page 1 of 1</div>
+        </div>
+      </div>
+    `;
+
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Receipt - ${receiptData.receiptNumber}</title>
+        <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
         <style>
+          @page {
+            size: A4 landscape;
+            margin: 5mm;
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
           body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
+<<<<<<< HEAD
             padding: 5px; 
             background: white;
             line-height: 1.4;
             color: #000;
             font-size: 9px;
+=======
+            padding: 3px; 
+            background: white;
+            line-height: 1.4;
+            color: #000;
+            font-size: 10px;
+            font-weight: 600;
+          }
+          /* Ensure all receipt elements use the smaller base size */
+          .receipt-container, .receipt-container * {
+            font-size: 10px !important;
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
           }
           .receipts-wrapper {
             display: flex;
-            justify-content: center;
-            gap: 8px;
+            flex-direction: row;
+            gap: 5px;
             width: 100%;
-            height: 100vh;
-            align-items: flex-start;
+            justify-content: space-between;
+            height: 100%;
           }
           .receipt-container {
             width: 49%;
+<<<<<<< HEAD
             max-width: 500px;
             border: 1px solid #000;
             background: white;
@@ -1908,218 +2798,227 @@ const Receipts = () => {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             page-break-inside: avoid;
             min-height: 650px;
+=======
+            border: 1px solid #000;
+            background: white;
+            padding: 8px;
+            page-break-inside: avoid;
+            min-height: 700px;
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
             height: auto;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+<<<<<<< HEAD
+=======
+            position: relative;
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
           }
           .receipt-header-box {
-            border: 1px solid #2d3748;
+            border: 1px solid #000;
             padding: 6px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             position: relative;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            z-index: 10;
+            background: white;
           }
-          .duplicate-label {
-            position: absolute;
-            top: 2px;
-            right: 6px;
-            font-weight: bold;
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #dc3545;
-            margin-bottom: 15px;
-          }
+                      .duplicate-label {
+                        position: absolute;
+                        top: -10px;
+                        right: 15px;
+                        font-weight: bold;
+                        font-size: 6px;
+                        text-transform: uppercase;
+                        color: #000;
+                        
+                        margin-bottom: 0;
+                      }
           .institute-header-simple {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 15px;
-            padding: 0 10px;
+            gap: 5px;
           }
-          .logo-left {
-            width: 50px;
-            height: 50px;
+          .logo-left, .logo-right {
+            width: 66px;
+            height: 66px;
             flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
           }
-          .logo-left img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-          }
-          .logo-right {
-            width: 35px;
-            height: 35px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .logo-right img {
-            max-width: 100%;
-            max-height: 100%;
+          .logo-left img, .logo-right img {
+            width: 100%;
+            height: 100%;
             object-fit: contain;
           }
           .header-text {
             flex: 1;
             text-align: center;
-            padding: 4px 0;
+            padding: 8px 0;
           }
           .society-name-simple {
-            font-size: 8px;
+            font-size: 12px;
             margin-bottom: 1px;
-            color: #6c757d;
+            font-weight: bold;
           }
           .institute-name-simple {
+            font-family: 'Times New Roman', Times, serif;
             font-weight: bold;
-            font-size: 10px;
+            font-size: 14px;
             text-transform: uppercase;
             margin-bottom: 2px;
-            color: #1a202c;
-            letter-spacing: 0.3px;
           }
           .institute-address-simple {
-            font-size: 8px;
-            color: #6c757d;
-          }
-          .receipt-type-label {
+            font-size: 11px;
             font-weight: bold;
-            text-align: center;
-            text-transform: uppercase;
-            font-size: 9px;
-            margin-bottom: 4px;
-            padding: 2px 4px;
-            border: 2px solid #000;
-            border-bottom: 1px solid #000;
-            color: #000;
-            background: white;
           }
           .receipt-info-table {
             width: 100%;
-            border: 2px solid #000;
+            border: 1px solid #000;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             font-size: 12px;
             background: white;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
           }
           .receipt-info-table td {
             border: 1px solid #000;
-            padding: 4px 8px;
+            padding: 3px 6px;
             vertical-align: top;
           }
           .receipt-info-table .label-cell {
-            font-weight: bold;
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
             width: 20%;
             color: #000;
+            font-weight: bold;
           }
           .receipt-info-table .value-cell {
             width: 30%;
             color: #000;
+            font-weight: bold;
           }
           .received-section {
             display: flex;
             justify-content: space-between;
-            border: 2px solid #2d3748;
+            border: 1px solid #000;
             border-bottom: none;
-            padding: 8px 8px;
-            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+            padding: 5px 8px;
+            background: #f0f0f0;
             font-weight: bold;
-            font-size: 14px;
-            color: #1a202c;
-            min-height: 35px;
+            font-size: 13px;
+            min-height: 50px;
             align-items: center;
+            position: relative;
+            z-index: 10;
           }
           .fee-details-table {
-            border: 2px solid #000;
+            border: 1px solid #000;
             margin-bottom: 0;
+            position: relative;
+            z-index: 10;
+            background: transparent;
+            min-height: 200px;
           }
           .fee-details-table table {
             width: 100%;
             border-collapse: collapse;
           }
           .fee-details-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #dee2e6;
-            font-size: 13px;
+            padding: 5px 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            font-weight: bold;
+            background: transparent;
           }
           .fee-details-table td.fee-name {
             text-transform: uppercase;
             font-weight: bold;
-            color: #000;
           }
           .fee-details-table td.fee-amount {
             text-align: right;
             font-weight: bold;
-            color: #000;
           }
           .logo-section {
-            text-align: center;
-            padding: 12px 0;
-            border-left: 2px solid #000;
-            border-right: 2px solid #000;
-            background: #f8f9fa;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            pointer-events: none;
           }
           .center-logo {
-            width: 70px;
-            height: 70px;
-            opacity: 0.4;
+            width: 150px;
+            height: 150px;
+            opacity: 0.06;
             display: block;
-            margin: 0 auto;
+            filter: grayscale(30%);
           }
           .total-section {
             display: flex;
             justify-content: space-between;
-            border: 2px solid #2d3748;
-            border-top: 3px solid #1a202c;
-            padding: 4px 8px;
+            border: 2px solid #000;
+            border-top: 2px solid #000;
+            padding: 4px 6px;
             font-weight: bold;
             font-size: 14px;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-            color: #1a202c;
+            position: relative;
+            z-index: 10;
+            background: white;
+          }
+          .summary-box {
+            border: 1px solid #000;
+            padding: 8px;
+            background: white;
+            position: relative;
+            z-index: 10;
+            display: block;
+            margin-bottom: 8px;
           }
           .amount-in-words {
-            border: 2px solid #000;
-            border-top: none;
-            padding: 5px 8px;
-            font-size: 12px;
-            background: #f8f9fa;
-            color: #000;
+            border: 1px solid #000;
+            padding: 4px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
+            background: white;
           }
           .words-label {
             font-weight: bold;
           }
           .payment-details-footer {
-            border: 2px solid #2d3748;
+            border: 1px solid #000;
             border-top: none;
-            padding: 10px;
-            font-size: 12px;
+            padding: 6px;
+            font-size: 10px;
             line-height: 1.5;
-            background: #f7fafc;
-            color: #2d3748;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
+            background: white;
           }
           .payment-info {
+            font-size: 10px;
+            font-family: 'Arial', sans-serif;
             margin-bottom: 3px;
           }
           .footer-signature {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            border: 2px solid #2d3748;
+            border: 1px solid #000;
             border-top: none;
             padding: 10px;
-            font-size: 12px;
-            min-height: 40px;
-            background: #f7fafc;
-            color: #2d3748;
+            font-size: 10px;
+            min-height: 60px;
+            position: relative;
+            z-index: 10;
+            background: white;
           }
           .cashier-info {
-            font-size: 11px;
+            font-size: 10px;
+            font-weight: bold;
           }
           .cashier-name {
             font-weight: bold;
@@ -2130,9 +3029,11 @@ const Receipts = () => {
           }
           .page-number {
             text-align: right;
-            font-size: 11px;
-            margin-top: 5px;
-            color: #6c757d;
+            font-size: 10px;
+            margin-top: 4px;
+            font-weight: bold;
+            position: relative;
+            z-index: 10;
           }
           @media print {
             @page {
@@ -2142,23 +3043,16 @@ const Receipts = () => {
             body {
               print-color-adjust: exact;
               -webkit-print-color-adjust: exact;
-              font-size: 8px;
             }
             .receipt-container {
               page-break-inside: avoid;
-              height: auto;
-              max-height: none;
-              overflow: visible;
-            }
-            .receipts-wrapper {
-              height: auto;
-              gap: 5px;
             }
           }
         </style>
       </head>
       <body>
         <div class="receipts-wrapper">
+<<<<<<< HEAD
           <!-- ORIGINAL RECEIPT -->
           <div class="receipt-container">
             <div class="receipt-header-box">
@@ -2352,6 +3246,10 @@ const Receipts = () => {
               <div class="signature-label">RECEIVER'S SIGNATURE</div>
             </div>
           </div>
+=======
+          ${generateReceipt("OFFICE COPY")}
+          ${generateReceipt("STUDENT COPY")}
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
         </div>
       </body>
       </html>
@@ -2360,8 +3258,36 @@ const Receipts = () => {
     const printWindow = window.open("", "_blank");
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    
+    // Wait for images to load before printing
+    printWindow.onload = () => {
+      const images = printWindow.document.getElementsByTagName('img');
+      let loadedCount = 0;
+      const totalImages = images.length;
+      
+      if (totalImages === 0) {
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 250);
+        return;
+      }
+      
+      const checkAllLoaded = () => {
+        loadedCount++;
+        if (loadedCount === totalImages) {
+          printWindow.focus();
+          setTimeout(() => printWindow.print(), 250);
+        }
+      };
+      
+      for (let i = 0; i < totalImages; i++) {
+        if (images[i].complete) {
+          checkAllLoaded();
+        } else {
+          images[i].onload = checkAllLoaded;
+          images[i].onerror = checkAllLoaded;
+        }
+      }
+    };
   };
 
   if (loading) {
@@ -2384,10 +3310,17 @@ const Receipts = () => {
             
             {/* Export Overview Button */}
             <button
+<<<<<<< HEAD
               onClick={() => setShowExportFormModal(true)}
               disabled={exportLoading}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-2 transition-colors duration-200 disabled:opacity-50"
               title="Export receipts overview"
+=======
+              onClick={() => setShowExportForm(true)}
+              disabled={exportLoading}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-2 transition-colors duration-200 disabled:opacity-50"
+              title="Export student data with filters"
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
             >
               <span>{exportLoading ? '🔄 Exporting...' : '📊 Export Overview'}</span>
             </button>
@@ -2479,28 +3412,28 @@ const Receipts = () => {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                         Receipt Details
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
                         Recipient
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                         Amount
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                         Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
                         Actions
                       </th>
                     </tr>
@@ -2694,59 +3627,144 @@ const Receipts = () => {
         </div>
       </div>
 
-      {/* Edit Receipt Modal */}
-      {editModalOpen && (
+      {/* Export Form Modal */}
+      {showExportForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-blue-700">
-              Edit Receipt
+            <h2 className="text-xl font-bold mb-6 text-blue-700 text-center">
+              Export Student Overview
             </h2>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-1">Amount (₹)</label>
-              <input
-                type="number"
-                name="amount"
-                value={editForm.amount}
-                onChange={handleEditFormChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
+            
+            <div className="space-y-4">
+              {/* Stream Dropdown */}
+              <div>
+                <label className="block text-sm font-bold mb-2">Stream</label>
+                <select
+                  name="stream"
+                  value={exportFormData.stream}
+                  onChange={handleExportFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select Stream</option>
+                  <option value="B.Tech">BTech</option>
+                  <option value="MBA">MBA</option>
+                </select>
+              </div>
+
+              {/* Department Dropdown */}
+              <div>
+                <label className="block text-sm font-bold mb-2">Department</label>
+                <select
+                  name="department"
+                  value={exportFormData.department}
+                  onChange={handleExportFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!exportFormData.stream}
+                >
+                  <option value="">Select Department</option>
+                  <option value="All">All Departments</option>
+                  {exportFormData.stream === 'B.Tech' && (
+                    <>
+                      <option value="CS">CS</option>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Mechancial">Mechanical</option>
+                      <option value="Civil">Civil</option>
+                      <option value="CSE&AIML">CSE&AIML</option>
+                    </>
+                  )}
+                  {exportFormData.stream === 'MBA' && (
+                    <option value="MBA">MBA</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Year Dropdown - Show when Admission fee is selected */}
+              {exportFormData.feeTypes.includes('Admission') && (
+                <div>
+                  <label className="block text-sm font-bold mb-2">Year</label>
+                  <select
+                    name="year"
+                    value={exportFormData.year}
+                    onChange={handleExportFormChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1st Year">1st Year (1st Sem)</option>
+                    <option value="2nd Year">2nd Year (3rd Sem)</option>
+                    <option value="3rd Year">3rd Year (5th Sem)</option>
+                    <option value="4th Year">4th Year (7th Sem)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Semester Dropdown - Show when Exam fee is selected */}
+              {exportFormData.feeTypes.includes('Exam') && (
+                <div>
+                  <label className="block text-sm font-bold mb-2">Semester</label>
+                  <select
+                    name="semester"
+                    value={exportFormData.semester}
+                    onChange={handleExportFormChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Semester</option>
+                    <option value="1">1st Sem</option>
+                    <option value="2">2nd Sem</option>
+                    <option value="3">3rd Sem</option>
+                    <option value="4">4th Sem</option>
+                    <option value="5">5th Sem</option>
+                    <option value="6">6th Sem</option>
+                    <option value="7">7th Sem</option>
+                    <option value="8">8th Sem</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Fee Type Checkboxes */}
+              <div>
+                <label className="block text-sm font-bold mb-2">Fee Types</label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="Admission"
+                      checked={exportFormData.feeTypes.includes('Admission')}
+                      onChange={handleExportFormChange}
+                      className="mr-2"
+                    />
+                    Admission
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="Exam"
+                      checked={exportFormData.feeTypes.includes('Exam')}
+                      onChange={handleExportFormChange}
+                      className="mr-2"
+                    />
+                    Exam
+                  </label>
+                </div>
+              </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-1">Status</label>
-              <select
-                name="status"
-                value={editForm.status}
-                onChange={handleEditFormChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">Select Status</option>
-                <option value="Completed">Completed</option>
-                <option value="Pending">Pending</option>
-                <option value="Failed">Failed</option>
-                <option value="Refunded">Refunded</option>
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-1">Remarks</label>
-              <textarea
-                name="remarks"
-                value={editForm.remarks}
-                onChange={handleEditFormChange}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
+
+            <div className="flex justify-end gap-2 mt-6">
               <button
-                onClick={handleEditFormCancel}
+                onClick={() => {
+                  setShowExportForm(false);
+                  setExportFormData({ stream: '', department: '', year: '', semester: '', feeTypes: [] });
+                }}
                 className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                disabled={exportLoading}
               >
                 Cancel
               </button>
               <button
-                onClick={handleEditFormSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={handleExportDownload}
+                disabled={exportLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
               >
-                Save
+                {exportLoading ? 'Downloading...' : 'Download'}
               </button>
             </div>
           </div>
@@ -2915,12 +3933,25 @@ const Receipts = () => {
                       body {
                         font-family: Arial, sans-serif;
                         margin: 0;
+<<<<<<< HEAD
                         padding: 15px;
                         background: #f8f9fa;
                         line-height: 1.5;
                         color: #2d3748;
                         font-size: 12px;
                         font-weight: 400;
+=======
+                        padding: 3px;
+                        background: white;
+                        line-height: 1.4;
+                        color: #000;
+                        font-size: 10px;
+                        font-weight: 600;
+                      }
+                      /* Ensure all receipt elements use the smaller base size */
+                      .receipt-container, .receipt-container * {
+                        font-size: 10px !important;
+>>>>>>> 684b2a89f775d039bb1420b46f174df306dad9ac
                       }
                       .receipts-wrapper {
                         display: flex;
@@ -2931,63 +3962,49 @@ const Receipts = () => {
                       .receipt-container {
                         width: 90%;
                         max-width: 650px;
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         background: white;
-                        padding: 10px;
+                        padding: 8px;
                         margin: 10px auto;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                         page-break-inside: avoid;
-                        min-height: 745px;
+                        min-height: 700px;
                         height: auto;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        position: relative;
                       }
                       .receipt-header-box {
-                        border: 2px solid #2d3748;
-                        padding: 10px;
-                        margin-bottom: 10px;
+                        border: 1px solid #000;
+                        padding: 6px;
+                        margin-bottom: 8px;
                         position: relative;
-                        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+                        z-index: 10;
+                        background: white;
                       }
                       .duplicate-label {
                         position: absolute;
-                        top: 5px;
-                        right: 10px;
+                        top: -12px;
+                        right: 15px;
                         font-weight: bold;
-                        font-size: 14px;
+                        font-size: 6px;
                         text-transform: uppercase;
-                        color: #dc3545;
-                        margin-bottom: 15px;
+                        margin-bottom: 0;
                       }
                       .institute-header-simple {
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        gap: 15px;
-                        padding: 0 10px;
+                        gap: 5px;
                       }
-                      .logo-left {
-                        width: 50px;
-                        height: 50px;
+                      .logo-left, .logo-right {
+                        width: 66px;
+                        height: 66px;
                         flex-shrink: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
                       }
-                      .logo-left img {
-                        max-width: 100%;
-                        max-height: 100%;
-                        object-fit: contain;
-                      }
-                      .logo-right {
-                        width: 35px;
-                        height: 35px;
-                        flex-shrink: 0;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                      }
-                      .logo-right img {
-                        max-width: 100%;
-                        max-height: 100%;
+                      .logo-left img, .logo-right img {
+                        width: 100%;
+                        height: 100%;
                         object-fit: contain;
                       }
                       .header-text {
@@ -2996,157 +4013,170 @@ const Receipts = () => {
                         padding: 8px 0;
                       }
                       .society-name-simple {
-                        font-size: 13px;
-                        margin-bottom: 2px;
-                        color: #6c757d;
+                        font-size: 12px;
+                        margin-bottom: 1px;
+                        font-weight: bold;
                       }
                       .institute-name-simple {
+                        font-family: 'Times New Roman', Times, serif;
                         font-weight: bold;
-                        font-size: 16px;
+                        font-size: 14px;
                         text-transform: uppercase;
-                        margin-bottom: 4px;
-                        color: #1a202c;
-                        letter-spacing: 0.5px;
+                        margin-bottom: 2px;
                       }
                       .institute-address-simple {
-                        font-size: 13px;
-                        color: #6c757d;
-                      }
-                      .receipt-type-label {
+                        font-size: 11px;
                         font-weight: bold;
-                        text-align: center;
-                        text-transform: uppercase;
-                        font-size: 13px;
-                        margin-bottom: 8px;
-                        padding: 3px 8px;
-                        border: 2px solid #000;
-                        border-bottom: 1px solid #000;
-                        color: #000;
-                        background: white;
                       }
                       .receipt-info-table {
                         width: 100%;
-                        border: 2px solid #000;
+                        border: 1px solid #000;
                         border-collapse: collapse;
-                        margin-bottom: 10px;
+                        margin-bottom: 6px;
                         font-size: 12px;
                         background: white;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
                       }
                       .receipt-info-table td {
                         border: 1px solid #000;
-                        padding: 4px 8px;
+                        padding: 3px 6px;
                         vertical-align: top;
                       }
                       .receipt-info-table .label-cell {
-                        font-weight: bold;
+                        font-family: 'Arial', sans-serif;
+                        font-size: 12px;
                         width: 20%;
                         color: #000;
+                        font-weight: bold;
                       }
                       .receipt-info-table .value-cell {
                         width: 30%;
                         color: #000;
+                        font-weight: bold;
                       }
                       .received-section {
                         display: flex;
                         justify-content: space-between;
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         border-bottom: none;
-                        padding: 8px 8px;
-                        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+                        padding: 5px 8px;
+                        background: #f0f0f0;
                         font-weight: bold;
-                        font-size: 14px;
-                        color: #1a202c;
-                        min-height: 35px;
+                        font-size: 13px;
+                        min-height: 50px;
                         align-items: center;
+                        position: relative;
+                        z-index: 10;
                       }
                       .fee-details-table {
-                        border: 2px solid #000;
+                        border: 1px solid #000;
                         margin-bottom: 0;
+                        position: relative;
+                        z-index: 10;
+                        background: transparent;
+                        min-height: 250px;
                       }
                       .fee-details-table table {
                         width: 100%;
                         border-collapse: collapse;
                       }
                       .fee-details-table td {
-                        padding: 6px 10px;
-                        border-bottom: 1px solid #dee2e6;
-                        font-size: 13px;
+                        padding: 5px 8px;
+                        font-size: 12px;
+                        line-height: 1.5;
+                        font-weight: bold;
+                        background: transparent;
                       }
                       .fee-details-table td.fee-name {
                         text-transform: uppercase;
                         font-weight: bold;
-                        color: #000;
                       }
                       .fee-details-table td.fee-amount {
                         text-align: right;
                         font-weight: bold;
-                        color: #000;
                       }
                       .logo-section {
-                        text-align: center;
-                        padding: 12px 0;
-                        border-left: 2px solid #000;
-                        border-right: 2px solid #000;
-                        background: #f8f9fa;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        z-index: 0;
+                        pointer-events: none;
                       }
                       .center-logo {
-                        width: 70px;
-                        height: 70px;
-                        opacity: 0.4;
+                        width: 150px;
+                        height: 150px;
+                        opacity: 0.06;
                         display: block;
-                        margin: 0 auto;
+                        filter: grayscale(30%);
                       }
                       .total-section {
                         display: flex;
                         justify-content: space-between;
-                        border: 2px solid #2d3748;
-                        border-top: 3px solid #1a202c;
-                        padding: 4px 8px;
+                        border: 2px solid #000;
+                        border-top: 2px solid #000;
+                        padding: 4px 6px;
                         font-weight: bold;
                         font-size: 14px;
-                        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-                        color: #1a202c;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
+                      }
+                      .summary-box {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        background: white;
+                        position: relative;
+                        z-index: 10;
+                        display: block;
+                        margin-bottom: 8px;
                       }
                       .amount-in-words {
-                        border: 2px solid #000;
-                        border-top: none;
-                        padding: 5px 8px;
-                        font-size: 12px;
-                        background: #f8f9fa;
-                        color: #000;
+                        border: 1px solid #000;
+                        padding: 4px 6px;
+                        font-size: 11px;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
                       }
                       .words-label {
                         font-weight: bold;
                       }
                       .payment-details-footer {
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         border-top: none;
-                        padding: 10px;
-                        font-size: 12px;
+                        padding: 6px;
+                        font-size: 10px;
                         line-height: 1.5;
-                        background: #f7fafc;
-                        color: #2d3748;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
                       }
                       .payment-info {
+                        font-size: 10px;
+                        font-family: 'Arial', sans-serif;
                         margin-bottom: 3px;
                       }
                       .footer-signature {
                         display: flex;
                         justify-content: space-between;
                         align-items: flex-end;
-                        border: 2px solid #2d3748;
+                        border: 1px solid #000;
                         border-top: none;
                         padding: 10px;
-                        font-size: 12px;
-                        min-height: 40px;
-                        background: #f7fafc;
-                        color: #2d3748;
+                        font-size: 10px;
+                        min-height: 60px;
+                        position: relative;
+                        z-index: 10;
+                        background: white;
                       }
                       .cashier-info {
-                        font-size: 11px;
+                        font-size: 10px;
+                        font-weight: bold;
                       }
                       .cashier-name {
                         font-weight: bold;
@@ -3157,9 +4187,11 @@ const Receipts = () => {
                       }
                       .page-number {
                         text-align: right;
-                        font-size: 11px;
-                        margin-top: 5px;
-                        color: #6c757d;
+                        font-size: 10px;
+                        margin-top: 4px;
+                        font-weight: bold;
+                        position: relative;
+                        z-index: 10;
                       }
                       @media print {
                         @page {
@@ -3178,7 +4210,7 @@ const Receipts = () => {
                     <div class="receipts-wrapper">
                       <div class="receipt-container">
                         <div class="receipt-header-box">
-                          <div class="duplicate-label">ORIGINAL</div>
+                          
                           <div class="institute-header-simple">
                             <div class="logo-left">
                               <img src="/logo1.png" alt="Logo" />
@@ -3204,20 +4236,20 @@ const Receipts = () => {
                             <td class="value-cell">: ${receiptData.date}</td>
                           </tr>
                           <tr>
-                            <td class="label-cell">Class</td>
-                            <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
+                            <td class="label-cell" style="font-weight: bold">Class</td>
+                            <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
                             <td class="label-cell">Adm. No.</td>
                             <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
                           </tr>
                           <tr>
                             <td class="label-cell">Category</td>
-                            <td class="value-cell">: ${receiptData.student?.caste || 'N/A'}</td>
+                            <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
                             <td class="label-cell">Student Id.</td>
                             <td class="value-cell">: ${receiptData.student?.studentId}</td>
                           </tr>
                           <tr>
-                            <td class="label-cell">Name</td>
-                            <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+                            <td class="label-cell" style="font-weight: bold">Name</td>
+                            <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
                           </tr>
                           <tr>
                             <td class="label-cell">Roll No</td>
@@ -3235,52 +4267,72 @@ const Receipts = () => {
                         <div class="fee-details-table">
                           <table>
                             <tbody>
-                              ${receiptData.multipleFees && receiptData.multipleFees.length > 0
-                                ? receiptData.multipleFees.map(fee => 
-                                    `<tr>
-                                      <td class="fee-name">${fee.feeHead}</td>
-                                      <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    </tr>`
-                                  ).join('')
-                                : `<tr>
+                              ${
+                                receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
+                                  ? receiptData.selectedFeeCategories
+                                      .filter(category => parseFloat(category.amount) > 0)
+                                      .map(
+                                        (category, index) => `
+                                  <tr>
+                                    <td class="fee-name">${category.name}</td>
+                                    <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  </tr>
+                                `
+                                      )
+                                      .join("")
+                                  : receiptData.multipleFees && receiptData.multipleFees.length > 0
+                                  ? receiptData.multipleFees
+                                      .map(
+                                        (fee, index) => `
+                                  <tr>
+                                    <td class="fee-name">${fee.feeHead}</td>
+                                    <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  </tr>
+                                `
+                                      )
+                                      .join("")
+                                  : `
+                                  <tr>
                                     <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
                                     <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                  </tr>`
+                                  </tr>
+                                `
                               }
                             </tbody>
                           </table>
+                          <div class="logo-section">
+                            <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+                          </div>
                         </div>
 
-                        <div class="logo-section">
-                          <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
-                        </div>
+                        <div class="summary-box">
+                          <div class="total-section">
+                            <div class="total-label">Total :</div>
+                            <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          </div>
 
-                        <div class="total-section">
-                          <div class="total-label">Total :</div>
-                          <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </div>
+                          <div class="amount-in-words">
+                            <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))}
+                          </div>
 
-                        <div class="amount-in-words">
-                          <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
-                        </div>
+                          <div class="payment-details-footer">
+                            <div class="payment-info">Med : ENG, Subject : BSE1-1T,BSE1-2T,BSE1-3T,BSE1-4T,BSE1-5T,BSE1-6T,<br>BSE1-2P,BSE1-3P,BSE1-4P,BSE1-5P</div>
+                            ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
+                              ? `<div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
+                                 <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>`
+                              : ''
+                            }
+                            <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
+                          </div>
 
-                        <div class="payment-details-footer">
-                          <div class="payment-info">Med : ${receiptData.description || 'N/A'}</div>
-                          ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' 
-                            ? `<div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
-                               <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>`
-                            : ''
-                          }
-                          <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
-                        </div>
+                          <div class="footer-signature">
+                            <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
+                            <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
+                            <div class="signature-label">RECEIVER'S SIGNATURE</div>
+                          </div>
 
-                        <div class="footer-signature">
-                          <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
-                          <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
-                          <div class="signature-label">RECEIVER'S SIGNATURE</div>
+                          <div class="page-number">Page 1 of 1</div>
                         </div>
-
-                        <div class="page-number">Page 1 of 1</div>
                       </div>
                     </div>
                   `
@@ -3311,18 +4363,18 @@ const Receipts = () => {
 };
 
 // Helper function to convert number to words
-const numberToWords = (num) => {
+const numberToWords = (num, addOnly = true) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
   const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
 
-  if (num === 0) return 'Zero';
+  if (num === 0) return addOnly ? 'Zero Only' : 'Zero';
 
   let words = '';
   
   // Handle thousands
   if (Math.floor(num / 1000) > 0) {
-    words += numberToWords(Math.floor(num / 1000)) + ' Thousand ';
+    words += numberToWords(Math.floor(num / 1000), false) + ' Thousand ';
     num %= 1000;
   }
   
@@ -3344,7 +4396,7 @@ const numberToWords = (num) => {
     }
   }
   
-  return words.trim() + ' Only';
+  return addOnly ? words.trim() + ' Only' : words.trim();
 };
 
 export default Receipts;

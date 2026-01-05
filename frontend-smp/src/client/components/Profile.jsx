@@ -10,6 +10,138 @@ const Profile = () => {
   const [uploadMessage, setUploadMessage] = useState("");
   const fileInputRef = useRef(null);
 
+  // Fetch attendance data
+  const fetchAttendance = async (student) => {
+    try {
+      setAttendanceLoading(true);
+      const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+      const token = localStorage.getItem("token") || localStorage.getItem("authToken");
+      
+      console.log("=== fetchAttendance Starting ===");
+
+      if (!token || !student) {
+        console.error("No token or student data");
+        setAttendanceData({ overall: "0%", thisMonth: "0%", subjects: [] });
+        setAttendanceLoading(false);
+        return;
+      }
+
+      // Extract subjects from multiple possible locations
+      let subjectsList = [];
+
+      // Priority 1: Direct subjects array
+      if (Array.isArray(student.subjects) && student.subjects.length > 0) {
+        subjectsList = student.subjects;
+      }
+      // Priority 2: Semester subjects
+      else if (student.semester?.subjects && Array.isArray(student.semester.subjects) && student.semester.subjects.length > 0) {
+        subjectsList = student.semester.subjects;
+      }
+      // Priority 3: Semester records (current semester)
+      else if (Array.isArray(student.semesterRecords) && student.semesterRecords.length > 0) {
+        const currentSemesterNumber = student.semester?.number;
+        let relevantRecord = student.semesterRecords.find(
+          rec => rec.semester?.number === currentSemesterNumber
+        ) || student.semesterRecords[student.semesterRecords.length - 1];
+
+        if (relevantRecord?.subjects && Array.isArray(relevantRecord.subjects)) {
+          subjectsList = relevantRecord.subjects
+            .map(sr => sr.subject)
+            .filter(s => s);
+        }
+      }
+
+      if (subjectsList.length === 0) {
+        console.log("No subjects found");
+        setAttendanceData({ overall: "0%", thisMonth: "0%", subjects: [] });
+        setAttendanceLoading(false);
+        return;
+      }
+
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const studentId = student._id || student.id;
+
+      // Prepare all API calls in parallel
+      const attendancePromises = subjectsList.map(async (subject) => {
+        const subjectId = subject?._id || subject?.id || subject;
+        const subjectName = subject?.name || subject?.subjectCode || 'Unknown Subject';
+
+        if (!subjectId) return null;
+
+        try {
+          // Fetch both overall and monthly in parallel for each subject
+          const [overallRes, monthRes] = await Promise.all([
+            axios.get(
+              `${API_URL}/api/student-attendance/${studentId}/${subjectId}/overall`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            ),
+            axios.get(
+              `${API_URL}/api/student-attendance/${studentId}/${subjectId}/monthly?month=${currentMonth}&year=${currentYear}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+          ]);
+
+          return {
+            overall: overallRes.data,
+            monthly: monthRes.data,
+            subjectName
+          };
+        } catch (err) {
+          console.error(`Error fetching attendance for ${subjectName}:`, err.message);
+          return null;
+        }
+      });
+
+      // Wait for all API calls to complete
+      const results = await Promise.all(attendancePromises);
+
+      // Process results
+      let totalPresent = 0;
+      let totalClasses = 0;
+      let monthPresent = 0;
+      let monthClasses = 0;
+      const subjectData = [];
+
+      results.forEach(result => {
+        if (!result) return;
+
+        const { overall, monthly, subjectName } = result;
+
+        totalPresent += overall.present || 0;
+        totalClasses += overall.total || 0;
+        monthPresent += monthly.present || 0;
+        monthClasses += monthly.total || 0;
+
+        if (overall.total > 0) {
+          subjectData.push({
+            name: overall.subjectName || subjectName,
+            percentage: `${overall.percentage}%`,
+            classes: overall.total,
+            present: overall.present,
+            absent: overall.absent
+          });
+        }
+      });
+
+      const overallPercentage = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
+      const monthPercentage = monthClasses > 0 ? Math.round((monthPresent / monthClasses) * 100) : 0;
+
+      setAttendanceData({
+        overall: `${overallPercentage}%`,
+        thisMonth: `${monthPercentage}%`,
+        subjects: subjectData,
+      });
+
+    } catch (error) {
+      console.error("Error in fetchAttendance:", error);
+      setAttendanceData({ overall: "0%", thisMonth: "0%", subjects: [] });
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
   // Password change modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -25,14 +157,31 @@ const Profile = () => {
     confirm: false,
   });
 
+  // Attendance data state
+  const [attendanceData, setAttendanceData] = useState({
+    overall: "0%",
+    thisMonth: "0%",
+    subjects: [],
+  });
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  // Temporary UI-visible debug logs for attendance fetch (helps debug without console)
+  const [attendanceDebug, setAttendanceDebug] = useState([]);
+  const addAttendanceDebug = (msg) => {
+    setAttendanceDebug((prev) => {
+      const entry = `${new Date().toISOString()} - ${msg}`;
+      return [...prev.slice(-80), entry];
+    });
+  };
+
   useEffect(() => {
     const API_URL =
       import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("authToken");
 
     console.log("Profile component mounting...");
     console.log("API_URL:", API_URL);
     console.log("Token exists:", !!token);
+    console.log("Token value (first 20 chars):", token ? token.substring(0, 20) + '...' : 'null');
 
     if (!token) {
       console.error("No token found in localStorage");
@@ -55,6 +204,15 @@ const Profile = () => {
         console.log("Profile response:", res.data);
         if (res.data.success) {
           setProfile(res.data.student);
+          // schedule a delayed fetch in case nested fields are populated shortly after
+          setTimeout(() => {
+            try {
+              console.log("Delayed fetchAttendance triggered");
+              fetchAttendance(res.data.student);
+            } catch (err) {
+              console.error("Delayed fetchAttendance error:", err);
+            }
+          }, 300);
 
           // Enhanced logging for better debugging of subject data
           console.log("Student profile data:", res.data.student);
@@ -160,6 +318,62 @@ const Profile = () => {
         setLoading(false);
       });
   }, []);
+
+  // Listen for attendance updates from other parts of the app (e.g., MarkAttendance)
+  useEffect(() => {
+    const handler = (e) => {
+      try {
+        const detail = e?.detail || {};
+        const updatedIds = detail.studentIds || [];
+        // If profile is not loaded yet, nothing to refresh
+        if (!profile) return;
+        const myId = profile._id || profile.id || profile.studentId;
+
+        // If the updated list includes this student (or no list provided), refresh
+        if (!updatedIds.length || (myId && updatedIds.includes(myId))) {
+          console.log("Received attendanceMarked event, refetching profile/attendance...");
+          const API_URL = import.meta.env.REACT_APP_API_URL || "https://backenderp.tarstech.in";
+          const token = localStorage.getItem("token") || localStorage.getItem("authToken");
+          axios
+            .get(`${API_URL}/api/student/auth/profile`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            .then((res) => {
+                if (res.data?.success) {
+                setProfile(res.data.student);
+                setTimeout(() => {
+                  try {
+                    console.log("Delayed fetchAttendance after attendanceMarked event");
+                    fetchAttendance(res.data.student);
+                  } catch (err) {
+                    console.error("Delayed fetchAttendance (event) error:", err);
+                  }
+                }, 300);
+              }
+            })
+            .catch((err) => {
+              console.error("Error refetching profile after attendance update:", err);
+            });
+        }
+      } catch (err) {
+        console.error("attendanceMarked handler error:", err);
+      }
+    };
+
+    window.addEventListener("attendanceMarked", handler);
+    return () => window.removeEventListener("attendanceMarked", handler);
+  }, [profile]);
+
+  // Also re-run attendance fetch whenever profile state actually changes
+  useEffect(() => {
+    try {
+      if (!profile) return;
+      console.log("Profile state changed — re-running fetchAttendance");
+      fetchAttendance(profile);
+    } catch (err) {
+      console.error("Error in profile-change attendance effect:", err);
+    }
+  }, [profile]);
 
   // Password validation functions
   const validatePassword = (password) => {
@@ -703,12 +917,7 @@ const Profile = () => {
   };
 
   // Attendance Tab - use real data if available
-  const attendanceData = {
-    overall: profile.attendance?.overall || "N/A",
-    thisMonth: profile.attendance?.thisMonth || "N/A",
-    lastUpdated: profile.attendance?.lastUpdated || "N/A",
-    subjects: profile.attendance?.subjects || [],
-  };
+  // attendanceData is now managed by useState above
 
   return (
     <div className="animate-fade-in">
@@ -1258,6 +1467,17 @@ const Profile = () => {
           {/* Attendance Information Tab */}
           {activeTab === "attendance" && (
             <div className="animate-slide-in-right">
+              {attendanceLoading && (
+                <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <svg className="animate-spin h-5 w-5 text-indigo-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-indigo-700 font-medium">Loading attendance data...</span>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
                   <div className="flex items-center justify-between">
@@ -1315,7 +1535,7 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
+                {/* <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-700">
@@ -1341,41 +1561,63 @@ const Profile = () => {
                       </svg>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
 
               <h3 className="text-lg font-bold text-gray-900 mb-4">
                 Subject-wise Attendance
               </h3>
               <div className="space-y-4">
-                {attendanceData.subjects.map((subject, index) => (
-                  <div
-                    key={index}
-                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-soft transition-shadow duration-300"
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-gray-800">
-                        {subject.name}
-                      </h4>
-                      <span className="text-sm text-gray-700">
-                        {subject.classes} classes
-                      </span>
+                {attendanceData.subjects && attendanceData.subjects.length > 0 ? (
+                  attendanceData.subjects.map((subject, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-soft transition-shadow duration-300"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-medium text-gray-800">
+                          {subject.name}
+                        </h4>
+                        <span className="text-sm text-gray-700">
+                          {subject.classes} classes
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-gradient-to-r from-indigo-500 to-blue-500 h-2.5 rounded-full"
+                          style={{ width: subject.percentage }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-xs text-gray-600">0%</span>
+                        <span className="text-xs font-semibold text-indigo-700">
+                          {subject.percentage}
+                        </span>
+                        <span className="text-xs text-gray-600">100%</span>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-gradient-to-r from-indigo-500 to-blue-500 h-2.5 rounded-full"
-                        style={{ width: subject.percentage }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-600">0%</span>
-                      <span className="text-xs font-semibold text-indigo-700">
-                        {subject.percentage}
-                      </span>
-                      <span className="text-xs text-gray-600">100%</span>
-                    </div>
+                  ))
+                  ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                    <svg
+                      className="h-12 w-12 text-gray-400 mx-auto mb-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                      />
+                    </svg>
+                    <p className="text-gray-600 font-medium">No attendance records found</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Attendance data will appear here once your teachers mark attendance
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
