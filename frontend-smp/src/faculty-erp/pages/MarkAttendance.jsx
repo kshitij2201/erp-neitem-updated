@@ -1626,7 +1626,7 @@ export default function MarkAttendance() {
                         {" "}
                         | <span className="font-medium">
                           Total Students:
-                        </span>{" "}
+                        </span>{" "} 
                         {subjectDetails.totalStudents}
                       </>
                     )}

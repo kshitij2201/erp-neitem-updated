@@ -17,6 +17,14 @@ const SubjectManager = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const token = localStorage.getItem("token");
 
+  // Helper: extract stream id from department object (handles multiple shapes)
+  const getStreamIdFromDept = (dept) => {
+    if (!dept) return "";
+    if (typeof dept.stream === "string") return dept.stream;
+    if (dept.stream && typeof dept.stream === "object") return dept.stream._id || dept.stream.id || "";
+    return dept.streamId || "";
+  };
+
 
   useEffect(() => {
     fetchStreams();
@@ -34,9 +42,10 @@ const SubjectManager = () => {
       const res = await axios.get("https://backenderp.tarstech.in/api/superadmin/semesters", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSemesters(Array.isArray(res.data) ? res.data : []);
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        setSelectedSemester(res.data[0].number?.toString());
+      const semData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setSemesters(semData);
+      if (semData.length > 0) {
+        setSelectedSemester(semData[0].number?.toString());
       }
     } catch (err) {
       console.error("Failed to fetch semesters", err);
@@ -44,6 +53,10 @@ const SubjectManager = () => {
   };
 
   useEffect(() => {
+    // Clear departments/subjects when stream changes, then fetch for selected stream
+    setDepartments([]);
+    setSelectedDepartmentId("");
+    setSubjects([]);
     if (selectedStreamId) {
       fetchDepartments(selectedStreamId);
     }
@@ -63,9 +76,10 @@ const SubjectManager = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setStreams(res.data);
-      if (res.data.length > 0) {
-        setSelectedStreamId(res.data[0]._id);
+      const streamsData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setStreams(streamsData);
+      if (streamsData.length > 0 && !selectedStreamId) {
+        setSelectedStreamId(streamsData[0]._id);
       }
     } catch (err) {
       console.error("Failed to fetch streams", err);
@@ -80,28 +94,72 @@ const SubjectManager = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setDepartments(res.data);
-      if (res.data.length > 0) {
-        setSelectedDepartmentId(res.data[0]._id);
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+
+      // Find stream name for fallback matching if departments store stream as name
+      const streamObj = streams.find((s) => s._id === streamId) || {};
+      const streamName = (streamObj.name || "").toString().trim().toLowerCase();
+
+      // Prefer explicit matches (by id or by stream name)
+      const exactMatches = data.filter((dept) => {
+        const deptStreamId = getStreamIdFromDept(dept);
+        if (deptStreamId && deptStreamId === streamId) return true;
+
+        if (typeof dept.stream === "string") {
+          if (dept.stream.toString().trim().toLowerCase() === streamName) return true;
+          return false;
+        }
+
+        if (dept.stream && typeof dept.stream === "object") {
+          if ((dept.stream._id && dept.stream._id === streamId) ||
+            (dept.stream.name && dept.stream.name.toString().trim().toLowerCase() === streamName)) {
+            return true;
+          }
+          return false;
+        }
+
+        return false;
+      });
+
+      const unlabeled = data.filter((dept) => !dept.stream && !dept.streamId);
+      // If we have explicit matches, use them. Otherwise use unlabeled departments if available.
+      let filtered = exactMatches.length > 0 ? exactMatches : (unlabeled.length > 0 ? unlabeled : []);
+
+      const hasTagged = data.some((d) => !!d.stream || !!d.streamId);
+      console.log(`fetchDepartments streamId=${streamId} streamName=${streamName} dataCount=${data.length} tagged=${hasTagged} exactMatches=${exactMatches.length} unlabeled=${unlabeled.length} final=${filtered.length}`, {
+        exactNames: exactMatches.map((d) => d.name),
+        unlabeledNames: unlabeled.map((d) => d.name),
+      });
+
+      setDepartments(filtered);
+      if (filtered.length > 0) {
+        setSelectedDepartmentId(filtered[0]._id);
+      } else {
+        setSelectedDepartmentId("");
       }
     } catch (err) {
       console.error("Failed to fetch departments", err);
     }
-  };
+  };  
 
   const fetchSubjects = async (departmentId) => {
     try {
+      if (!departmentId) {
+        setSubjects([]);
+        return;
+      }
       const res = await axios.get(
         `https://backenderp.tarstech.in/api/superadmin/subjects?departmentId=${departmentId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setSubjects(res.data);
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setSubjects(data);
     } catch (err) {
       console.error("Failed to fetch subjects", err);
     }
-  };
+  };  
 
   const handleAddSubject = async () => {
     setErrorMsg("");
@@ -206,11 +264,17 @@ const SubjectManager = () => {
             onChange={(e) => setSelectedDepartmentId(e.target.value)}
             className="border border-gray-300 rounded-md py-2 px-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
           >
-            {departments.map((dept) => (
-              <option key={dept._id} value={dept._id}>
-                {dept.name}
+            {departments.length === 0 ? (
+              <option value="" disabled>
+                No departments for selected stream
               </option>
-            ))}
+            ) : (
+              departments.map((dept) => (
+                <option key={dept._id} value={dept._id}>
+                  {dept.name}
+                </option>
+              ))
+            )}
           </select>
         </div>
 

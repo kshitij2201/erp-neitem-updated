@@ -35,14 +35,22 @@ const StreamManager = () => {
           { headers }
         );
         
+        const data = await res.json().catch(() => null);
+
         if (res.status === 401) {
           localStorage.removeItem('token');
           navigate('/');
           return;
         }
+
+        if (!res.ok) {
+          // Show server-provided error message if any
+          setError(data?.error || data?.message || 'Failed to fetch streams');
+          setLoading(false);
+          return;
+        }
         
-        const data = await res.json();
-        setStreams(data);
+        setStreams(data || []);
         setLoading(false);
         setError("");
       } catch (err) {
@@ -69,16 +77,27 @@ const StreamManager = () => {
         }
       );
       
+      const data = await res.json().catch(() => null);
+
       if (res.status === 401) {
         localStorage.removeItem('token');
         navigate('/');
         return;
       }
+
+      if (!res.ok) {
+        const errMsg = data?.error || data?.message || 'Failed to create stream';
+        setError(errMsg);
+        // Show alert for failure
+        alert(errMsg);
+        return;
+      }
       
-      const data = await res.json();
-      setStreams([...streams, data]);
+      setStreams(prev => [...prev, data]);
       setNewStream({ name: "", description: "" });
       setError("");
+      // Show alert on success
+      alert('Stream created successfully');
     } catch (err) {
       console.error(err);
       setError("Failed to create stream");
@@ -103,14 +122,20 @@ const StreamManager = () => {
         }
       );
       
+      const data = await res.json().catch(() => null);
+
       if (res.status === 401) {
         localStorage.removeItem('token');
         navigate('/');
         return;
       }
-      
-      const data = await res.json();
-      setStreams(streams.map((s) => (s._id === data._id ? data : s)));
+
+      if (!res.ok) {
+        setError(data?.error || data?.message || 'Failed to update stream');
+        return;
+      }
+
+      setStreams(prev => prev.map((s) => (s._id === data._id ? data : s)));
       setEditingStream(null);
       setError("");
     } catch (err) {
@@ -124,18 +149,25 @@ const StreamManager = () => {
       const headers = getAuthHeaders();
       if (!headers) return;
 
-      const res = await fetch(`/api/superadmin/streams/${id}`, {
+      const res = await fetch(`https://backenderp.tarstech.in/api/superadmin/streams/${id}`, {
         method: "DELETE",
         headers,
       });
+
+      const data = await res.json().catch(() => null);
       
       if (res.status === 401) {
         localStorage.removeItem('token');
         navigate('/');
         return;
       }
+
+      if (!res.ok) {
+        setError(data?.error || data?.message || 'Failed to delete stream');
+        return;
+      }
       
-      setStreams(streams.filter((s) => s._id !== id));
+      setStreams(prev => prev.filter((s) => s._id !== id));
       setError("");
     } catch (err) {
       console.error(err);

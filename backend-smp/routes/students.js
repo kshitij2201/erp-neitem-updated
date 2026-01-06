@@ -539,11 +539,23 @@ router.post('/', protect, uploadStudentPhoto.single('photo'), async (req, res) =
     }
     delete studentData['subjects[]']; // Remove the array notation
 
-    // Convert department name to ObjectId
+    // Convert department to ObjectId. Accept either ObjectId string or department name
     if (studentData.department && typeof studentData.department === 'string') {
       const AcademicDepartment = mongoose.model('AcademicDepartment');
-      const dept = await AcademicDepartment.findOne({ name: studentData.department });
+      let dept = null;
+
+      // Try as ObjectId first
+      if (mongoose.Types.ObjectId.isValid(studentData.department)) {
+        dept = await AcademicDepartment.findById(studentData.department);
+      }
+
+      // If not found by id, try by name (case-insensitive)
+      if (!dept) {
+        dept = await AcademicDepartment.findOne({ name: { $regex: `^${studentData.department}$`, $options: 'i' } });
+      }
+
       if (dept) {
+        console.log(`[Students] resolved department: ${dept.name} (${dept._id})`);
         studentData.department = dept._id;
       } else {
         return res.status(400).json({

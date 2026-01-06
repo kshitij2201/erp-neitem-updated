@@ -28,6 +28,8 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
   const navigate = useNavigate();
   const [department, setDepartment] = useState("All Departments");
   const [viewMode, setViewMode] = useState("pending"); // "pending" or "all"
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
   const [leaves, setLeaves] = useState([]);
   const [filteredLeaves, setFilteredLeaves] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,6 +56,37 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
     "Information Technology",
     "Electrical",
   ];
+
+  // Month and Year filter options (used in View Mode controls)
+  const monthOptions = [
+    { value: "all", label: "All Months" },
+    { value: "1", label: "Jan" },
+    { value: "2", label: "Feb" },
+    { value: "3", label: "Mar" },
+    { value: "4", label: "Apr" },
+    { value: "5", label: "May" },
+    { value: "6", label: "Jun" },
+    { value: "7", label: "Jul" },
+    { value: "8", label: "Aug" },
+    { value: "9", label: "Sep" },
+    { value: "10", label: "Oct" },
+    { value: "11", label: "Nov" },
+    { value: "12", label: "Dec" },
+  ];
+
+  const yearOptions = (() => {
+    const years = new Set();
+    leaves.forEach((l) => {
+      const d = new Date(l.startDate || l.applicationDate || l.date);
+      if (!isNaN(d)) years.add(d.getFullYear());
+    });
+    const arr = Array.from(years).sort((a, b) => b - a);
+    if (arr.length === 0) {
+      const y = new Date().getFullYear();
+      return [String(y), String(y - 1), String(y + 1)];
+    }
+    return arr.map(String);
+  })();
 
   // Utility: Levenshtein distance (small, iterative) for tolerant matching
   const levenshteinDistance = (a = "", b = "") => {
@@ -84,7 +117,7 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
     return dist <= maxAllowed;
   };
 
-  // Filter leaves based on search term
+  // Filter leaves based on search term and month/year filters
   useEffect(() => {
     const filtered = leaves.filter((leave) => {
       const matchesSearch =
@@ -95,11 +128,19 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
         leave.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         leave.reason?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchesSearch;
+      // Month/Year filters (based on startDate or applicationDate)
+      const dateStr = leave.startDate || leave.applicationDate || leave.date || null;
+      const d = dateStr ? new Date(dateStr) : null;
+      const month = d && !isNaN(d) ? d.getMonth() + 1 : null;
+      const year = d && !isNaN(d) ? d.getFullYear() : null;
+      const matchesMonth = selectedMonth === "all" || (month && Number(selectedMonth) === month);
+      const matchesYear = selectedYear === "all" || (year && Number(selectedYear) === year);
+
+      return matchesSearch && matchesMonth && matchesYear;
     });
 
     setFilteredLeaves(filtered);
-  }, [leaves, searchTerm]);
+  }, [leaves, searchTerm, selectedMonth, selectedYear]);
 
   const fetchLeaves = async (isRefresh = false) => {
     if (!userData?.token) {
@@ -635,6 +676,36 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
                     <Eye className="h-4 w-4 inline mr-2" />
                     All Requests & History
                   </button>
+
+                  {/* Month / Year filters */}
+                  <div className="mt-3 flex items-center space-x-2">
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={loading}
+                    >
+                      {monthOptions.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={loading}
+                    >
+                      <option value="all">All Years</option>
+                      {yearOptions.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 

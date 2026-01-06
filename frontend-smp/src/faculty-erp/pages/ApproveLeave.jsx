@@ -211,7 +211,7 @@ export default function ApproveLeave() {
     } else if (request.status === "HOD Approved") {
       return "Pending Principal Approval";
     } else if (request.status === "Principal Approved") {
-      return "Fully Approved";
+      return "Forwarded to Principal";
     } else if (request.status === "HOD Rejected") {
       return "Rejected by HOD";
     } else if (request.status === "Principal Rejected") {
@@ -285,9 +285,9 @@ export default function ApproveLeave() {
       type: "approve",
       id,
       requestData,
-      title: "Approve Leave Request",
-      message: `Are you sure you want to approve the leave request for ${requestData.firstName} (${requestData.employeeId})?`,
-      confirmText: "Approve",
+      title: "Forward to Principal",
+      message: `Are you sure you want to forward this leave request for ${requestData.firstName} (${requestData.employeeId}) to the Principal for final approval?`,
+      confirmText: "Forward to Principal",
       confirmClass: "bg-green-600 hover:bg-green-700",
     });
     setShowConfirmModal(true);
@@ -357,10 +357,14 @@ export default function ApproveLeave() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const actionText =
-        userRole.toLowerCase() === "hod"
-          ? `${decision.toLowerCase()} by HOD`
-          : `${decision.toLowerCase()} by Principal`;
+      let actionText;
+      if (userRole.toLowerCase() === "hod") {
+        // For HOD approvals, we forward to principal
+        if (decision === "Approved") actionText = "Forwarded to Principal";
+        else actionText = `${decision.toLowerCase()} by HOD`;
+      } else {
+        actionText = `${decision.toLowerCase()} by Principal`;
+      }
 
       // Optimistic local update so the approved/rejected request remains visible immediately
       if (userRole.toLowerCase() === "principal") {
@@ -629,7 +633,7 @@ export default function ApproveLeave() {
                           }
                         </div>
                         <div className="text-xs text-green-600">
-                          Fully Approved
+                          Forwarded to Principal
                         </div>
                       </div>
                       <div className="bg-red-50 p-3 rounded-lg text-center border border-red-200">
@@ -985,7 +989,7 @@ const RequestCard = ({
               aria-label={`Approve leave request for ${request.firstName}`}
             >
               <Check className="h-4 w-4 mr-2" />
-              Approve
+              Forward to Principal
             </button>
           </div>
         )}

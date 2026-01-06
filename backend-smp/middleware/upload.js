@@ -18,7 +18,7 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Allow various file types for study materials
+    // Allow various file types for study materials, including Excel/CSV
     const allowedMimeTypes = [
       'application/pdf',
       'application/msword',
@@ -26,16 +26,23 @@ const upload = multer({
       'application/vnd.ms-powerpoint',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'text/plain',
+      'text/csv',
+      'application/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'image/jpeg',
       'image/jpg',
       'image/png',
       'application/zip',
       'application/x-rar-compressed'
     ];
+
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF, Word, PowerPoint, Text, Images, and Archives are allowed.'), false);
+      // Attach a friendly message so the route handler can return it
+      req.fileValidationError = 'Invalid file type. Only PDF, Word, PowerPoint, Text, Images, Archives and Excel/CSV are allowed.';
+      cb(null, false);
     }
   }
 });
