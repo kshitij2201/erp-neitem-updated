@@ -47,15 +47,12 @@ const conductorSchema = new mongoose.Schema({
     default: null
   },
   // Legacy fields for backward compatibility
-  employeeId: { type: String, unique: true, required: true },
+  employeeId: { type: String, unique: true, required: true, index: true },
   dateOfJoining: Date,
   name: String,
   email: String,
   contact: String
 }, { timestamps: true });
-
-// Index for better performance
-conductorSchema.index({ employeeId: 1 });
 
 // Hash password before saving
 conductorSchema.pre('save', async function(next) {
