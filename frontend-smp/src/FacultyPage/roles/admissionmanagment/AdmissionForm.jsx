@@ -389,7 +389,6 @@ function AdmissionForm() {
     const requiredFields = [
       "firstName",
       "lastName",
-      "mobileNumber",
       "gender",
       "casteCategory",
       "stream",
@@ -399,8 +398,6 @@ function AdmissionForm() {
       "nationality",
       "placeOfBirth",
       "dateOfBirth",
-      "guardianNumber",
-      "abcId",
     ];
 
     for (const field of requiredFields) {
@@ -415,14 +412,16 @@ function AdmissionForm() {
       }
     }
 
+    // Validate mobile number only if provided
     const mobileNumber = String(formData.mobileNumber || "").trim();
-    if (!/^\d{10}$/.test(mobileNumber)) {
+    if (mobileNumber && !/^\d{10}$/.test(mobileNumber)) {
       alert("Mobile number must be a 10-digit number.");
       return false;
     }
 
+    // Validate guardian number only if provided
     const guardianNumber = String(formData.guardianNumber || "").trim();
-    if (!/^\d{10}$/.test(guardianNumber)) {
+    if (guardianNumber && !/^\d{10}$/.test(guardianNumber)) {
       alert("Guardian number must be a 10-digit number.");
       return false;
     }
@@ -433,8 +432,9 @@ function AdmissionForm() {
       return false;
     }
 
+    // Validate ABC ID only if provided
     const abcId = String(formData.abcId || "").trim();
-    if (!/^\d{12}$/.test(abcId)) {
+    if (abcId && !/^\d{12}$/.test(abcId)) {
       alert("ABC ID must be a 12-digit number.");
       return false;
     }
@@ -566,7 +566,7 @@ function AdmissionForm() {
     { label: "Unicode Mother Name", name: "unicodeMotherName" },
     { label: "Unicode Name", name: "unicodeName" },
     { label: "Enrollment Number", name: "enrollmentNumber" },
-    { label: "Mobile Number", name: "mobileNumber", required: true },
+    { label: "Mobile Number", name: "mobileNumber" },
     { label: "Email", name: "email" },
     { label: "Section", name: "section" },
     { label: "Remark", name: "remark" },
@@ -580,8 +580,8 @@ function AdmissionForm() {
     },
     { label: "School Attended", name: "schoolAttended" },
     { label: "Name of Institute", name: "nameOfInstitute" },
-    { label: "Guardian Number", name: "guardianNumber", required: true },
-    { label: "ABC ID", name: "abcId", required: true },
+    { label: "Guardian Number", name: "guardianNumber" },
+    { label: "ABC ID", name: "abcId" },
     { label: "Address", name: "address", type: "textarea" },
   ];
 
