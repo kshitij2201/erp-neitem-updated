@@ -227,6 +227,22 @@ const AcademicCalendar = ({ userData }) => {
     return false;
   };
 
+  // Extract metadata from a File object or fallback local file object
+  const readMetaFromFileObject = (file) => {
+    if (!file) return null;
+    // If already present, return meta directly
+    if (file.meta) return file.meta;
+
+    // Some fallback objects may store uploader info directly on the object
+    const meta = {};
+    if (file.uploaderId) meta.uploaderId = file.uploaderId;
+    if (file.uploaderName) meta.uploaderName = file.uploaderName;
+    if (file.uploaderDepartment) meta.uploaderDepartment = file.uploaderDepartment;
+    if (file.originalName) meta.originalName = file.originalName;
+
+    return Object.keys(meta).length ? meta : null;
+  };
+
   // Fetch list of uploaded teaching plans (server endpoint optional)
   const fetchUploadedPlans = async () => {
     try {
@@ -408,6 +424,16 @@ const AcademicCalendar = ({ userData }) => {
 
     try {
       const token = localStorage.getItem("authToken");
+
+      // Allow calling preview endpoint for CSV/XLS/XLSX and DOCX (server supports docx text extraction)
+      const ext = file.name ? String(file.name).split('.').pop().toLowerCase() : '';
+      if (!['csv', 'xls', 'xlsx', 'docx'].includes(ext)) {
+        setPreviewError('Preview not available for this file type. You can download or open the file instead.');
+        setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: file.name ? `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` : null });
+        setPreviewLoading(false);
+        return;
+      }
+
       const res = await fetch(
         `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${encodeURIComponent(file.name)}/preview`,
         {
@@ -416,8 +442,28 @@ const AcademicCalendar = ({ userData }) => {
       );
 
       if (!res.ok) {
-        const text = await res.text();
-        setPreviewError(`Preview failed (server ${res.status}): ${text.substring(0, 300)}`);
+        // Try parse JSON for more useful message
+        let jsonErr = null;
+        try {
+          jsonErr = await res.json();
+        } catch (e) {
+          // fallback to text
+          const text = await res.text();
+          setPreviewError(`Preview failed (server ${res.status}): ${text.substring(0, 300)}`);
+          // attach basic file info so user can download/open it
+          setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` });
+          return;
+        }
+
+        // Known case: preview not available for this file type
+        if (jsonErr && jsonErr.message && jsonErr.message.toLowerCase().includes('preview not available')) {
+          setPreviewError('Preview not available for this file type. You can download or open the file instead.');
+          setPreviewData({ meta: jsonErr.file?.meta || readMetaFromFileObject(file), fileUrl: `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` });
+          return;
+        }
+
+        setPreviewError(jsonErr?.message || `Preview failed (server ${res.status})`);
+        setPreviewData({ meta: jsonErr?.file?.meta || readMetaFromFileObject(file), fileUrl: `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` });
         return;
       }
 
@@ -752,54 +798,136 @@ const AcademicCalendar = ({ userData }) => {
         {uploadedPlans.length === 0 ? (
           <div className="text-sm text-gray-500">No uploaded plans found.</div>
         ) : (
-          <div className="space-y-2">
-            {uploadedPlans.map((p) => (
-              <div
-                key={p._id || p.name}
-                className="flex items-center justify-between"
-              >
+          (() => {
+            const isHodUser = String(currentUserData?.role || '').toLowerCase() === 'hod';
+            const userDept = currentUserData?.department?._id || currentUserData?.department;
+
+            if (!isHodUser) {
+              return (
+                <div className="space-y-2">
+                  {uploadedPlans.map((p) => (
+                    <div
+                      key={p._id || p.name}
+                      className="flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()}
+                          {p?.meta?.uploaderName ? (
+                            <span> • Uploaded by {p.meta.uploaderName}</span>
+                          ) : p?.meta?.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? (
+                            <span> • Uploaded by You</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <>
+                          <button
+                            onClick={() => handlePreviewUpload(p)}
+                            className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+                            title="Preview file"
+                          >
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => handleEditUpload(p)}
+                            disabled={!(p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id))}
+                            className={`text-sm px-2 py-1 rounded ${p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
+                            title={p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? 'Edit file contents' : 'Only the uploader can edit this file'}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUpload(p)}
+                            className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50"
+                            title="Delete file"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            const hodUploads = uploadedPlans.filter(p => p?.meta && String(p.meta.uploaderId) === String(currentUserData?._id));
+            const deptUploads = uploadedPlans.filter(p => p?.meta && p?.meta.uploaderDepartment && String(p.meta.uploaderDepartment) === String(userDept) && String(p.meta.uploaderId) !== String(currentUserData?._id));
+            const otherUploads = uploadedPlans.filter(p => !hodUploads.includes(p) && !deptUploads.includes(p));
+
+            return (
+              <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-gray-800">
-                    {p.originalName || p.name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()}
-                    {p?.meta?.uploaderName ? (
-                      <span> • Uploaded by {p.meta.uploaderName}</span>
-                    ) : p?.meta?.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? (
-                      <span> • Uploaded by You</span>
-                    ) : null}
-                  </div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Your Uploads ({hodUploads.length})</h4>
+                  {hodUploads.length === 0 ? (
+                    <div className="text-sm text-gray-500">No uploads by you.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {hodUploads.map((p) => (
+                        <div key={p._id || p.name} className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                            <div className="text-xs text-gray-500">{new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()} • Uploaded by You</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handlePreviewUpload(p)} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100" title="Preview file">Preview</button>
+                            <button onClick={() => handleEditUpload(p)} className="text-sm px-2 py-1 rounded text-gray-600 hover:bg-gray-100" title="Edit file contents">Edit</button>
+                            <button onClick={() => handleDeleteUpload(p)} className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Delete file">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <>
-                    <button
-                      onClick={() => handlePreviewUpload(p)}
-                      className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
-                      title="Preview file"
-                    >
-                      Preview
-                    </button>
-                    <button
-                      onClick={() => handleEditUpload(p)}
-                      disabled={!(p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id))}
-                      className={`text-sm px-2 py-1 rounded ${p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
-                      title={p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? 'Edit file contents' : 'Only the uploader can edit this file'}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUpload(p)}
-                      className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50"
-                      title="Delete file"
-                    >
-                      Delete
-                    </button>
-                  </>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Department Uploads ({deptUploads.length})</h4>
+                  {deptUploads.length === 0 ? (
+                    <div className="text-sm text-gray-500">No uploads from your department.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {deptUploads.map((p) => (
+                        <div key={p._id || p.name} className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                            <div className="text-xs text-gray-500">{new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()} {p?.meta?.uploaderName ? (<span> • Uploaded by {p.meta.uploaderName}</span>) : null}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handlePreviewUpload(p)} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100" title="Preview file">Preview</button>
+                            <button onClick={() => handleEditUpload(p)} disabled className="text-sm px-2 py-1 rounded text-gray-400 cursor-not-allowed" title="Only the uploader can edit this file">Edit</button>
+                            <button onClick={() => handleDeleteUpload(p)} className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Delete file">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {otherUploads.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Other Uploads ({otherUploads.length})</h4>
+                    <div className="space-y-2">
+                      {otherUploads.map((p) => (
+                        <div key={p._id || p.name} className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                            <div className="text-xs text-gray-500">{new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()} {p?.meta?.uploaderName ? (<span> • Uploaded by {p.meta.uploaderName}</span>) : null}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handlePreviewUpload(p)} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100" title="Preview file">Preview</button>
+                            <button onClick={() => handleEditUpload(p)} disabled className="text-sm px-2 py-1 rounded text-gray-400 cursor-not-allowed" title="Only the uploader can edit this file">Edit</button>
+                            <button onClick={() => handleDeleteUpload(p)} className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Delete file">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })()
         )}
       </div>
 
@@ -1088,14 +1216,6 @@ const AcademicCalendar = ({ userData }) => {
                     >
                       Close
                     </button>
-                    <button
-                      onClick={() => setIsEditingPreview(true)}
-                      disabled={!(previewData && previewData.meta && previewData.meta.uploaderId && String(previewData.meta.uploaderId) === String(currentUserData?._id))}
-                      className={`text-sm px-3 py-1 rounded ${previewData && previewData.meta && previewData.meta.uploaderId && String(previewData.meta.uploaderId) === String(currentUserData?._id) ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
-                      title={previewData && previewData.meta && previewData.meta.uploaderId && String(previewData.meta.uploaderId) === String(currentUserData?._id) ? 'Edit file contents' : 'Only the uploader can edit this file'}
-                    >
-                      Edit
-                    </button>
                   </>
                 )}
               </div>
@@ -1103,6 +1223,45 @@ const AcademicCalendar = ({ userData }) => {
 
             {previewLoading && <div>Loading preview...</div>}
             {previewError && <div className="text-red-600">{previewError}</div>}
+
+            {/* If server returned plain text preview (DOCX), show it */}
+            {previewData && previewData.text && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Document Preview</h4>
+                  {previewData.meta && previewData.meta.uploaderName && (
+                    <div className="text-xs text-gray-500">Uploaded by {previewData.meta.uploaderName}</div>
+                  )}
+                </div>
+                <div className="border rounded p-4 max-h-[60vh] overflow-auto bg-gray-50">
+                  <pre className="whitespace-pre-wrap break-words text-sm text-gray-800">{previewData.text}</pre>
+                </div>
+              </div>
+            )}
+
+            {/* If preview not available but we have a file URL, offer download/open fallback */}
+            {previewData && previewData.fileUrl && !previewData.sheets && !previewData.text && (
+              <div className="py-4">
+                <div className="text-sm text-gray-700 mb-2">No preview available for this file. You can download or open it:</div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewData.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                  >
+                    Open file
+                  </a>
+                  <a
+                    href={previewData.fileUrl}
+                    download
+                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            )}
 
             {previewData && previewData.sheets && (
               <div>

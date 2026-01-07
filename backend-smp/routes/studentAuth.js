@@ -230,16 +230,28 @@ router.get("/profile", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("[STUDENT PROFILE] Error:", error);
+    // Log stack for better debugging
+    console.error("[STUDENT PROFILE] Error:", error.stack || error);
+
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,
         message: "Invalid token"
       });
     }
-    res.status(500).json({
+
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired"
+      });
+    }
+
+    // Return helpful error message in non-production environments
+    const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : (error.message || 'Internal server error');
+    return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message
     });
   }
 });

@@ -65,9 +65,15 @@ export default function ApplyChargeHandoverForm() {
           "https://backenderp.tarstech.in/api/faculty/faculties?limit=1000"
         );
         const data = await res.json();
-        setFacultyList(
-          Array.isArray(data.data?.faculties) ? data.data.faculties : []
-        );
+        const allFaculties = Array.isArray(data.data?.faculties) ? data.data.faculties : [];
+        // Show only teaching faculty in receiver dropdown (exclude non-teaching staff)
+        const teachingFaculties = allFaculties.filter((f) => {
+          if (!f) return false;
+          const type = (f.type || '').toString().toLowerCase();
+          // Exclude explicit non-teaching; keep everything else (teaching, HOD, principal, cc)
+          return type !== 'non-teaching';
+        });
+        setFacultyList(teachingFaculties);
       } catch (err) {
         // handle error if needed
       }
@@ -198,6 +204,10 @@ export default function ApplyChargeHandoverForm() {
       // Check if user is principal for automatic HOD approval
       const isPrincipal = userData?.role === "principal";
 
+      // If a receiver is selected, send the task directly to the receiver (pending faculty approval)
+      // Otherwise, leave the task in HOD workflow (pending_hod)
+      const status = isPrincipal || receiverId ? "pending_faculty" : "pending_hod";
+
       const payload = {
         ...formData,
         senderId, // Add senderId to payload
@@ -209,6 +219,7 @@ export default function ApplyChargeHandoverForm() {
         handoverStartDate: startDate,
         handoverEndDate: endDate,
         reportingManager: formData.employeeName,
+        status,
       };
 
       // Add automatic HOD approval if user is principal
@@ -576,6 +587,12 @@ export default function ApplyChargeHandoverForm() {
                             </option>
                           ))}
                         </select>
+
+                        {receiverId && selectedReceiver && (
+                          <div className="mt-2 text-sm text-blue-700 bg-blue-50/60 px-3 py-2 rounded-md border border-blue-100">
+                            ⚠️ Charge will be sent to <strong>{selectedReceiver.name || `${selectedReceiver.firstName || ''} ${selectedReceiver.lastName || ''}`}</strong> for acceptance (status: <span className="font-semibold">Pending Faculty</span>).
+                          </div>
+                        )}
                       </div>
 
                       {/* Receiver Details */}

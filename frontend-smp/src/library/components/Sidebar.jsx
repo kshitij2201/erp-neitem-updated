@@ -88,6 +88,7 @@ const Sidebar = () => {
     { path: '/library/borrower-entry', name: 'Borrower Entry', icon: <BookOpen size={20} />, section: 'actions' },
     { path: '/library/dues', name: 'Dues', icon: <FileText size={20} />, section: 'actions' },
     { path: '/library/payment-history', name: 'Payment History', icon: <FileText size={20} />, section: 'actions' },
+    { path: '/student/industrial-visits', name: 'Industrial Visits', icon: <FileText size={20} />, section: 'students' },
   ];
 
   const sections = {

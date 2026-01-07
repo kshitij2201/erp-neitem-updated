@@ -28,6 +28,7 @@ import upload from "../middleware/upload.js";
 import fs from "fs";
 import path from "path";
 import ExcelJS from "exceljs";
+import mammoth from "mammoth";
 
 const router = express.Router();
 
@@ -204,6 +205,21 @@ router.get('/upload/:name/preview', protect, async (req, res) => {
     }
 
     const ext = path.extname(name).toLowerCase();
+
+    // Support CSV/XLS/XLSX and DOCX (plain-text extract)
+    if (ext === '.docx') {
+      try {
+        const result = await mammoth.extractRawText({ path: filePath });
+        const text = result && result.value ? String(result.value) : '';
+        // Trim very large text to a reasonable limit for preview (e.g., 100k chars)
+        const truncated = text.length > 100000 ? text.slice(0, 100000) + '\n\n[truncated]' : text;
+        return res.json({ success: true, preview: { text: truncated } });
+      } catch (err) {
+        console.error('Error converting DOCX for preview:', err);
+        return res.status(500).json({ success: false, message: 'Failed to generate DOCX preview' });
+      }
+    }
+
     if (!['.csv', '.xls', '.xlsx'].includes(ext)) {
       return res.status(400).json({ success: false, message: 'Preview not available for this file type' });
     }

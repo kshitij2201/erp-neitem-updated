@@ -20,6 +20,7 @@ import BusManagement from "./erp/dashboard/admin/BusManagement";
 // Import client components
 import StudentLogin from "./client/components/StudentLogin";
 import StudentDashboard from "./client/pages/StudentDashboard";
+import StudentIndustrialVisits from "./client/pages/StudentIndustrialVisits";
 import HODDashboard from "./client/pages/HODDashboard";
 import ClientDashboard from "./client/pages/Dashboard";
 import UnifiedLogin from "./components/UnifiedLogin";
@@ -80,6 +81,7 @@ const App = () => {
         {/* Client/Student Routes */}
         <Route path="/student/login" element={<StudentLogin />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route path="/student/industrial-visits" element={<StudentIndustrialVisits />} />
         <Route path="/student/main/*" element={<ClientDashboard />} />
         <Route path="/hod" element={<HODDashboard />} />
 

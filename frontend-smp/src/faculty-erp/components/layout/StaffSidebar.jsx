@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   User,
@@ -36,6 +36,7 @@ const globalStyles = `
 
 const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCC, setIsCC] = useState(false);
   const [studentAttendance, setStudentAttendance] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
@@ -195,6 +196,12 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
             icon: <Calendar size={20} />,
             href: "/faculty-erp/academic-calendar",
             routeName: "academic_calendar",
+          },
+          {
+            title: "Industrial Visits",
+            icon: <ClipboardList size={20} />,
+            href: "/faculty-erp/hod-industrial-visits",
+            routeName: "industrial_visit",
           },
         ]
       : userData?.role === "cc"
@@ -386,7 +393,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
 
     // Documents Section
     {
-      title: "Notes & Documents",
+      title: "Notes/Document and Question Bank",
       icon: <FileText size={20} />,
       href: "/faculty-erp/dashboard/files",
       routeName: "files",
@@ -424,6 +431,12 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
             icon: <Calendar size={20} />,
             href: "/faculty-erp/academic-calendar",
             routeName: "academic_calendar",
+          },
+          {
+            title: "Industrial Visit",
+            icon: <ClipboardList size={20} />,
+            href: "/faculty-erp/industrial-visit",
+            routeName: "industrial_visit",
           },
         ]
       : []),
@@ -538,11 +551,32 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
                     <hr className="mt-2 border-slate-500/40 transition-colors duration-300" />
                   </div>
                 )}
-                <Link
-                  to={item.href}
-                  onClick={() => handleMenuClick(item)}
+                {/* Use anchor with custom click handler so hash navigation scrolls to the section */}
+                <a
+                  href={item.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // handle navigation with optional hash
+                    const [path, hash] = (item.href || '').split('#');
+                    if (path && path !== location.pathname) {
+                      navigate(path);
+                      // allow route change then scroll to id
+                      if (hash) {
+                        setTimeout(() => {
+                          const el = document.getElementById(hash);
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 250);
+                      }
+                    } else if (hash) {
+                      const el = document.getElementById(hash);
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+
+                    handleMenuClick(item);
+                  }}
                   className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98] border ${
-                    location.pathname === item.href
+                    // treat base path (ignore hash) when deciding active state
+                    location.pathname === (item.href || '').split('#')[0]
                       ? "bg-gradient-to-r from-blue-600/40 to-emerald-600/40 text-white shadow-lg shadow-blue-500/20 border-blue-400/30 backdrop-blur-sm"
                       : "border-transparent hover:bg-gradient-to-r hover:from-slate-600/60 hover:to-gray-600/60 hover:border-slate-500/30 hover:shadow-md hover:shadow-slate-400/10"
                   }`}
@@ -565,7 +599,7 @@ const StaffSidebar = ({ isOpen, handleMenuClick, userData, onClose }) => {
                     size={18}
                     className="opacity-60 group-hover:opacity-90 group-hover:translate-x-1 transition-all duration-300 text-gray-300"
                   />
-                </Link>
+                </a>
               </li>
             ))}
           </ul>

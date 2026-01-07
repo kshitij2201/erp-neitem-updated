@@ -3,7 +3,15 @@ import React, { useState, useEffect } from 'react';
 const Sidebar = ({ setSection, isCollapsed, toggleSidebar, isMobile, mobileMenuOpen, setMobileMenuOpen }) => {
   const [active, setActive] = useState('announcements');
   const [localCollapsed, setLocalCollapsed] = useState(false);
-  const [studentData, setStudentData] = useState(null);
+  // Initialize studentData from localStorage to avoid a render flicker when the effect runs
+  const [studentData, setStudentData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('studentData') || localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   
   useEffect(() => {
     if (isCollapsed !== undefined) {
@@ -127,10 +135,20 @@ const Sidebar = ({ setSection, isCollapsed, toggleSidebar, isMobile, mobileMenuO
 </svg>
 
       )
+    },
+    {
+      id: 'industrial-visits',
+      label: 'Industrial Visits',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7h18M7 7v10a2 2 0 002 2h6a2 2 0 002-2V7M8 3h8v4H8V3z" />
+        </svg>
+      )
     }
   ];
-  
 
+  // Keep 'Industrial Visits' entry visible (students should see it)
+  const itemsToRender = navItems;
   return (
     <div className={`${
       isMobile 
@@ -206,7 +224,7 @@ const Sidebar = ({ setSection, isCollapsed, toggleSidebar, isMobile, mobileMenuO
       
       {/* Enhanced Navigation */}
       <nav className="px-2 sm:px-3 py-3 sm:py-4 space-y-1 sm:space-y-2 flex-1 overflow-y-auto">
-        {navItems.map((item, index) => (
+        {itemsToRender.map((item, index) => (
           <button 
             key={item.id}
             onClick={() => handleNavigation(item.id)}
