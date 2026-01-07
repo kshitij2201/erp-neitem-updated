@@ -412,12 +412,14 @@ function AdmissionForm() {
       }
     }
 
+    // Validate mobile number only if provided
     const mobileNumber = String(formData.mobileNumber || "").trim();
     if (mobileNumber && !/^\d{10}$/.test(mobileNumber)) {
       alert("Mobile number must be a 10-digit number.");
       return false;
     }
 
+    // Validate guardian number only if provided
     const guardianNumber = String(formData.guardianNumber || "").trim();
     if (guardianNumber && !/^\d{10}$/.test(guardianNumber)) {
       alert("Guardian number must be a 10-digit number.");
@@ -430,6 +432,7 @@ function AdmissionForm() {
       return false;
     }
 
+    // Validate ABC ID only if provided
     const abcId = String(formData.abcId || "").trim();
     if (abcId && !/^\d{12}$/.test(abcId)) {
       alert("ABC ID must be a 12-digit number.");
