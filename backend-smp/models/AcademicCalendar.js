@@ -156,6 +156,42 @@ const academicCalendarSchema = mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    uploadedFiles: [
+      {
+        originalName: {
+          type: String,
+          required: true,
+        },
+        fileName: {
+          type: String,
+          required: true,
+        },
+        cloudinaryUrl: {
+          type: String,
+          required: true,
+        },
+        fileType: {
+          type: String,
+          enum: ['csv', 'xlsx', 'xls', 'docx', 'doc', 'pdf'],
+        },
+        size: {
+          type: Number,
+        },
+        uploadedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Faculty",
+          required: true,
+        },
+        uploaderName: {
+          type: String,
+          required: true,
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

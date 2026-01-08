@@ -31,56 +31,15 @@ import ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import axios from 'axios';
 import cloudinary, { uploadToCloudinary } from '../config/cloudinary.js';
+import UploadedTeachingPlan from '../models/UploadedTeachingPlan.js';
 
 const router = express.Router();
-
-// Helper to read metadata for a given uploaded file (if present)
-const readMetaForFile = (filename) => {
-  try {
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    const metaPath = path.join(uploadsDir, `${filename}.meta.json`);
-    if (fs.existsSync(metaPath)) {
-      const raw = fs.readFileSync(metaPath, 'utf8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.warn('readMetaForFile error for', filename, err);
-  }
-  return null;
-};
-
-// Helper to decide whether a user can access (view) a file
-const canAccessFile = (user, meta) => {
-  if (!user) return false;
-  const userId = user._id ? String(user._id) : String(user.id || '');
-  const userRole = (user.role || '').toString().toLowerCase();
-  let userDepartment = null;
-  if (user.department) userDepartment = user.department._id ? String(user.department._id) : String(user.department);
-
-  // Owner always has access
-  if (meta && meta.uploaderId && String(meta.uploaderId) === userId) return true;
-
-  // HOD can view uploads from their department
-  if (userRole === 'hod' && meta && meta.uploaderDepartment && userDepartment && String(meta.uploaderDepartment) === String(userDepartment)) return true;
-
-  // Otherwise deny
-  return false;
-};
-
-// Helper to decide whether a user can modify (edit/rename/delete) a file
-const canModifyFile = (user, meta) => {
-  if (!user) return false;
-  const userId = user._id ? String(user._id) : String(user.id || '');
-  // Only the original uploader may modify their file
-  if (meta && meta.uploaderId && String(meta.uploaderId) === userId) return true;
-  return false;
-};
 
 // Academic Calendar CRUD operations (for frontend)
 router.get("/", protect, getAcademicCalendars);
 router.post("/", protect, createAcademicCalendar);
 
-// Robust Upload handler (uploads to Cloudinary when possible)
+// POST /api/academic-calendar/upload -> Upload file to Cloudinary and save to MongoDB
 router.post("/upload", protect, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -88,230 +47,274 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
       return res.status(400).json({ success: false, message });
     }
 
-    // Capture uploader info from authenticated user
-    const uploaderId = req.user && (req.user._id || req.user.id) ? String(req.user._id || req.user.id) : null;
-    const uploaderName = req.user && (req.user.firstName || req.user.name) ? (req.user.firstName || req.user.name) : null;
-    const uploaderRole = req.user && req.user.role ? req.user.role : null;
-    let uploaderDepartment = null;
-    if (req.user && req.user.department) {
-      uploaderDepartment = req.user.department._id ? String(req.user.department._id) : String(req.user.department);
-    }
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const fileExt = path.extname(req.file.originalname);
+    const filename = 'file-' + uniqueSuffix + fileExt;
 
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    const localPath = req.file.path;
-
-    // Build default fileRecord
-    const fileRecord = {
-      originalName: req.file.originalname,
-      name: req.file.filename,
-      url: `/uploads/${encodeURIComponent(req.file.filename)}`,
-      size: req.file.size,
-      uploadedAt: new Date().toISOString(),
-      meta: {
-        uploaderId,
-        uploaderName,
-        uploaderRole,
-        uploaderDepartment,
-        uploaderOriginalName: req.file.originalname,
-      },
-    };
-
-    // Attempt to upload to Cloudinary (resource_type 'auto' so docs/spreadsheets are accepted)
+    // Upload to Cloudinary (resource_type 'auto' for documents)
+    let cloudinaryUrl = null;
+    let cloudinaryPublicId = null;
+    
     try {
-      const buffer = fs.readFileSync(localPath);
-      const result = await uploadToCloudinary(buffer, 'academic_calendar', 'auto');
-
-      // Update fileRecord with cloud metadata
-      if (result && result.secure_url) {
-        fileRecord.url = result.secure_url;
-        fileRecord.public_id = result.public_id;
-        fileRecord.cloud = true;
-      }
-
-      // Remove local file after successful cloud upload to save disk space
-      try {
-        fs.unlinkSync(localPath);
-      } catch (e) {
-        console.warn('Failed to remove local temp upload:', e.message);
-      }
-    } catch (cloudErr) {
-      console.warn('Cloud upload failed, keeping local file as fallback:', cloudErr.message || cloudErr);
-      // Keep local file and url pointing to /uploads/...
-    }
-
-    // Persist per-file metadata
-    try {
-      const metaPath = path.join(uploadsDir, `${fileRecord.name}.meta.json`);
-      fs.writeFileSync(metaPath, JSON.stringify(fileRecord.meta));
-      // Also add cloud info to meta for preview/delete
-      const metaWithCloud = Object.assign({}, fileRecord.meta, { cloud: !!fileRecord.cloud, public_id: fileRecord.public_id, url: fileRecord.url });
-      fs.writeFileSync(metaPath, JSON.stringify(metaWithCloud));
-    } catch (metaErr) {
-      console.warn('Failed to write metadata file for upload', metaErr);
-    }
-
-    return res.json({ success: true, file: fileRecord });
-  } catch (err) {
-    console.error("Upload handler error:", err);
-    return res.status(500).json({ success: false, message: "Upload failed" });
-  }
-});
-
-// Uploads: list and POST an uploaded teaching plan file
-// Placed before the ":id" route to avoid being captured as an id value.
-// GET /api/academic-calendar/uploads -> returns list of uploaded files (public metadata). Includes cloud-only entries via metadata if present
-router.get("/uploads", protect, async (req, res) => {
-  try {
-    const uploadsDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      return res.json({ success: true, data: [] });
-    }
-
-    const allFiles = fs.readdirSync(uploadsDir);
-    const files = [];
-
-    // Physical files first
-    const physicalFiles = allFiles.filter((f) => !f.endsWith('.meta.json'));
-
-    for (const fname of physicalFiles) {
-      const fullPath = path.join(uploadsDir, fname);
-      const stats = fs.statSync(fullPath);
-      const meta = readMetaForFile(fname);
-
-      // Skip files the user is not allowed to see
-      if (!canAccessFile(req.user, meta)) continue;
-
-      files.push({
-        name: fname,
-        originalName: (meta && meta.uploaderOriginalName) ? meta.uploaderOriginalName : fname,
-        url: meta && meta.url ? meta.url : `/uploads/${encodeURIComponent(fname)}`,
-        size: stats.size,
-        uploadedAt: stats.mtime,
-        meta,
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        'academic-calendar',
+        'auto' // auto-detect resource type
+      );
+      cloudinaryUrl = uploadResult.secure_url;
+      cloudinaryPublicId = uploadResult.public_id;
+      console.log('✅ File uploaded to Cloudinary:', cloudinaryUrl);
+    } catch (cloudinaryErr) {
+      console.error('❌ Cloudinary upload error:', cloudinaryErr);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to upload to Cloudinary', 
+        error: cloudinaryErr.message 
       });
     }
 
-    // Also include metadata-only (cloud) entries
-    const metaFiles = allFiles.filter((f) => f.endsWith('.meta.json'));
-    for (const m of metaFiles) {
-      try {
-        const baseName = m.replace(/\.meta\.json$/, '');
-        // Skip if we already added physical file
-        if (files.some((f) => f.name === baseName)) continue;
-        const meta = readMetaForFile(baseName);
-        if (!meta) continue;
-        if (!canAccessFile(req.user, meta)) continue;
+    // Get file type
+    const fileType = fileExt.replace('.', '').toLowerCase();
 
-        files.push({
-          name: baseName,
-          originalName: meta.uploaderOriginalName || baseName,
-          url: meta.url || `/uploads/${encodeURIComponent(baseName)}`,
-          size: meta.size || 0,
-          uploadedAt: meta.uploadedAt || null,
-          meta,
-        });
-      } catch (e) {
-        console.warn('Failed processing meta-only file', m, e);
+    // Get user department
+    const userDepartment = req.user.department?._id || req.user.department || 'Unknown';
+
+    // Save to MongoDB
+    const uploadedFile = new UploadedTeachingPlan({
+      originalName: req.file.originalname,
+      fileName: filename,
+      cloudinaryUrl: cloudinaryUrl,
+      cloudinaryPublicId: cloudinaryPublicId,
+      fileType: fileType,
+      size: req.file.size,
+      department: userDepartment,
+      uploadedBy: req.user._id,
+      uploaderName: req.user.firstName || req.user.name || 'Unknown',
+    });
+
+    await uploadedFile.save();
+    console.log('✅ File metadata saved to MongoDB:', uploadedFile._id);
+
+    const fileRecord = {
+      _id: uploadedFile._id,
+      originalName: uploadedFile.originalName,
+      name: uploadedFile.fileName,
+      url: uploadedFile.cloudinaryUrl,
+      size: uploadedFile.size,
+      uploadedAt: uploadedFile.createdAt,
+      meta: {
+        uploaderId: uploadedFile.uploadedBy,
+        uploaderName: uploadedFile.uploaderName,
+        uploaderDepartment: uploadedFile.department,
       }
+    };
+
+    return res.json({ success: true, file: fileRecord });
+  } catch (err) {
+    console.error("❌ Upload handler error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Upload failed" });
+  }
+});
+
+// GET /api/academic-calendar/uploads -> List uploaded files from MongoDB
+router.get("/uploads", protect, async (req, res) => {
+  try {
+    const userDepartment = req.user.department?._id || req.user.department;
+    const userId = req.user._id;
+    const userRole = String(req.user.role || '').toLowerCase();
+
+    // Build query based on role
+    let query = {};
+    
+    if (userRole === 'hod') {
+      // HOD sees all files from their department
+      query.department = userDepartment;
+    } else {
+      // Others see only their own uploads
+      query.uploadedBy = userId;
     }
 
-    return res.json({ success: true, data: files });
+    const files = await UploadedTeachingPlan.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formattedFiles = files.map(file => ({
+      _id: file._id,
+      name: file.fileName,
+      originalName: file.originalName,
+      url: file.cloudinaryUrl,
+      size: file.size,
+      uploadedAt: file.createdAt,
+      meta: {
+        uploaderId: file.uploadedBy,
+        uploaderName: file.uploaderName,
+        uploaderDepartment: file.department,
+        originalName: file.originalName,
+      }
+    }));
+
+    return res.json({ success: true, data: formattedFiles });
   } catch (err) {
-    console.error("Error listing uploaded plans:", err);
+    console.error("❌ Error listing uploaded plans:", err);
     return res.status(500).json({ success: false, message: "Failed to list uploads" });
   }
 });
 
 // POST /api/academic-calendar/upload -> accept single file form field 'file'
-router.post("/upload", protect, upload.single("file"), (req, res) => {
+router.post("/upload", protect, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-    const fileRecord = {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = 'file-' + uniqueSuffix + path.extname(req.file.originalname);
+
+    // Upload to Cloudinary
+    let cloudinaryUrl = null;
+    try {
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        'academic-calendar',
+        'auto' // auto-detect resource type (document/image)
+      );
+      cloudinaryUrl = uploadResult.secure_url;
+      console.log('File uploaded to Cloudinary:', cloudinaryUrl);
+    } catch (cloudinaryErr) {
+      console.error('Cloudinary upload error:', cloudinaryErr);
+      return res.status(500).json({ success: false, message: 'Failed to upload to Cloudinary', error: cloudinaryErr.message });
+    }
+
+    // Also save file locally as backup (create uploads dir if not exists)
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const localPath = path.join(uploadsDir, filename);
+    fs.writeFileSync(localPath, req.file.buffer);
+
+    // Create metadata file
+    const meta = {
       originalName: req.file.originalname,
-      name: req.file.filename,
-      url: `/uploads/${encodeURIComponent(req.file.filename)}`,
+      name: filename,
+      url: cloudinaryUrl, // Store Cloudinary URL
+      localPath: `/uploads/${filename}`,
       size: req.file.size,
       uploadedAt: new Date().toISOString(),
+      uploaderId: req.user._id,
+      uploaderName: req.user.firstName || req.user.name || 'Unknown',
+      uploaderDepartment: req.user.department?._id || req.user.department,
+    };
+    const metaPath = path.join(uploadsDir, filename + '.meta.json');
+    fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+
+    const fileRecord = {
+      originalName: req.file.originalname,
+      name: filename,
+      url: cloudinaryUrl, // Return Cloudinary URL to frontend
+      size: req.file.size,
+      uploadedAt: new Date().toISOString(),
+      meta: {
+        uploaderId: req.user._id,
+        uploaderName: req.user.firstName || req.user.name || 'Unknown',
+        uploaderDepartment: req.user.department?._id || req.user.department,
+      }
     };
 
-    // Optionally, persist metadata to DB here. For now return the file meta.
     return res.json({ success: true, file: fileRecord });
   } catch (err) {
     console.error("Upload handler error:", err);
-    return res.status(500).json({ success: false, message: "Upload failed" });
+    return res.status(500).json({ success: false, message: err.message || "Upload failed" });
   }
 });
 
-// GET /api/academic-calendar/upload/:name/preview -> return parsed rows for Excel/CSV
-router.get('/upload/:name/preview', protect, async (req, res) => {
+// GET /api/academic-calendar/upload/:id/preview -> Download from Cloudinary and preview
+router.get('/upload/:id/preview', protect, async (req, res) => {
   try {
-    const { name } = req.params;
-    if (!name) return res.status(400).json({ success: false, message: 'Filename required' });
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'File ID required' });
 
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    const filePath = path.join(uploadsDir, name);
-
-    let tmpFileCreated = false;
-    // If file missing locally, try to fetch from Cloudinary using metadata
-    if (!fs.existsSync(filePath)) {
-      const meta = readMetaForFile(name);
-      if (!meta) return res.status(404).json({ success: false, message: 'File not found' });
-      if (!canAccessFile(req.user, meta)) return res.status(403).json({ success: false, message: 'Access denied' });
-
-      if (meta.url) {
-        // Download remote file to a temporary local path for parsing
-        try {
-          const resp = await axios.get(meta.url, { responseType: 'arraybuffer' });
-          const tmpPath = path.join(uploadsDir, `tmp-${Date.now()}-${name}`);
-          fs.writeFileSync(tmpPath, Buffer.from(resp.data));
-          filePath = tmpPath;
-          tmpFileCreated = true;
-        } catch (downloadErr) {
-          console.error('Failed to download cloud file for preview:', downloadErr);
-          return res.status(500).json({ success: false, message: 'Failed to fetch file for preview' });
-        }
-      } else {
-        return res.status(404).json({ success: false, message: 'File not found' });
-      }
+    // Find file in MongoDB
+    const file = await UploadedTeachingPlan.findById(id);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' });
     }
 
-    // Authorization: only uploader or HOD of same department may preview
-    const meta = readMetaForFile(name);
-    if (!canAccessFile(req.user, meta)) {
-      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
+    // Check permissions
+    const userId = String(req.user._id);
+    const userRole = String(req.user.role || '').toLowerCase();
+    const userDept = String(req.user.department?._id || req.user.department || '');
+    const fileUploader = String(file.uploadedBy);
+    const fileDept = String(file.department);
+
+    const canAccess = (fileUploader === userId) || (userRole === 'hod' && fileDept === userDept);
+    
+    if (!canAccess) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const ext = path.extname(name).toLowerCase();
+    // Download file from Cloudinary
+    let fileBuffer;
+    try {
+      const response = await axios.get(file.cloudinaryUrl, { responseType: 'arraybuffer' });
+      fileBuffer = Buffer.from(response.data);
+    } catch (downloadErr) {
+      console.error('Failed to download file from Cloudinary:', downloadErr);
+      return res.status(500).json({ success: false, message: 'Failed to fetch file for preview' });
+    }
 
-    // Support CSV/XLS/XLSX and DOCX (plain-text extract)
+    const ext = path.extname(file.originalName).toLowerCase();
+
+    // Support DOCX (plain-text extract)
     if (ext === '.docx') {
       try {
-        const result = await mammoth.extractRawText({ path: filePath });
+        const result = await mammoth.extractRawText({ buffer: fileBuffer });
         const text = result && result.value ? String(result.value) : '';
         const truncated = text.length > 100000 ? text.slice(0, 100000) + '\n\n[truncated]' : text;
-        if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
-        return res.json({ success: true, preview: { text: truncated } });
+        return res.json({ 
+          success: true, 
+          preview: { text: truncated },
+          file: {
+            meta: {
+              uploaderId: file.uploadedBy,
+              uploaderName: file.uploaderName,
+              uploaderDepartment: file.department,
+            }
+          }
+        });
       } catch (err) {
         console.error('Error converting DOCX for preview:', err);
-        if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
         return res.status(500).json({ success: false, message: 'Failed to generate DOCX preview' });
       }
     }
 
+    // Support CSV/XLS/XLSX
     if (!['.csv', '.xls', '.xlsx'].includes(ext)) {
-      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
-      return res.status(400).json({ success: false, message: 'Preview not available for this file type' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Preview not available for this file type',
+        file: {
+          meta: {
+            uploaderId: file.uploadedBy,
+            uploaderName: file.uploaderName,
+            uploaderDepartment: file.department,
+          }
+        }
+      });
     }
 
     const workbook = new ExcelJS.Workbook();
 
     try {
       if (ext === '.csv') {
-        await workbook.csv.readFile(filePath);
+        // For CSV, write buffer to temp file
+        const tmpPath = path.join(process.cwd(), `tmp-${Date.now()}.csv`);
+        fs.writeFileSync(tmpPath, fileBuffer);
+        await workbook.csv.readFile(tmpPath);
+        fs.unlinkSync(tmpPath);
       } else {
-        await workbook.xlsx.readFile(filePath);
+        // For Excel, load from buffer
+        await workbook.xlsx.load(fileBuffer);
       }
 
       const sheets = [];
@@ -324,11 +327,19 @@ router.get('/upload/:name/preview', protect, async (req, res) => {
         sheets.push({ name: worksheet.name, rows });
       });
 
-      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
-      return res.json({ success: true, preview: { sheets } });
+      return res.json({ 
+        success: true, 
+        preview: { sheets },
+        file: {
+          meta: {
+            uploaderId: file.uploadedBy,
+            uploaderName: file.uploaderName,
+            uploaderDepartment: file.department,
+          }
+        }
+      });
     } catch (readErr) {
       console.error('Error reading workbook for preview:', readErr);
-      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
       return res.status(500).json({ success: false, message: 'Failed to generate preview' });
     }
   } catch (err) {
@@ -456,73 +467,49 @@ router.post('/upload/:name/save', protect, async (req, res) => {
   }
 });
 
-// DELETE /api/academic-calendar/upload/:name -> delete uploaded file from server
-router.delete('/upload/:name', protect, async (req, res) => {
+// DELETE /api/academic-calendar/upload/:id -> Delete file from Cloudinary and MongoDB
+router.delete('/upload/:id', protect, async (req, res) => {
   try {
-    const { name } = req.params;
-    if (!name) return res.status(400).json({ success: false, message: 'Filename required' });
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ success: false, message: 'File ID required' });
 
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    const filePath = path.join(uploadsDir, name);
-
-    if (!fs.existsSync(filePath)) {
-      // file might be cloud-only - check metadata
-      const meta = readMetaForFile(name);
-      if (!meta) return res.status(404).json({ success: false, message: 'File not found' });
-
-      // Authorization: only uploader may delete
-      if (!canModifyFile(req.user, meta)) {
-        return res.status(403).json({ success: false, message: 'Only the original uploader can delete this file' });
-      }
-
-      // If meta references Cloudinary, destroy remote resource
-      if (meta.public_id) {
-        try {
-          await cloudinary.uploader.destroy(meta.public_id, { resource_type: 'auto' });
-        } catch (cloudErr) {
-          console.warn('Cloud delete failed:', cloudErr);
-        }
-      }
-
-      // Remove metadata file
-      const metaPath = path.join(uploadsDir, `${name}.meta.json`);
-      if (fs.existsSync(metaPath)) {
-        try { fs.unlinkSync(metaPath); } catch (e) { console.warn('Failed removing meta file', metaPath, e); }
-      }
-
-      return res.json({ success: true, message: 'File deleted' });
+    // Find file in MongoDB
+    const file = await UploadedTeachingPlan.findById(id);
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' });
     }
 
-    // Authorization: only uploader may delete
-    const meta = readMetaForFile(name);
-    if (!canModifyFile(req.user, meta)) {
+    // Check permissions - only uploader can delete
+    const userId = String(req.user._id);
+    const fileUploader = String(file.uploadedBy);
+
+    if (fileUploader !== userId) {
       return res.status(403).json({ success: false, message: 'Only the original uploader can delete this file' });
     }
 
-    // If this file had been uploaded to Cloudinary previously, try to remove remote copy
-    if (meta && meta.public_id) {
+    // Delete from Cloudinary
+    if (file.cloudinaryPublicId) {
       try {
-        await cloudinary.uploader.destroy(meta.public_id, { resource_type: 'auto' });
+        await cloudinary.uploader.destroy(file.cloudinaryPublicId, { resource_type: 'auto' });
+        console.log('✅ File deleted from Cloudinary:', file.cloudinaryPublicId);
       } catch (cloudErr) {
-        console.warn('Cloud delete failed while deleting local file:', cloudErr);
+        console.warn('⚠️ Cloud delete failed:', cloudErr);
+        // Continue anyway to delete from database
       }
     }
 
-    fs.unlinkSync(filePath);
-    // Remove metadata file if present
-    const metaPath = path.join(uploadsDir, `${name}.meta.json`);
-    if (fs.existsSync(metaPath)) {
-      try { fs.unlinkSync(metaPath); } catch (e) { console.warn('Failed removing meta file', metaPath, e); }
-    }
+    // Delete from MongoDB
+    await UploadedTeachingPlan.findByIdAndDelete(id);
+    console.log('✅ File metadata deleted from MongoDB:', id);
 
     return res.json({ success: true, message: 'File deleted' });
   } catch (err) {
-    console.error('Error deleting file:', err);
+    console.error('❌ Error deleting file:', err);
     return res.status(500).json({ success: false, message: 'Failed to delete file' });
   }
 });
 
-// PATCH /api/academic-calendar/upload/:name -> rename stored file (provide newName without extension)
+// Legacy PATCH route for renaming (can be removed if not needed)
 router.patch('/upload/:name', protect, async (req, res) => {
   try {
     const { name } = req.params;

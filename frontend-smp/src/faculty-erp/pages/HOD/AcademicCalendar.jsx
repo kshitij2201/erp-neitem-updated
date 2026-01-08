@@ -363,13 +363,13 @@ const AcademicCalendar = ({ userData }) => {
 
   // Delete an uploaded plan (remove file from server)
   const handleDeleteUpload = async (file) => {
-    if (!file || !file.name) return;
+    if (!file || !file._id) return;
     if (!window.confirm(`Delete uploaded file "${file.originalName || file.name}"? This cannot be undone.`)) return;
 
     try {
       const token = localStorage.getItem("authToken");
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${encodeURIComponent(file.name)}`,
+        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${file._id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -379,11 +379,11 @@ const AcademicCalendar = ({ userData }) => {
       const data = await res.json();
       if (res.ok && data.success) {
         // Remove from state and localStorage fallback
-        setUploadedPlans((prev) => prev.filter((p) => p.name !== file.name));
+        setUploadedPlans((prev) => prev.filter((p) => p._id !== file._id));
         const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
         localStorage.setItem(
           "localUploadedPlans",
-          JSON.stringify(local.filter((p) => p.name !== file.name))
+          JSON.stringify(local.filter((p) => p._id !== file._id))
         );
         alert("File deleted");
       } else {
@@ -399,7 +399,7 @@ const AcademicCalendar = ({ userData }) => {
   // Rename an uploaded plan (change server filename and URL)
   // Open preview in editing mode for a file
   const handleEditUpload = async (file) => {
-    if (!file || !file.name) return;
+    if (!file || !file._id) return;
 
     setEditingFile(file);
     setIsEditingPreview(true);
@@ -414,7 +414,7 @@ const AcademicCalendar = ({ userData }) => {
 
   // Preview uploaded file (CSV / Excel)
   const handlePreviewUpload = async (file) => {
-    if (!file || !file.name) return;
+    if (!file || !file._id) return;
     // remember which file we're previewing so Edit can operate on it
     setEditingFile(file);
     setPreviewLoading(true);
@@ -426,16 +426,16 @@ const AcademicCalendar = ({ userData }) => {
       const token = localStorage.getItem("authToken");
 
       // Allow calling preview endpoint for CSV/XLS/XLSX and DOCX (server supports docx text extraction)
-      const ext = file.name ? String(file.name).split('.').pop().toLowerCase() : '';
+      const ext = file.originalName ? String(file.originalName).split('.').pop().toLowerCase() : '';
       if (!['csv', 'xls', 'xlsx', 'docx'].includes(ext)) {
         setPreviewError('Preview not available for this file type. You can download or open the file instead.');
-        setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: file.name ? `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` : null });
+        setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: file.url || null });
         setPreviewLoading(false);
         return;
       }
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${encodeURIComponent(file.name)}/preview`,
+        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${file._id}/preview`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -451,19 +451,19 @@ const AcademicCalendar = ({ userData }) => {
           const text = await res.text();
           setPreviewError(`Preview failed (server ${res.status}): ${text.substring(0, 300)}`);
           // attach basic file info so user can download/open it
-          setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` });
+          setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: file.url || null });
           return;
         }
 
         // Known case: preview not available for this file type
         if (jsonErr && jsonErr.message && jsonErr.message.toLowerCase().includes('preview not available')) {
           setPreviewError('Preview not available for this file type. You can download or open the file instead.');
-          setPreviewData({ meta: jsonErr.file?.meta || readMetaFromFileObject(file), fileUrl: `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` });
+          setPreviewData({ meta: jsonErr.file?.meta || readMetaFromFileObject(file), fileUrl: file.url || null });
           return;
         }
 
         setPreviewError(jsonErr?.message || `Preview failed (server ${res.status})`);
-        setPreviewData({ meta: jsonErr?.file?.meta || readMetaFromFileObject(file), fileUrl: `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/uploads/${encodeURIComponent(file.name)}` });
+        setPreviewData({ meta: jsonErr?.file?.meta || readMetaFromFileObject(file), fileUrl: file.url || null });
         return;
       }
 
@@ -749,9 +749,9 @@ const AcademicCalendar = ({ userData }) => {
             }
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">All Semesters</option>
+            <option value="" key="all-semesters">All Semesters</option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-              <option key={sem} value={sem}>
+              <option key={`semester-${sem}`} value={sem}>
                 Semester {sem}
               </option>
             ))}

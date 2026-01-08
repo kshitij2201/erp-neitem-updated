@@ -5,11 +5,13 @@ import Subject from "../models/Subject.js";
 import path from "path";
 import fs from "fs";
 import PDFDocument from "pdfkit";
+import { uploadToCloudinary } from "../config/cloudinary.js";
+import { v2 as cloudinary } from "cloudinary";
 
 // Upload file
 const uploadFile = async (req, res) => {
   try {
-    const { title, semester, section, subject } = req.body; // Removed department from destructuring
+    const { title, semester, section, subject } = req.body;
     console.log("Upload file request body:", { title, semester, section, subject });
     const uploaderName = req.user ? req.user.firstName : "Unknown";
     
@@ -44,6 +46,22 @@ const uploadFile = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid semester value" });
     }
     
+    // Determine resource type based on file mime type
+    let resourceType = 'raw'; // Default for non-image files
+    if (req.file.mimetype.startsWith('image/')) {
+      resourceType = 'image';
+    }
+    
+    // Upload to Cloudinary
+    console.log("Uploading file to Cloudinary...");
+    const cloudinaryResult = await uploadToCloudinary(
+      req.file.buffer, 
+      `erp/teaching-materials/${uploaderDepartment}`,
+      resourceType
+    );
+    
+    console.log("Cloudinary upload result:", cloudinaryResult.secure_url);
+    
     const file = new File({
       title,
       subject,
@@ -52,8 +70,13 @@ const uploadFile = async (req, res) => {
       uploaderName,
       uploaderDepartment,
       uploaderId,
-      filePath: req.file.path,
+      cloudinaryUrl: cloudinaryResult.secure_url,
+      cloudinaryPublicId: cloudinaryResult.public_id,
+      originalName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
     });
+    
     console.log("File object to save:", file);
     await file.save();
     res.json({ success: true, file });
@@ -98,7 +121,18 @@ const downloadFile = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "File not found" });
-    res.download(path.resolve(file.filePath));
+    
+    // If file is stored in Cloudinary, redirect to Cloudinary URL
+    if (file.cloudinaryUrl) {
+      return res.redirect(file.cloudinaryUrl);
+    }
+    
+    // Fallback to local file path (for backward compatibility)
+    if (file.filePath && fs.existsSync(file.filePath)) {
+      return res.download(path.resolve(file.filePath));
+    }
+    
+    return res.status(404).json({ success: false, message: "File not accessible" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -112,7 +146,27 @@ const deleteFile = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "File not found" });
-    fs.unlinkSync(file.filePath);
+    
+    // Delete from Cloudinary if stored there
+    if (file.cloudinaryPublicId) {
+      try {
+        await cloudinary.uploader.destroy(file.cloudinaryPublicId, { resource_type: 'raw' });
+        console.log("File deleted from Cloudinary:", file.cloudinaryPublicId);
+      } catch (cloudinaryError) {
+        console.error("Error deleting from Cloudinary:", cloudinaryError);
+        // Continue with database deletion even if Cloudinary deletion fails
+      }
+    }
+    
+    // Delete local file if it exists (for backward compatibility)
+    if (file.filePath && fs.existsSync(file.filePath)) {
+      try {
+        fs.unlinkSync(file.filePath);
+      } catch (fsError) {
+        console.error("Error deleting local file:", fsError);
+      }
+    }
+    
     await file.deleteOne();
     res.json({ success: true });
   } catch (err) {

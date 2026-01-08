@@ -28,7 +28,7 @@ export const uploadToCloudinary = (buffer, folder, resourceType = 'image') => {
   return new Promise((resolve, reject) => {
     // If Cloudinary is not configured, return a placeholder URL
     if (!hasCloudinaryConfig) {
-      console.log('🖼️ Using placeholder image (Cloudinary not configured)');
+      console.log('🖼️ Using placeholder (Cloudinary not configured)');
       const placeholderUrl = `https://ui-avatars.com/api/?name=${folder.includes('photo') ? 'User' : 'Document'}&size=400&background=e5e7eb&color=6b7280`;
       resolve({ secure_url: placeholderUrl });
       return;
@@ -37,10 +37,13 @@ export const uploadToCloudinary = (buffer, folder, resourceType = 'image') => {
     const uploadOptions = {
       folder: folder,
       resource_type: resourceType,
-      transformation: [
-        { width: 800, height: 600, crop: 'limit' },
-        { quality: 'auto' }
-      ]
+      // Only apply transformations to images
+      ...(resourceType === 'image' ? {
+        transformation: [
+          { width: 800, height: 600, crop: 'limit' },
+          { quality: 'auto' }
+        ]
+      } : {})
     };
 
     cloudinary.uploader.upload_stream(
