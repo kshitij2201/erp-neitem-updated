@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const API_BASE = "https://backenderp.tarstech.in/api/files"; // Adjust if your backend route is different
+const API_BASE_URL = "https://backenderp.tarstech.in";
+const API_BASE = `${API_BASE_URL}/api/files`; // Adjust if your backend route is different
 
 const FilesPage = () => {
   const [files, setFiles] = useState([]);
@@ -30,7 +31,7 @@ const FilesPage = () => {
           "Fetching user data with token:",
           token ? "Token exists" : "No token"
         );
-        const response = await fetch("/api/auth/profile", {
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
