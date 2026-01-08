@@ -140,7 +140,9 @@ const FilesPage = () => {
       const data = await res.json();
       if (data.success) {
         setSuccess(
-          `Notes/Document/Question Bank item "${title}" shared successfully with ${
+          `
+          
+          +++++++++++++++++++++++++++++++++++++t/Question Bank item "${title}" shared successfully with ${
             section === "ALL" ? "all sections of" : "section " + section
           } Semester ${semester} students in ${department} department for ${subject}!`
         );

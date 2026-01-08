@@ -222,26 +222,7 @@ router.get("/uploads", protect, async (req, res) => {
   }
 });
 
-// POST /api/academic-calendar/upload -> accept single file form field 'file'
-router.post("/upload", protect, upload.single("file"), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-
-    const fileRecord = {
-      originalName: req.file.originalname,
-      name: req.file.filename,
-      url: `/uploads/${encodeURIComponent(req.file.filename)}`,
-      size: req.file.size,
-      uploadedAt: new Date().toISOString(),
-    };
-
-    // Optionally, persist metadata to DB here. For now return the file meta.
-    return res.json({ success: true, file: fileRecord });
-  } catch (err) {
-    console.error("Upload handler error:", err);
-    return res.status(500).json({ success: false, message: "Upload failed" });
-  }
-});
+// Duplicate simple upload handler removed — use the robust handler above which uploads to Cloudinary when available.
 
 // GET /api/academic-calendar/upload/:name/preview -> return parsed rows for Excel/CSV
 router.get('/upload/:name/preview', protect, async (req, res) => {
@@ -250,7 +231,7 @@ router.get('/upload/:name/preview', protect, async (req, res) => {
     if (!name) return res.status(400).json({ success: false, message: 'Filename required' });
 
     const uploadsDir = path.join(process.cwd(), 'uploads');
-    const filePath = path.join(uploadsDir, name);
+    let filePath = path.join(uploadsDir, name);
 
     let tmpFileCreated = false;
     // If file missing locally, try to fetch from Cloudinary using metadata
@@ -265,6 +246,7 @@ router.get('/upload/:name/preview', protect, async (req, res) => {
           const resp = await axios.get(meta.url, { responseType: 'arraybuffer' });
           const tmpPath = path.join(uploadsDir, `tmp-${Date.now()}-${name}`);
           fs.writeFileSync(tmpPath, Buffer.from(resp.data));
+          console.log(`[AcademicCalendar] downloaded cloud file ${meta.url} to ${tmpPath}`);
           filePath = tmpPath;
           tmpFileCreated = true;
         } catch (downloadErr) {
