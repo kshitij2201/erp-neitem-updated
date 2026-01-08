@@ -142,7 +142,7 @@ const FilesPage = () => {
         setSuccess(
           `
           
-          +++++++++++++++++++++++++++++++++++++t/Question Bank item "${title}" shared successfully with ${
+          Question Bank item "${title}" shared successfully with ${
             section === "ALL" ? "all sections of" : "section " + section
           } Semester ${semester} students in ${department} department for ${subject}!`
         );
