@@ -29,6 +29,8 @@ import fs from "fs";
 import path from "path";
 import ExcelJS from "exceljs";
 import mammoth from "mammoth";
+import axios from 'axios';
+import cloudinary, { uploadToCloudinary } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -78,8 +80,8 @@ const canModifyFile = (user, meta) => {
 router.get("/", protect, getAcademicCalendars);
 router.post("/", protect, createAcademicCalendar);
 
-// Robust Upload handler (placed early to take precedence)
-router.post("/upload", protect, upload.single("file"), (req, res) => {
+// Robust Upload handler (uploads to Cloudinary when possible)
+router.post("/upload", protect, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       const message = req.fileValidationError || "No file uploaded";
@@ -95,6 +97,10 @@ router.post("/upload", protect, upload.single("file"), (req, res) => {
       uploaderDepartment = req.user.department._id ? String(req.user.department._id) : String(req.user.department);
     }
 
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const localPath = req.file.path;
+
+    // Build default fileRecord
     const fileRecord = {
       originalName: req.file.originalname,
       name: req.file.filename,
@@ -110,11 +116,36 @@ router.post("/upload", protect, upload.single("file"), (req, res) => {
       },
     };
 
-    // Persist simple per-file metadata alongside the file to support permission checks
+    // Attempt to upload to Cloudinary (resource_type 'auto' so docs/spreadsheets are accepted)
     try {
-      const uploadsDir = path.join(process.cwd(), "uploads");
-      const metaPath = path.join(uploadsDir, `${req.file.filename}.meta.json`);
+      const buffer = fs.readFileSync(localPath);
+      const result = await uploadToCloudinary(buffer, 'academic_calendar', 'auto');
+
+      // Update fileRecord with cloud metadata
+      if (result && result.secure_url) {
+        fileRecord.url = result.secure_url;
+        fileRecord.public_id = result.public_id;
+        fileRecord.cloud = true;
+      }
+
+      // Remove local file after successful cloud upload to save disk space
+      try {
+        fs.unlinkSync(localPath);
+      } catch (e) {
+        console.warn('Failed to remove local temp upload:', e.message);
+      }
+    } catch (cloudErr) {
+      console.warn('Cloud upload failed, keeping local file as fallback:', cloudErr.message || cloudErr);
+      // Keep local file and url pointing to /uploads/...
+    }
+
+    // Persist per-file metadata
+    try {
+      const metaPath = path.join(uploadsDir, `${fileRecord.name}.meta.json`);
       fs.writeFileSync(metaPath, JSON.stringify(fileRecord.meta));
+      // Also add cloud info to meta for preview/delete
+      const metaWithCloud = Object.assign({}, fileRecord.meta, { cloud: !!fileRecord.cloud, public_id: fileRecord.public_id, url: fileRecord.url });
+      fs.writeFileSync(metaPath, JSON.stringify(metaWithCloud));
     } catch (metaErr) {
       console.warn('Failed to write metadata file for upload', metaErr);
     }
@@ -128,7 +159,7 @@ router.post("/upload", protect, upload.single("file"), (req, res) => {
 
 // Uploads: list and POST an uploaded teaching plan file
 // Placed before the ":id" route to avoid being captured as an id value.
-// GET /api/academic-calendar/uploads -> returns list of uploaded files (public metadata)
+// GET /api/academic-calendar/uploads -> returns list of uploaded files (public metadata). Includes cloud-only entries via metadata if present
 router.get("/uploads", protect, async (req, res) => {
   try {
     const uploadsDir = path.join(process.cwd(), "uploads");
@@ -136,10 +167,13 @@ router.get("/uploads", protect, async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const allFiles = fs.readdirSync(uploadsDir).filter((f) => !f.endsWith('.meta.json'));
+    const allFiles = fs.readdirSync(uploadsDir);
     const files = [];
 
-    for (const fname of allFiles) {
+    // Physical files first
+    const physicalFiles = allFiles.filter((f) => !f.endsWith('.meta.json'));
+
+    for (const fname of physicalFiles) {
       const fullPath = path.join(uploadsDir, fname);
       const stats = fs.statSync(fullPath);
       const meta = readMetaForFile(fname);
@@ -150,11 +184,35 @@ router.get("/uploads", protect, async (req, res) => {
       files.push({
         name: fname,
         originalName: (meta && meta.uploaderOriginalName) ? meta.uploaderOriginalName : fname,
-        url: `/uploads/${encodeURIComponent(fname)}`,
+        url: meta && meta.url ? meta.url : `/uploads/${encodeURIComponent(fname)}`,
         size: stats.size,
         uploadedAt: stats.mtime,
         meta,
       });
+    }
+
+    // Also include metadata-only (cloud) entries
+    const metaFiles = allFiles.filter((f) => f.endsWith('.meta.json'));
+    for (const m of metaFiles) {
+      try {
+        const baseName = m.replace(/\.meta\.json$/, '');
+        // Skip if we already added physical file
+        if (files.some((f) => f.name === baseName)) continue;
+        const meta = readMetaForFile(baseName);
+        if (!meta) continue;
+        if (!canAccessFile(req.user, meta)) continue;
+
+        files.push({
+          name: baseName,
+          originalName: meta.uploaderOriginalName || baseName,
+          url: meta.url || `/uploads/${encodeURIComponent(baseName)}`,
+          size: meta.size || 0,
+          uploadedAt: meta.uploadedAt || null,
+          meta,
+        });
+      } catch (e) {
+        console.warn('Failed processing meta-only file', m, e);
+      }
     }
 
     return res.json({ success: true, data: files });
@@ -194,13 +252,34 @@ router.get('/upload/:name/preview', protect, async (req, res) => {
     const uploadsDir = path.join(process.cwd(), 'uploads');
     const filePath = path.join(uploadsDir, name);
 
+    let tmpFileCreated = false;
+    // If file missing locally, try to fetch from Cloudinary using metadata
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'File not found' });
+      const meta = readMetaForFile(name);
+      if (!meta) return res.status(404).json({ success: false, message: 'File not found' });
+      if (!canAccessFile(req.user, meta)) return res.status(403).json({ success: false, message: 'Access denied' });
+
+      if (meta.url) {
+        // Download remote file to a temporary local path for parsing
+        try {
+          const resp = await axios.get(meta.url, { responseType: 'arraybuffer' });
+          const tmpPath = path.join(uploadsDir, `tmp-${Date.now()}-${name}`);
+          fs.writeFileSync(tmpPath, Buffer.from(resp.data));
+          filePath = tmpPath;
+          tmpFileCreated = true;
+        } catch (downloadErr) {
+          console.error('Failed to download cloud file for preview:', downloadErr);
+          return res.status(500).json({ success: false, message: 'Failed to fetch file for preview' });
+        }
+      } else {
+        return res.status(404).json({ success: false, message: 'File not found' });
+      }
     }
 
     // Authorization: only uploader or HOD of same department may preview
     const meta = readMetaForFile(name);
     if (!canAccessFile(req.user, meta)) {
+      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -211,38 +290,47 @@ router.get('/upload/:name/preview', protect, async (req, res) => {
       try {
         const result = await mammoth.extractRawText({ path: filePath });
         const text = result && result.value ? String(result.value) : '';
-        // Trim very large text to a reasonable limit for preview (e.g., 100k chars)
         const truncated = text.length > 100000 ? text.slice(0, 100000) + '\n\n[truncated]' : text;
+        if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
         return res.json({ success: true, preview: { text: truncated } });
       } catch (err) {
         console.error('Error converting DOCX for preview:', err);
+        if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
         return res.status(500).json({ success: false, message: 'Failed to generate DOCX preview' });
       }
     }
 
     if (!['.csv', '.xls', '.xlsx'].includes(ext)) {
+      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
       return res.status(400).json({ success: false, message: 'Preview not available for this file type' });
     }
 
     const workbook = new ExcelJS.Workbook();
 
-    if (ext === '.csv') {
-      await workbook.csv.readFile(filePath);
-    } else {
-      await workbook.xlsx.readFile(filePath);
-    }
+    try {
+      if (ext === '.csv') {
+        await workbook.csv.readFile(filePath);
+      } else {
+        await workbook.xlsx.readFile(filePath);
+      }
 
-    const sheets = [];
-    workbook.eachSheet((worksheet) => {
-      const rows = [];
-      worksheet.eachRow((row) => {
-        const vals = row.values ? row.values.slice(1) : [];
-        rows.push(vals.map((v) => (v === undefined || v === null ? '' : String(v))));
+      const sheets = [];
+      workbook.eachSheet((worksheet) => {
+        const rows = [];
+        worksheet.eachRow((row) => {
+          const vals = row.values ? row.values.slice(1) : [];
+          rows.push(vals.map((v) => (v === undefined || v === null ? '' : String(v))));
+        });
+        sheets.push({ name: worksheet.name, rows });
       });
-      sheets.push({ name: worksheet.name, rows });
-    });
 
-    return res.json({ success: true, preview: { sheets } });
+      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
+      return res.json({ success: true, preview: { sheets } });
+    } catch (readErr) {
+      console.error('Error reading workbook for preview:', readErr);
+      if (tmpFileCreated) try { fs.unlinkSync(filePath); } catch(e){}
+      return res.status(500).json({ success: false, message: 'Failed to generate preview' });
+    }
   } catch (err) {
     console.error('Error generating preview for file:', err);
     return res.status(500).json({ success: false, message: 'Failed to generate preview' });
@@ -261,10 +349,6 @@ router.post('/upload/:name/save', protect, async (req, res) => {
     const uploadsDir = path.join(process.cwd(), 'uploads');
     const filePath = path.join(uploadsDir, name);
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'File not found' });
-    }
-
     // Authorization: only uploader may save/overwrite
     const meta = readMetaForFile(name);
     if (!canModifyFile(req.user, meta)) {
@@ -273,34 +357,99 @@ router.post('/upload/:name/save', protect, async (req, res) => {
 
     const ext = path.extname(name).toLowerCase();
 
-    // If original was CSV and only one sheet exists, write CSV; otherwise write XLSX
-    if (ext === '.csv' && sheets.length === 1) {
-      const rows = sheets[0].rows || [];
-      // Build CSV with proper escaping
-      const csvLines = rows.map((r) => r.map((cell) => {
-        if (cell == null) return '';
-        const s = String(cell);
-        if (s.includes('"')) return '"' + s.replace(/"/g, '""') + '"';
-        if (s.includes(',') || s.includes('\n') || s.includes('\r')) return '"' + s + '"';
-        return s;
-      }).join(','));
+    // Helper to write sheets to a given path
+    const writeSheetsToPath = async (targetPath) => {
+      if (ext === '.csv' && sheets.length === 1) {
+        const rows = sheets[0].rows || [];
+        const csvLines = rows.map((r) => r.map((cell) => {
+          if (cell == null) return '';
+          const s = String(cell);
+          if (s.includes('"')) return '"' + s.replace(/"/g, '""') + '"';
+          if (s.includes(',') || s.includes('\n') || s.includes('\r')) return '"' + s + '"';
+          return s;
+        }).join(','));
 
-      fs.writeFileSync(filePath, csvLines.join('\n'), 'utf8');
-    } else {
-      const workbook = new ExcelJS.Workbook();
-      for (const sheet of sheets) {
-        const ws = workbook.addWorksheet(sheet.name || 'Sheet1');
-        const rows = sheet.rows || [];
-        for (const row of rows) {
-          ws.addRow(row);
+        fs.writeFileSync(targetPath, csvLines.join('\n'), 'utf8');
+      } else {
+        const workbook = new ExcelJS.Workbook();
+        for (const sheet of sheets) {
+          const ws = workbook.addWorksheet(sheet.name || 'Sheet1');
+          const rows = sheet.rows || [];
+          for (const row of rows) {
+            ws.addRow(row);
+          }
+        }
+        await workbook.xlsx.writeFile(targetPath);
+      }
+    };
+
+    // If local file exists, overwrite it and (if cloud-backed) push update to Cloudinary
+    if (fs.existsSync(filePath)) {
+      await writeSheetsToPath(filePath);
+
+      // If meta references Cloudinary, upload new version and update meta
+      if (meta && meta.public_id) {
+        try {
+          const buffer = fs.readFileSync(filePath);
+          const result = await uploadToCloudinary(buffer, 'academic_calendar', 'auto');
+          // Update meta file
+          const metaPath = path.join(uploadsDir, `${name}.meta.json`);
+          const newMeta = { ...meta, public_id: result.public_id, url: result.secure_url, size: fs.statSync(filePath).size, uploadedAt: new Date().toISOString() };
+          fs.writeFileSync(metaPath, JSON.stringify(newMeta));
+
+          // Optionally delete old cloud resource (if public_id changed)
+          if (meta.public_id && meta.public_id !== result.public_id) {
+            try { await cloudinary.uploader.destroy(meta.public_id, { resource_type: 'auto' }); } catch(e) { console.warn('Failed to remove old cloud resource:', e); }
+          }
+
+          return res.json({ success: true, file: { name, url: result.secure_url, size: fs.statSync(filePath).size, uploadedAt: new Date().toISOString(), meta: newMeta } });
+        } catch (cloudErr) {
+          console.warn('Cloud update failed, keeping local file updated:', cloudErr);
+          const stats = fs.statSync(filePath);
+          const metaForFile = readMetaForFile(name) || null;
+          return res.json({ success: true, file: { name, url: `/uploads/${encodeURIComponent(name)}`, size: stats.size, uploadedAt: stats.mtime, meta: metaForFile } });
         }
       }
-      await workbook.xlsx.writeFile(filePath);
+
+      const stats = fs.statSync(filePath);
+      const metaForFile = readMetaForFile(name) || null;
+      return res.json({ success: true, file: { name, url: `/uploads/${encodeURIComponent(name)}`, size: stats.size, uploadedAt: stats.mtime, meta: metaForFile } });
     }
 
-    const stats = fs.statSync(filePath);
-    const metaForFile = readMetaForFile(name) || null;
-    return res.json({ success: true, file: { name, url: `/uploads/${encodeURIComponent(name)}`, size: stats.size, uploadedAt: stats.mtime, meta: metaForFile } });
+    // If local file doesn't exist but we have a cloud URL/meta, download remote, write, upload back and update meta
+    if (meta && meta.url) {
+      const tmpPath = path.join(uploadsDir, `tmp-save-${Date.now()}-${name}`);
+      try {
+        const resp = await axios.get(meta.url, { responseType: 'arraybuffer' });
+        fs.writeFileSync(tmpPath, Buffer.from(resp.data));
+
+        await writeSheetsToPath(tmpPath);
+
+        // Upload updated file back to Cloudinary
+        const updatedBuffer = fs.readFileSync(tmpPath);
+        const result = await uploadToCloudinary(updatedBuffer, 'academic_calendar', 'auto');
+
+        // Remove temporary file
+        try { fs.unlinkSync(tmpPath); } catch(e){}
+
+        // Delete old cloud resource if present
+        if (meta.public_id && meta.public_id !== result.public_id) {
+          try { await cloudinary.uploader.destroy(meta.public_id, { resource_type: 'auto' }); } catch(e) { console.warn('Failed to remove old cloud resource after save:', e); }
+        }
+
+        const metaPath = path.join(uploadsDir, `${name}.meta.json`);
+        const newMeta = { ...meta, public_id: result.public_id, url: result.secure_url, size: updatedBuffer.length, uploadedAt: new Date().toISOString() };
+        fs.writeFileSync(metaPath, JSON.stringify(newMeta));
+
+        return res.json({ success: true, file: { name, url: result.secure_url, size: updatedBuffer.length, uploadedAt: new Date().toISOString(), meta: newMeta } });
+      } catch (err) {
+        if (fs.existsSync(tmpPath)) try { fs.unlinkSync(tmpPath); } catch(e){}
+        console.error('Error saving edited cloud file:', err);
+        return res.status(500).json({ success: false, message: 'Failed to save edited file' });
+      }
+    }
+
+    return res.status(404).json({ success: false, message: 'File not found' });
   } catch (err) {
     console.error('Error saving edited file:', err);
     return res.status(500).json({ success: false, message: 'Failed to save edited file' });
@@ -317,13 +466,46 @@ router.delete('/upload/:name', protect, async (req, res) => {
     const filePath = path.join(uploadsDir, name);
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'File not found' });
+      // file might be cloud-only - check metadata
+      const meta = readMetaForFile(name);
+      if (!meta) return res.status(404).json({ success: false, message: 'File not found' });
+
+      // Authorization: only uploader may delete
+      if (!canModifyFile(req.user, meta)) {
+        return res.status(403).json({ success: false, message: 'Only the original uploader can delete this file' });
+      }
+
+      // If meta references Cloudinary, destroy remote resource
+      if (meta.public_id) {
+        try {
+          await cloudinary.uploader.destroy(meta.public_id, { resource_type: 'auto' });
+        } catch (cloudErr) {
+          console.warn('Cloud delete failed:', cloudErr);
+        }
+      }
+
+      // Remove metadata file
+      const metaPath = path.join(uploadsDir, `${name}.meta.json`);
+      if (fs.existsSync(metaPath)) {
+        try { fs.unlinkSync(metaPath); } catch (e) { console.warn('Failed removing meta file', metaPath, e); }
+      }
+
+      return res.json({ success: true, message: 'File deleted' });
     }
 
     // Authorization: only uploader may delete
     const meta = readMetaForFile(name);
     if (!canModifyFile(req.user, meta)) {
       return res.status(403).json({ success: false, message: 'Only the original uploader can delete this file' });
+    }
+
+    // If this file had been uploaded to Cloudinary previously, try to remove remote copy
+    if (meta && meta.public_id) {
+      try {
+        await cloudinary.uploader.destroy(meta.public_id, { resource_type: 'auto' });
+      } catch (cloudErr) {
+        console.warn('Cloud delete failed while deleting local file:', cloudErr);
+      }
     }
 
     fs.unlinkSync(filePath);
@@ -462,27 +644,6 @@ router.get("/uploads", protect, async (req, res) => {
   } catch (err) {
     console.error("Error listing uploaded plans:", err);
     return res.status(500).json({ success: false, message: "Failed to list uploads" });
-  }
-});
-
-// POST /api/academic-calendar/upload -> accept single file form field 'file'
-router.post("/upload", protect, upload.single("file"), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-
-    const fileRecord = {
-      originalName: req.file.originalname,
-      name: req.file.filename,
-      url: `/uploads/${encodeURIComponent(req.file.filename)}`,
-      size: req.file.size,
-      uploadedAt: new Date().toISOString(),
-    };
-
-    // Optionally, persist metadata to DB here. For now return the file meta.
-    return res.json({ success: true, file: fileRecord });
-  } catch (err) {
-    console.error("Upload handler error:", err);
-    return res.status(500).json({ success: false, message: "Upload failed" });
   }
 });
 

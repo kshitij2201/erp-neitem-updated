@@ -94,20 +94,35 @@ router.get('/', optionalAuth, async (req, res) => {
 router.delete('/:id', protect, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Ensure authenticated user info is present
+    if (!req.user) {
+      console.warn('Delete attempted without authenticated user');
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
     const visit = await IndustrialVisit.findById(id);
     if (!visit) return res.status(404).json({ success: false, message: 'Not found' });
 
-    // only creator or HOD or admin can delete - keep simple: allow creator or users with role HOD
-    // req.user.role may be present
-    if (String(visit.createdBy) !== String(req.user?._id) && String(req.user?.role).toLowerCase() !== 'hod') {
+    // Resolve creator id robustly (handle populated or plain ObjectId)
+    const creatorId = visit.createdBy && visit.createdBy._id ? String(visit.createdBy._id) : String(visit.createdBy || '');
+    const requesterId = req.user._id ? String(req.user._id) : String(req.user.id || '');
+    const requesterRole = String(req.user.role || '').toLowerCase();
+
+    // Allow only creator, HOD, or super_admin to delete
+    if (creatorId !== requesterId && requesterRole !== 'hod' && requesterRole !== 'super_admin') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    await visit.remove();
+    // Delete the visit document
+    await IndustrialVisit.findByIdAndDelete(id);
+
+    // Note: if you want to remove remote images from Cloudinary, implement here using stored public_id
+
     return res.json({ success: true });
   } catch (err) {
     console.error('Delete industrial visit error', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 });
 

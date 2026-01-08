@@ -31,8 +31,9 @@ const Login = () => {
       );
 
       if (response.data.success) {
-        // Store the token in localStorage
+        // Store the token in localStorage (keep both keys for compatibility)
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("authToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         setIsAuthenticated(true); // Update authentication status
 
