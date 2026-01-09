@@ -73,6 +73,37 @@ export default function MarkAttendance() {
     return "N/A";
   };
 
+  // Format date as DD/MM/YYYY or return "N/A"
+  const formatDateDMY = (dateInput) => {
+    if (!dateInput) return "N/A";
+    const d = new Date(dateInput);
+    if (Number.isNaN(d.getTime())) return "N/A";
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  // Retry helper for axios requests: retries on network errors and timeouts
+  const retryAxiosRequest = async (fn, retries = 2, delay = 1000) => {
+    let attempt = 0;
+    while (attempt <= retries) {
+      try {
+        return await fn();
+      } catch (err) {
+        const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'));
+        const isNetwork = !err.response;
+        attempt += 1;
+        if (attempt > retries || (!isTimeout && !isNetwork)) {
+          throw err;
+        }
+        console.warn(`Request failed (attempt ${attempt}) - retrying in ${delay}ms`, err.message || err);
+        // exponential backoff
+        await new Promise((res) => setTimeout(res, delay * attempt));
+      }
+    }
+  };
+
   const [subjects, setSubjects] = useState([]);
   const [expandedSubject, setExpandedSubject] = useState("");
   const [students, setStudents] = useState([]);
@@ -82,6 +113,8 @@ export default function MarkAttendance() {
   const [error, setError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState({});
+  // Records for the selected date (today or selectedDate); used in edit/update flows
+  const [todayRecords, setTodayRecords] = useState([]);
   const [studentNotes, setStudentNotes] = useState({});
   const [subjectDetails, setSubjectDetails] = useState(null);
   const [loadingSubjectDetails, setLoadingSubjectDetails] = useState(false);
@@ -868,6 +901,13 @@ export default function MarkAttendance() {
   const fetchAttendanceStats = async (studentsData, subjectId) => {
     try {
       const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        console.warn("No auth token found; skipping attendance stats requests (will show zeros).");
+        setAttendanceStats({});
+        return;
+      }
+
       const statsPromises = studentsData.map(async (student) => {
         try {
           // Get current month and year for monthly stats
@@ -890,7 +930,7 @@ export default function MarkAttendance() {
 
           console.log(`Stats for student ${student._id}:`, {
             monthly: monthlyResponse.data,
-            overall: overallResponse.data
+            overall: overallResponse.data,
           });
 
           return {
@@ -901,7 +941,8 @@ export default function MarkAttendance() {
         } catch (error) {
           console.error(
             `Error fetching stats for student ${student._id}:`,
-            error
+            error.response?.status,
+            error.response?.data || error.message
           );
           return {
             studentId: student._id,
@@ -926,7 +967,7 @@ export default function MarkAttendance() {
 
       setAttendanceStats(statsObject);
     } catch (error) {
-      console.error("Error fetching attendance stats:", error);
+      console.error("Error fetching attendance stats:", error.response?.status, error.response?.data || error.message);
       setAttendanceStats({});
     }
   };
@@ -961,28 +1002,34 @@ export default function MarkAttendance() {
           if (existingRecord) {
             // Update existing record only if status changed
             if (existingRecord.status !== status) {
-              return api.put(
-                `/attendance/${existingRecord.id}`,
-                { status: status },
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
+              const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+              return retryAxiosRequest(() => api.put(`/attendance/${existingRecord.id}`, { status: status }, requestOptions), 2, 1000);
             }
           } else {
             // Create new record for students who don't have attendance yet
-            return api.post(
-              "/attendance",
-              {
-                student: studentId,
-                studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
-                subject: expandedSubject,
-                faculty: facultyId,
-                status: status,
-                date: selectedDate,
-                semester: student.semester?._id || student.semester,
-                department: student.department?._id || student.department,
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const payload = {
+              student: studentId,
+              studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+              subject: expandedSubject,
+              faculty: facultyId,
+              status: status,
+              date: selectedDate,
+              semester: student.semester?._id || student.semester,
+              department: student.department?._id || student.department,
+            };
+
+            // Basic client-side validation to avoid 400s from malformed requests
+            const required = ['student', 'subject', 'faculty', 'status', 'date'];
+            const missing = required.filter((k) => !payload[k]);
+            if (missing.length > 0) {
+              console.error('Skipping create - missing attendance fields for student', studentId, missing, payload);
+              // reject promise so outer Promise.all will fail and be handled by outer catch
+              return Promise.reject({ message: `Missing required fields: ${missing.join(', ')}`, validation: true, payload });
+            }
+
+            console.log('Creating attendance (batch) for student', studentId, payload);
+            const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+            return retryAxiosRequest(() => api.post('/attendance', payload, requestOptions), 2, 1000);
           }
         });
 
@@ -1027,13 +1074,24 @@ export default function MarkAttendance() {
         date: selectedDate,
       };
 
-      const response = await api.post(
-        "/faculty/markattendance",
-        attendanceData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+      // Make the request with a higher timeout and retry on network/timeouts
+      const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+      let response;
+      try {
+        response = await retryAxiosRequest(() => api.post("/faculty/markattendance", attendanceData, requestOptions), 2, 1000);
+      } catch (reqErr) {
+        console.error("Attendance mark request failed after retries:", reqErr.response?.status, reqErr.response?.data || reqErr.message);
+        if (reqErr.code === 'ECONNABORTED' || (reqErr.message && reqErr.message.toLowerCase().includes('timeout'))) {
+          alert("Request timed out. The server may be slow or unreachable. Please try again.");
+        } else if (!reqErr.response) {
+          alert("Network error while marking attendance. Check your connection and try again.");
+        } else {
+          alert(reqErr.response?.data?.message || "Failed to mark attendance. Please try again.");
         }
-      );
+
+        setIsUpdating(false);
+        return;
+      }
 
       if (response.data.success) {
         alert(
@@ -1073,6 +1131,11 @@ export default function MarkAttendance() {
       }
     } catch (err) {
       console.error("Error marking attendance:", err);
+      console.error("Error marking attendance response:", err.response?.status, err.response?.data || err.message);
+
+      // Timeout or network checks
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'));
+      const isNetwork = !err.response;
 
       // Check if the error is due to attendance already marked
       if (err.response?.status === 400 && err.response?.data?.alreadyMarked) {
@@ -1080,8 +1143,12 @@ export default function MarkAttendance() {
         setAttendanceMarkedToday(true);
         // Reload to enter edit mode
         await checkTodayAttendance(expandedSubject);
+      } else if (isTimeout) {
+        alert("Request timed out. The server may be slow or unreachable. Please try again.");
+      } else if (isNetwork) {
+        alert("Network error while marking attendance. Please check your connection and try again.");
       } else {
-        alert("Failed to mark attendance. Please try again.");
+        alert(err.response?.data?.message || "Failed to mark attendance. Please try again.");
       }
     } finally {
       setIsUpdating(false);
@@ -1106,23 +1173,25 @@ export default function MarkAttendance() {
       if (existing) {
         // Update existing record
         console.log("Updating attendance record:", existing.id);
-        const response = await api.put(
-          `/attendance/${existing.id}`,
-          { status: status },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        console.log("Update response:", response.data);
-        
-        // Immediately update the existingAttendance state
-        setExistingAttendance(prev => ({
-          ...prev,
-          [studentId]: {
-            ...prev[studentId],
-            status: status
-          }
-        }));
-        
-        alert(`Attendance updated to ${status} successfully!`);
+        const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+        try {
+          const response = await retryAxiosRequest(() => api.put(`/attendance/${existing.id}`, { status: status }, requestOptions), 2, 1000);
+          console.log("Update response:", response.data);
+
+          // Immediately update the existingAttendance state
+          setExistingAttendance(prev => ({
+            ...prev,
+            [studentId]: {
+              ...prev[studentId],
+              status: status
+            }
+          }));
+
+          alert(`Attendance updated to ${status} successfully!`);
+        } catch (err) {
+          console.error('Failed to update attendance record:', err.response?.status, err.response?.data || err.message);
+          throw err;
+        }
       } else {
         // Create new record - Need to get semester and department from student
         console.log("Creating new attendance record");
@@ -1132,20 +1201,34 @@ export default function MarkAttendance() {
           throw new Error("Student not found");
         }
         
-        const response = await api.post(
-          "/attendance",
-          {
-            student: studentId,
-            studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
-            subject: expandedSubject,
-            faculty: facultyId,
-            status: status,
-            date: today,
-            semester: student.semester?._id || student.semester,
-            department: student.department?._id || student.department,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const payload = {
+          student: studentId,
+          studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+          subject: expandedSubject,
+          faculty: facultyId,
+          status: status,
+          date: today,
+          semester: student.semester?._id || student.semester,
+          department: student.department?._id || student.department,
+        };
+
+        // Basic validation before sending
+        const required = ['student', 'subject', 'faculty', 'status', 'date'];
+        const missing = required.filter(k => !payload[k]);
+        if (missing.length > 0) {
+          console.error('Attendance create validation failed for student', studentId, 'missing:', missing, payload);
+          throw new Error(`Missing required fields: ${missing.join(', ')}`);
+        }
+
+        console.log('Creating attendance for student', studentId, payload);
+        let response;
+        try {
+          response = await retryAxiosRequest(() => api.post('/attendance', payload, { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }), 2, 1000);
+        } catch (createErr) {
+          console.error('Failed to create attendance for student', studentId, createErr.response?.status, createErr.response?.data || createErr.message);
+          // Re-throw to be caught by outer catch and show user-friendly message
+          throw createErr;
+        }
         console.log("Create response:", response.data);
         
         // Add the new record to existingAttendance state
@@ -1167,8 +1250,18 @@ export default function MarkAttendance() {
       setChartRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error("Error marking individual attendance:", err);
-      console.error("Error details:", err.response?.data);
-      alert(`Failed to mark attendance: ${err.response?.data?.message || err.message}`);
+      console.error("Error details:", err.response?.data || err.message);
+
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'));
+      const isNetwork = !err.response;
+
+      if (isTimeout) {
+        alert("Request timed out while marking attendance. Please try again.");
+      } else if (isNetwork) {
+        alert("Network error while marking attendance. Check your connection.");
+      } else {
+        alert(`Failed to mark attendance: ${err.response?.data?.message || err.message}`);
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -2428,21 +2521,27 @@ export default function MarkAttendance() {
                 )}
 
                 {queryType === "week" && (
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryFrom}
-                      onChange={(e) => setQueryFrom(e.target.value)}
-                      placeholder="Start Date"
-                    />
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryTo}
-                      onChange={(e) => setQueryTo(e.target.value)}
-                      placeholder="End Date"
-                    />
+                  <div className="flex gap-2 items-end">
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">Start Date (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryFrom}
+                        onChange={(e) => setQueryFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">End Date (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryTo}
+                        onChange={(e) => setQueryTo(e.target.value)}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -2473,21 +2572,27 @@ export default function MarkAttendance() {
                 )}
 
                 {queryType === "range" && (
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryFrom}
-                      onChange={(e) => setQueryFrom(e.target.value)}
-                      placeholder="From"
-                    />
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryTo}
-                      onChange={(e) => setQueryTo(e.target.value)}
-                      placeholder="To"
-                    />
+                  <div className="flex gap-2 items-end">
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">From (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryFrom}
+                        onChange={(e) => setQueryFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">To (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryTo}
+                        onChange={(e) => setQueryTo(e.target.value)}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -2570,11 +2675,11 @@ export default function MarkAttendance() {
                         {queryType === "week" || queryType === "range" ? (
                           <>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A"}
-                            </td>
+                              {formatDateDMY(log.startDate)}
+                            </td> 
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A"}
-                            </td>
+                              {formatDateDMY(log.endDate)}
+                            </td> 
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {log.presentCount || 0} / {log.totalDays || 0}
                             </td>
@@ -2591,9 +2696,7 @@ export default function MarkAttendance() {
                         ) : (
                           <>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.date
-                                ? new Date(log.date).toLocaleDateString()
-                                : "N/A"}
+                              {formatDateDMY(log.date)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
