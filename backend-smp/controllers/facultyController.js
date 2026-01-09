@@ -285,12 +285,25 @@ const facultyRegister = async (req, res) => {
     const newFaculty = new Faculty(formData);
     const result = await newFaculty.save();
 
+    // Normalize stored type to allowed SalaryRecord enum values
+    let recordType = 'teaching';
+    if (formData && formData.type) {
+      const t = String(formData.type).toLowerCase();
+      if (t === 'teaching' || t === 'non-teaching') {
+        recordType = t;
+      } else if (t.includes('non') || t.includes('admin') || t.includes('management')) {
+        recordType = 'non-teaching';
+      } else {
+        recordType = 'teaching';
+      }
+    }
+
     const salaryData = {
       employeeId: formData.employeeId,
       name: formData.name,
       department: formData.department,
       designation: formData.designation,
-      type: formData.type,
+      type: recordType,
       basicSalary: Number(formData.basicSalary) || 0,
       hra: formData.hra === "YES" ? Number(formData.hraAmount) || 0 : 0,
       da: Number(formData.da) || 0,

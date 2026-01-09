@@ -6,6 +6,10 @@ const attendanceSchema = new mongoose.Schema({
     ref: "student",
     required: true,
   },
+  studentName: {
+    type: String,
+    required: false,
+  },
   subject: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "AdminSubject", // Updated to match AdminSubject model

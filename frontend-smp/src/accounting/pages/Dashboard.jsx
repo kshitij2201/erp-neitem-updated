@@ -56,6 +56,9 @@ export default function Dashboard() {
         return res;
       } catch (err) {
         clearTimeout(id);
+        if (err && err.name === 'AbortError') {
+          throw new Error('Request timed out');
+        }
         throw err;
       }
     };
@@ -108,7 +111,8 @@ export default function Dashboard() {
       // Phase 1: critical fast fetches (financial summary + accounts overview + fee-heads + dashboard stats)
       setIsLoading(true);
       const [financialSummaryData, accountsData, feeHeadsData, dashboardStatsData] = await Promise.all([
-        safeFetch(`${apiBase}/accounts/financial-summary`, { totalFeesCollected: 0 }),
+        // Financial summary may be heavy; allow 30s timeout
+        safeFetch(`${apiBase}/accounts/financial-summary`, { totalFeesCollected: 0 }, 30000),
         safeFetch(`${apiBase}/accounts/stats/overview`, { success: false }),
         safeFetch(`${apiBase}/fee-heads`, []),
         safeFetch(`${apiBase}/dashboard/stats`, {}),

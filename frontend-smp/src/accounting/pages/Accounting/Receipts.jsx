@@ -2609,139 +2609,11 @@ const Receipts = () => {
     const baseUrl = window.location.origin;
     const logo1Url = `${baseUrl}/logo1.png`;
     const logoUrl = `${baseUrl}/logo.png`;
-    
-    // Function to generate single receipt with label
-    const generateReceipt = (label) => `
-      <div class="receipt-container">
-        <div class="receipt-header-box">
-          <div class="duplicate-label">${label}</div>
-          <div class="institute-header-simple">
-            <div class="logo-left">
-              <img src="${logo1Url}" alt="Logo" />
-            </div>
-            <div class="header-text">
-              <div class="society-name-simple">Maitrey Educational Society's</div>
-              <div class="institute-name-simple">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
-              <div class="institute-address-simple">Village Satnavri, Amravati Road, Nagpur - 440023</div>
-            </div>
-            <div class="logo-right">
-              <img src="${logoUrl}" alt="Logo" />
-            </div>
-          </div>
-        </div>
-
-        <table class="receipt-info-table">
-          <tr>
-            <td class="label-cell">Rec. No.</td>
-            <td class="value-cell">: ${receiptData.receiptNumber}</td>
-            <td class="label-cell">Date</td>
-            <td class="value-cell">: ${receiptData.date}</td>
-          </tr>
-          <tr>
-            <td class="label-cell" style="font-weight: bold">Class</td>
-            <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
-            <td class="label-cell">Adm. No.</td>
-            <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
-          </tr>
-          <tr>
-            <td class="label-cell">Category</td>
-            <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
-            <td class="label-cell">Student Id.</td>
-            <td class="value-cell">: ${receiptData.student?.studentId}</td>
-          </tr>
-          <tr>
-            <td class="label-cell" style="font-weight: bold">Name</td>
-            <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
-          </tr>
-          <tr>
-            <td class="label-cell">Roll No</td>
-            <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-            <td class="label-cell">Section</td>
-            <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
-          </tr>
-        </table>
-        
-        <div class="received-section">
-          <div class="received-label">Received the following:</div>
-          <div class="amount-label">(₹)Amount</div>
-        </div>
-        
-          <div class="fee-details-table">
-          <table>
-            <tbody>
-              ${
-                receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
-                  ? receiptData.selectedFeeCategories
-                      .filter(category => parseFloat(category.amount) > 0)
-                      .map(
-                        (category, index) => `
-              <tr>
-                <td class="fee-name">${category.name}</td>
-                <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-            `
-                      )
-                      .join("")
-                  : receiptData.multipleFees && receiptData.multipleFees.length > 0
-                  ? receiptData.multipleFees
-                      .map(
-                        (fee, index) => `
-              <tr>
-                <td class="fee-name">${fee.feeHead}</td>
-                <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-            `
-                      )
-                      .join("")
-                  : `
-              <tr>
-                <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
-                <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-            `
-              }
-            </tbody>
-          </table>
-          <div class="logo-section">
-            <img src="${logoUrl}" alt="NIETM Logo" class="center-logo" />
-          </div>
-        </div>
-
-        <div class="summary-box">
-          <div class="total-section">
-            <div class="total-label">Total :</div>
-            <div class="total-amount">₹ ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          </div>
-
-          <div class="amount-in-words">
-            <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} 
-          </div>
-
-          <div class="payment-details-footer">
-            <div class="payment-info">Med : ENG, Subject : BSE1-1T,BSE1-2T,BSE1-3T,BSE1-4T,BSE1-5T,BSE1-6T,<br>BSE1-2P,BSE1-3P,BSE1-4P,BSE1-5P</div>
-            ${receiptData.paymentMethod === 'UPI' || receiptData.paymentMethod === 'Online' ? `
-            <div class="payment-info">UPI Amount : ${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bank Info = Transaction ID : ${receiptData.transactionId || 'N/A'}, Date : ${receiptData.date}</div>
-            <div class="payment-info">Bank Name : ${receiptData.bankName || 'N/A'}, Location : ${receiptData.bankLocation || 'N/A'}</div>
-            ` : ''}
-            <div class="payment-info">Remarks : ${receiptData.remarks || receiptData.description || 'Payment Received'}</div>
-          </div>
-
-          <div class="footer-signature">
-            <div class="cashier-info">O1-${receiptData.collectedBy || 'Cashier'}/${receiptData.date}</div>
-            <div class="cashier-name">${receiptData.collectedBy || 'Cashier Name'}</div>
-            <div class="signature-label">RECEIVER'S SIGNATURE</div>
-          </div>
-
-          <div class="page-number">Page 1 of 1</div>
-        </div>
-      </div>
-    `;
 
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Fee Payment Receipt - ${receiptData.receiptNumber}</title>
         <style>
           @page {
             size: A4 landscape;
@@ -2777,15 +2649,15 @@ const Receipts = () => {
           .receipts-wrapper {
             display: flex;
             flex-direction: row;
-            gap: 5px;
-            width: 100%;
+            gap: 35px;
+            width: 97%;
             justify-content: space-between;
             height: 100%;
           }
           .receipt-container {
-            width: 49%;
+            width: 136%;
 
-            max-width: 500px;
+            max-width: 716px;
             border: 1px solid #000;
             background: white;
             padding: 12px;
@@ -2936,7 +2808,7 @@ const Receipts = () => {
           }
           .logo-section {
             position: absolute;
-            top: 50%;
+            top: 54%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 0;
@@ -3048,10 +2920,10 @@ const Receipts = () => {
       <body>
         <div class="receipts-wrapper">
 
-          <!-- ORIGINAL RECEIPT -->
+          <!-- OFFICE COPY -->
           <div class="receipt-container">
             <div class="receipt-header-box">
-              <div class="duplicate-label">ORIGINAL</div>
+              <div class="duplicate-label">OFFICE COPY</div>
               <div class="institute-header-simple">
                 <div class="logo-left">
                   <img src="/logo1.png" alt="Logo" />
@@ -3075,20 +2947,26 @@ const Receipts = () => {
                 <td class="value-cell">: ${receiptData.date}</td>
               </tr>
               <tr>
-                <td class="label-cell">Class</td>
-                <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
+                <td class="label-cell" style="font-weight: bold">Class</td>
+                <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
                 <td class="label-cell">Adm. No.</td>
                 <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
               </tr>
               <tr>
-                <td class="label-cell">Name</td>
-                <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+                <td class="label-cell">Category</td>
+                <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
+                <td class="label-cell">Student Id.</td>
+                <td class="value-cell">: ${receiptData.student?.studentId}</td>
+              </tr>
+              <tr>
+                <td class="label-cell" style="font-weight: bold">Name</td>
+                <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
               </tr>
               <tr>
                 <td class="label-cell">Roll No</td>
                 <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-                <td class="label-cell">Student Id.</td>
-                <td class="value-cell">: ${receiptData.student?.studentId}</td>
+                <td class="label-cell">Section</td>
+                <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
               </tr>
             </table>
             
@@ -3100,24 +2978,42 @@ const Receipts = () => {
             <div class="fee-details-table">
               <table>
                 <tbody>
-                  ${receiptData.multipleFees && receiptData.multipleFees.length > 0
-                    ? receiptData.multipleFees.map(fee => 
-                        `<tr>
-                          <td class="fee-name">${fee.feeHead}</td>
-                          <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>`
-                      ).join('')
-                    : `<tr>
-                        <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
-                        <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>`
+                  ${
+                    receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
+                      ? receiptData.selectedFeeCategories
+                          .filter(category => parseFloat(category.amount) > 0)
+                          .map(
+                            (category, index) => `
+                  <tr>
+                    <td class="fee-name">${category.name}</td>
+                    <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                `
+                          )
+                          .join("")
+                      : receiptData.multipleFees && receiptData.multipleFees.length > 0
+                      ? receiptData.multipleFees
+                          .map(
+                            (fee, index) => `
+                  <tr>
+                    <td class="fee-name">${fee.feeHead}</td>
+                    <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                `
+                          )
+                          .join("")
+                      : `
+                  <tr>
+                    <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
+                    <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                `
                   }
                 </tbody>
               </table>
-            </div>
-            
-            <div class="logo-section">
-              <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+              <div class="logo-section">
+                <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+              </div>
             </div>
             
             <div class="total-section">
@@ -3145,10 +3041,10 @@ const Receipts = () => {
             </div>
           </div>
 
-          <!-- DUPLICATE RECEIPT -->
+          <!-- STUDENT COPY -->
           <div class="receipt-container">
             <div class="receipt-header-box">
-              <div class="duplicate-label">DUPLICATE</div>
+              <div class="duplicate-label">STUDENT COPY</div>
               <div class="institute-header-simple">
                 <div class="logo-left">
                   <img src="/logo1.png" alt="Logo" />
@@ -3172,20 +3068,26 @@ const Receipts = () => {
                 <td class="value-cell">: ${receiptData.date}</td>
               </tr>
               <tr>
-                <td class="label-cell">Class</td>
-                <td class="value-cell">: ${receiptData.student?.program || 'N/A'}</td>
+                <td class="label-cell" style="font-weight: bold">Class</td>
+                <td class="value-cell" style="font-weight: bold">: ${receiptData.student?.program || 'N/A'}</td>
                 <td class="label-cell">Adm. No.</td>
                 <td class="value-cell">: ${receiptData.student?.admissionNumber || receiptData.student?.studentId}</td>
               </tr>
               <tr>
-                <td class="label-cell">Name</td>
-                <td class="value-cell" colspan="3">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
+                <td class="label-cell">Category</td>
+                <td class="value-cell">: ${receiptData.student?.caste || receiptData.student?.casteCategory || 'N/A'}</td>
+                <td class="label-cell">Student Id.</td>
+                <td class="value-cell">: ${receiptData.student?.studentId}</td>
+              </tr>
+              <tr>
+                <td class="label-cell" style="font-weight: bold">Name</td>
+                <td class="value-cell" colspan="3" style="font-weight: bold">: ${receiptData.student?.firstName} ${receiptData.student?.lastName}</td>
               </tr>
               <tr>
                 <td class="label-cell">Roll No</td>
                 <td class="value-cell">: ${receiptData.student?.rollNumber || 'N/A'}</td>
-                <td class="label-cell">Student Id.</td>
-                <td class="value-cell">: ${receiptData.student?.studentId}</td>
+                <td class="label-cell">Section</td>
+                <td class="value-cell">: ${receiptData.student?.section || 'N/A'}</td>
               </tr>
             </table>
             
@@ -3197,24 +3099,42 @@ const Receipts = () => {
             <div class="fee-details-table">
               <table>
                 <tbody>
-                  ${receiptData.multipleFees && receiptData.multipleFees.length > 0
-                    ? receiptData.multipleFees.map(fee => 
-                        `<tr>
-                          <td class="fee-name">${fee.feeHead}</td>
-                          <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>`
-                      ).join('')
-                    : `<tr>
-                        <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
-                        <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>`
+                  ${
+                    receiptData.selectedFeeCategories && receiptData.selectedFeeCategories.some(cat => parseFloat(cat.amount) > 0)
+                      ? receiptData.selectedFeeCategories
+                          .filter(category => parseFloat(category.amount) > 0)
+                          .map(
+                            (category, index) => `
+                  <tr>
+                    <td class="fee-name">${category.name}</td>
+                    <td class="fee-amount">${parseFloat(category.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                `
+                          )
+                          .join("")
+                      : receiptData.multipleFees && receiptData.multipleFees.length > 0
+                      ? receiptData.multipleFees
+                          .map(
+                            (fee, index) => `
+                  <tr>
+                    <td class="fee-name">${fee.feeHead}</td>
+                    <td class="fee-amount">${fee.currentPayment.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                `
+                          )
+                          .join("")
+                      : `
+                  <tr>
+                    <td class="fee-name">${receiptData.feeHead?.title || receiptData.description || 'Fee Payment'}</td>
+                    <td class="fee-amount">${parseInt(receiptData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                `
                   }
                 </tbody>
               </table>
-            </div>
-            
-            <div class="logo-section">
-              <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+              <div class="logo-section">
+                <img src="/logo.png" alt="NIETM Logo" class="center-logo" />
+              </div>
             </div>
             
             <div class="total-section">
@@ -3223,7 +3143,7 @@ const Receipts = () => {
             </div>
             
             <div class="amount-in-words">
-              <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} Only
+              <span class="words-label">In words:</span> ${numberToWords(parseInt(receiptData.amount))} 
             </div>
             
             <div class="payment-details-footer">
@@ -3241,9 +3161,6 @@ const Receipts = () => {
               <div class="signature-label">RECEIVER'S SIGNATURE</div>
             </div>
           </div>
-
-          ${generateReceipt("OFFICE COPY")}
-          ${generateReceipt("STUDENT COPY")}
 
         </div>
       </body>

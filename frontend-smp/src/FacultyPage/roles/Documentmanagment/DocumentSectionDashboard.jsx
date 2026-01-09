@@ -381,7 +381,7 @@ const DocumentManagementDashboard = () => {
       try {
         const logoImg = await loadImage(LOGO_URL);
         if (logoImg.width > 0) {
-          doc.addImage(logoImg, "PNG", marginLeft, y, 25, 25);
+          doc.addImage(logoImg, "PNG", marginLeft -15, y, 25, 25);
         }
       } catch {}
       try {
@@ -390,7 +390,7 @@ const DocumentManagementDashboard = () => {
           doc.addImage(
             logo1Img,
             "PNG",
-            pageWidth - marginRight - 25,
+            pageWidth - marginRight - 10,
             y,
             23,
             23
@@ -399,13 +399,13 @@ const DocumentManagementDashboard = () => {
       } catch {}
 
       doc.setFontSize(8).setFont("Helvetica", "normal");
-      doc.text("maitrey education society", pageWidth / 2, y + 3, {
+      doc.text("Maitrey Education Society", pageWidth / 2, y + 3, {
         align: "center",
       });
       doc.setFontSize(25).setFont("Helvetica", "bold");
       doc.text("NAGARJUNA", pageWidth / 2, y + 12, { align: "center" });
       y += 23;
-      doc.setFontSize(14).setFont("Helvetica", "normal");
+      doc.setFontSize(12).setFont("sans-serif", "bold");
       doc.text(
         "Institute of Engineering, Technology & Management",
         pageWidth / 2,
@@ -413,7 +413,7 @@ const DocumentManagementDashboard = () => {
         { align: "center" }
       );
       y += 6;
-      doc.setFontSize(12).setFont("Helvetica", "normal");
+      doc.setFontSize(10).setFont("Helvetica", "bold");
       const affiliation =
         "(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)";
       const affiliationLines = doc.splitTextToSize(
@@ -440,12 +440,14 @@ const DocumentManagementDashboard = () => {
       doc.line(marginLeft + 5, y, pageWidth - marginRight - 5, y);
       y += 8;
       doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
       doc.text(`Ref No.: NIETM / 2025-26`, marginLeft, y);
       doc.text(
         `Date: ${certificateData.dateOfIssue}`,
         pageWidth - marginRight - 50,
         y
       );
+      doc.setFont("helvetica", "normal");
       y += 15;
       const titleWidth = 70;
       const titleX = (pageWidth - titleWidth) / 2;
@@ -594,6 +596,7 @@ const DocumentManagementDashboard = () => {
       const signatureY = finalY + lineHeight * 3;
 
       const currentDate = formatDate(new Date());
+      doc.setFont("helvetica", "bold");
       doc.text(`Date: ${currentDate}`, marginLeft, signatureY + 20);
       doc.text("Checked by", pageWidth / 2 - 10, signatureY + 20);
       doc.text(

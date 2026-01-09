@@ -135,7 +135,7 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
     const totalDeductions = tds + epf + pt;
-    const netSalary = gross - totalDeductions;
+    const netSalary = gross + totalDeductions;
 
     return {
       basic,
@@ -178,7 +178,7 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
     const totalDeductions = tds + epf + pt;
-    const netSalary = gross - totalDeductions;
+    const netSalary = gross + totalDeductions;
 
     return {
       basic,
@@ -217,7 +217,7 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
     const totalDeductions = tds + epf + pt;
-    const netSalary = gross - totalDeductions;
+    const netSalary = gross + totalDeductions;
 
     return {
       basic,
