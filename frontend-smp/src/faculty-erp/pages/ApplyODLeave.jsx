@@ -172,12 +172,10 @@ export default function ApplyODLeave({ userData }) {
     if (!eventName) newErrors.eventName = "Event/purpose name is required";
     if (!location) newErrors.location = "Location is required";
 
-    if (startDate) {
-      const start = new Date(startDate);
-      if (start < today) {
-        newErrors.startDate = "Start date cannot be in the past";
-      }
+    if (!startDate) {
+      newErrors.startDate = "Start date is required";
     }
+    // Past start dates are allowed — no validation against today per request
 
     if (startDate && endDate) {
       const start = new Date(startDate);

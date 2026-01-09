@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const API_BASE = "/api/files"; // Adjust if your backend route is different
+const API_BASE_URL = "https://backenderp.tarstech.in";
+const API_BASE = `${API_BASE_URL}/api/files`; // Adjust if your backend route is different
 
 const FilesPage = () => {
   const [files, setFiles] = useState([]);
@@ -25,19 +26,32 @@ const FilesPage = () => {
     // Fetch subjects and department from backend
     const fetchSubjectsAndDepartment = async () => {
       try {
-        const token = localStorage.getItem("authToken");
+        const token = localStorage.getItem("authToken") || localStorage.getItem("token") || (JSON.parse(localStorage.getItem("user") || '{}').token);
         console.log(
           "Fetching user data with token:",
           token ? "Token exists" : "No token"
         );
-        const response = await fetch("/api/auth/profile", {
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        console.log("Profile response status:", response.status);
-        if (response.ok) {
-          const userData = await response.json();
+        console.log("Profile response status:", response.status, "Content-Type:", response.headers.get('content-type'));
+        if (!response.ok) {
+          const text = await response.text();
+          console.error("Profile fetch failed:", response.status, text);
+          return;
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        let userData;
+        if (contentType.includes("application/json")) {
+          userData = await response.json();
+        } else {
+          const text = await response.text();
+          console.error("Expected JSON from /api/auth/profile but got:", text);
+          return;
+        }
           console.log("User data:", userData);
           
           // Set department automatically
@@ -57,9 +71,6 @@ const FilesPage = () => {
           }
           console.log("Processed subjects:", subjects);
           setSubjectsTaught(subjects);
-        } else {
-          console.error("Failed to fetch user data");
-        }
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -77,7 +88,8 @@ const FilesPage = () => {
       } else {
         setError(data.message || "Failed to fetch files");
       }
-    } catch {
+    } catch (err) {
+      console.error("Error fetching files:", err);
       setError("Failed to fetch files");
     }
   };
@@ -96,6 +108,7 @@ const FilesPage = () => {
       );
       return;
     }
+
     setUploading(true);
     const formData = new FormData();
     formData.append("title", title);
@@ -104,8 +117,13 @@ const FilesPage = () => {
     // Removed department from formData as it's now fetched from backend user
     formData.append("file", file);
     formData.append("subject", subject);
+
     try {
-      const token = localStorage.getItem("authToken");
+      const token =
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("token") ||
+        (JSON.parse(localStorage.getItem("user") || "{}").token);
+
       const res = await fetch(API_BASE, {
         method: "POST",
         body: formData,
@@ -113,20 +131,34 @@ const FilesPage = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        setError(text || `Upload failed with status ${res.status}`);
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
-        setSuccess(`Study material "${title}" shared successfully with ${section === 'ALL' ? 'all sections of' : 'section ' + section} Semester ${semester} students in ${department} department for ${subject}!`);
+        setSuccess(
+          `
+          
+          Question Bank item "${title}" shared successfully with ${
+            section === "ALL" ? "all sections of" : "section " + section
+          } Semester ${semester} students in ${department} department for ${subject}!`
+        );
         setTitle("");
         setSemester("");
         setSection("");
         setSubject("");
         setFile(null);
-        fileInputRef.current.value = "";
+        if (fileInputRef.current) fileInputRef.current.value = "";
         fetchFiles();
       } else {
         setError(data.message || "Upload failed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Upload error:", err);
       setError("Upload failed");
     } finally {
       setUploading(false);
@@ -134,25 +166,32 @@ const FilesPage = () => {
   };
 
   const handleDelete = async (fileId) => {
-    if (!window.confirm("Are you sure you want to remove this study material? Students will no longer be able to access it.")) return;
+    if (!window.confirm("Are you sure you want to remove this item? Students will no longer be able to access it.")) return;
     setError("");
     setSuccess("");
     try {
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token") || (JSON.parse(localStorage.getItem("user") || '{}').token);
       const res = await fetch(`${API_BASE}/${fileId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const data = await res.json();
-      if (data.success) {
-        setSuccess("Study material removed successfully.");
-        fetchFiles();
+
+      if (!res.ok) {
+        const text = await res.text();
+        setError(text || `Delete failed with status ${res.status}`);
       } else {
-        setError(data.message || "Delete failed");
+        const data = await res.json();
+        if (data.success) {
+          setSuccess("Item removed successfully.");
+          fetchFiles();
+        } else {
+          setError(data.message || "Delete failed");
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error("Delete error:", err);
       setError("Delete failed");
     }
   };
@@ -163,10 +202,10 @@ const FilesPage = () => {
         {/* Header Card */}
         <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-8 mb-6">
           <h1 className="text-4xl font-bold text-gray-800 mb-4 text-center">
-            📚 Share Study Materials with Students
+            📚 Share Notes/Document and Question Bank
           </h1>
           <p className="text-center text-gray-600 text-lg">
-            Upload and share documents, notes, assignments, and study materials with your students
+            Upload and share notes, documents, assignments, and question bank items with your students
           </p>
         </div>
 
@@ -251,7 +290,7 @@ const FilesPage = () => {
             required
           />
           <div className="text-sm text-gray-500 mt-1">
-            💡 <strong>Tip:</strong> Students will only see materials for subjects they study and their respective semester/section
+            💡 <strong>Tip:</strong> Students will only see notes/documents and question bank items for subjects they study and their respective semester/section
           </div>
           <button
             type="submit"
@@ -265,7 +304,7 @@ const FilesPage = () => {
               </>
             ) : (
               <>
-                📚 Share with Students
+                📚 Share Notes/Document & Question Bank
               </>
             )}
           </button>
@@ -287,16 +326,16 @@ const FilesPage = () => {
       {/* Files List Card */}
       <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-8">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          📁 Shared Study Materials
+          📁 Shared Notes, Documents & Question Bank
         </h2>
         <p className="text-gray-600 text-sm mb-6">
-          Materials you've shared with your students across different subjects and classes
+          Items you've shared with your students across different subjects and classes
         </p>
         {files.length === 0 ? (
           <div className="text-gray-500 text-center bg-gray-50 rounded-lg py-12 border border-gray-200">
             <div className="text-6xl mb-4">📚</div>
-            <p className="text-xl">No study materials shared yet</p>
-            <p className="text-sm opacity-75 mt-2">Start by uploading your first document!</p>
+            <p className="text-xl">No notes, documents or question bank items shared yet</p>
+            <p className="text-sm opacity-75 mt-2">Start by uploading your first note, document, or question bank item!</p>
           </div>
         ) : (
           <div className="space-y-4">

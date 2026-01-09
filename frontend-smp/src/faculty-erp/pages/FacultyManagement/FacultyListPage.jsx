@@ -182,9 +182,30 @@ export default function FacultyDashboard() {
     loadSelectedFaculties();
   }, []);
 
+  // Debug: log matches when a department is selected to help with normalization issues
+  useEffect(() => {
+    if (selectedDepartment === "all") return;
+    const matches = faculties.filter(
+      (f) => normalizeDept(f.department) === normalizeDept(selectedDepartment)
+    );
+    console.log(
+      `Selected department "${selectedDepartment}" normalized="${normalizeDept(selectedDepartment)}" matches ${matches.length} faculties`,
+      matches.slice(0, 6).map((f) => ({ id: f._id, department: f.department }))
+    );
+  }, [selectedDepartment, faculties]);
+
   const departments = [
-    ...new Set(faculties.map((faculty) => faculty.department)),
-  ].filter(Boolean);
+    ...new Set(
+      faculties
+        .map((faculty) => {
+          const val = typeof faculty.department === "string"
+            ? faculty.department
+            : faculty.department?.name || faculty.department?._id || "";
+          return val ? val.toString().trim() : "";
+        })
+        .filter(Boolean)
+    ),
+  ];
 
   const filteredFaculties = faculties.filter((faculty) => {
     const matchesSearch =
@@ -198,7 +219,7 @@ export default function FacultyDashboard() {
       (filterType === "teaching" && faculty.type === "hod") ||
       (filterType === "non-teaching" && faculty.type === "principal");
     const matchesDepartment =
-      filterDepartment === "all" || faculty.department === filterDepartment;
+      filterDepartment === "all" || normalizeDept(faculty.department) === normalizeDept(filterDepartment);
 
     return matchesSearch && matchesType && matchesDepartment;
   });
@@ -344,12 +365,24 @@ export default function FacultyDashboard() {
 
     // Prevent multiple HODs in one department
     if (formData.role === "hod") {
-      const alreadyHod = faculties.find(
-        (f) =>
-          f.department === selectedDepartment &&
+      const alreadyHod = faculties.find((f) => {
+        const deptVal = (typeof f.department === "string"
+          ? f.department
+          : f.department?.name || f.department?._id || ""
+        )
+          .toString()
+          .trim()
+          .toLowerCase();
+        const selectedDeptVal = selectedDepartment
+          .toString()
+          .trim()
+          .toLowerCase();
+        return (
+          deptVal === selectedDeptVal &&
           f.role === "hod" &&
           f._id !== formData.facultyId
-      );
+        );
+      });
       if (alreadyHod) {
         alert(
           `There is already a HOD assigned for ${selectedDepartment}: ${alreadyHod.firstName}. Please remove or reassign the current HOD before assigning a new one.`
@@ -410,12 +443,21 @@ export default function FacultyDashboard() {
             return { ...f, role: formData.role, type: formData.role };
           }
           // Remove HOD role only from the same department
-          if (
-            formData.role === "hod" &&
-            f.department === selectedDepartment &&
-            f.role === "hod"
-          ) {
-            return { ...f, role: null, type: "teaching" };
+          if (formData.role === "hod") {
+            const deptVal = (typeof f.department === "string"
+              ? f.department
+              : f.department?.name || f.department?._id || ""
+            )
+              .toString()
+              .trim()
+              .toLowerCase();
+            const selectedDeptVal = selectedDepartment
+              .toString()
+              .trim()
+              .toLowerCase();
+            if (deptVal === selectedDeptVal && f.role === "hod") {
+              return { ...f, role: null, type: "teaching" };
+            }
           }
           // Remove Principal role globally (since only one principal exists)
           if (formData.role === "principal" && f.role === "principal") {
@@ -584,6 +626,17 @@ export default function FacultyDashboard() {
       .substring(0, 2);
   };
 
+  // Normalize department value (handles string or object)
+  const normalizeDept = (dept) =>
+    (typeof dept === "string" ? dept : dept?.name || dept?._id || "")
+      .toString()
+      .trim()
+      .toLowerCase();
+
+  // Return a human-friendly department string for display
+  const getDeptDisplay = (dept) =>
+    (typeof dept === "string" ? dept : dept?.name || dept?._id || "").toString();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -729,7 +782,18 @@ export default function FacultyDashboard() {
 
                 // For HOD assignment, filter by department and exclude current HODs of that department
                 if (formData.role === "hod") {
-                  if (faculty.department !== selectedDepartment) return false;
+                  const deptVal = (typeof faculty.department === "string"
+                    ? faculty.department
+                    : faculty.department?.name || faculty.department?._id || ""
+                  )
+                    .toString()
+                    .trim()
+                    .toLowerCase();
+                  const selectedDeptVal = selectedDepartment
+                    .toString()
+                    .trim()
+                    .toLowerCase();
+                  if (deptVal !== selectedDeptVal) return false;
                   if (faculty.role === "hod") return false;
                 }
 
@@ -746,7 +810,7 @@ export default function FacultyDashboard() {
                   {faculty.firstName} ({faculty.employeeId}) -{" "}
                   {faculty.department}
                 </option>
-              ))}
+              ))} 
           </select>
           <p className="text-xs text-slate-500 mt-1">
             {formData.role === "hod"
@@ -1099,7 +1163,7 @@ export default function FacultyDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {departments.map((dept) => {
                 const hod = faculties.find(
-                  (f) => f.department === dept && f.role === "hod"
+                  (f) => normalizeDept(f.department) === normalizeDept(dept) && f.role === "hod"
                 );
                 return hod ? (
                   <FacultyCard
@@ -1408,11 +1472,20 @@ export default function FacultyDashboard() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* UX improvement: Disable Assign HOD if department already has a HOD */}
                         {(() => {
-                          const currentHod = faculties.find(
-                            (f) =>
-                              f.department === selectedDepartment &&
-                              f.role === "hod"
-                          );
+                          const currentHod = faculties.find((f) => {
+                            const deptVal = (typeof f.department === "string"
+                              ? f.department
+                              : f.department?.name || f.department?._id || ""
+                            )
+                              .toString()
+                              .trim()
+                              .toLowerCase();
+                            const selectedDeptVal = selectedDepartment
+                              .toString()
+                              .trim()
+                              .toLowerCase();
+                            return deptVal === selectedDeptVal && f.role === "hod";
+                          });
                           if (currentHod) {
                             return (
                               <div className="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 text-sm font-medium flex items-center gap-2">
@@ -1429,14 +1502,26 @@ export default function FacultyDashboard() {
                               </div>
                             );
                           }
-                          return filteredFaculties
-                            .filter(
-                              (f) =>
-                                f.department === selectedDepartment &&
+                          return faculties
+                            .filter((f) => {
+                              const deptVal = (typeof f.department === "string"
+                                ? f.department
+                                : f.department?.name || f.department?._id || ""
+                              )
+                                .toString()
+                                .trim()
+                                .toLowerCase();
+                              const selectedDeptVal = selectedDepartment
+                                .toString()
+                                .trim()
+                                .toLowerCase();
+                              return (
+                                deptVal === selectedDeptVal &&
                                 f.type === "teaching" &&
                                 f.role !== "hod" &&
                                 f.role !== "principal"
-                            )
+                              );
+                            })
                             .map((faculty) => (
                               <FacultyCard
                                 key={faculty._id}
@@ -1459,11 +1544,23 @@ export default function FacultyDashboard() {
                               />
                             ));
                         })()}
-                        {filteredFaculties.filter(
-                          (f) =>
-                            f.department === selectedDepartment &&
+                        {faculties.filter((f) => {
+                          const deptVal = (typeof f.department === "string"
+                            ? f.department
+                            : f.department?.name || f.department?._id || ""
+                          )
+                            .toString()
+                            .trim()
+                            .toLowerCase();
+                          const selectedDeptVal = selectedDepartment
+                            .toString()
+                            .trim()
+                            .toLowerCase();
+                          return (
+                            deptVal === selectedDeptVal &&
                             (f.type === "teaching" || f.type === "hod")
-                        ).length === 0 && (
+                          );
+                        }).length === 0 && (
                           <p className="text-slate-500 text-xs">
                             No teaching faculty available in{" "}
                             {selectedDepartment}
@@ -1476,10 +1573,8 @@ export default function FacultyDashboard() {
                         Current HOD
                       </h3>
                       {(() => {
-                        const currentHod = faculties.find(
-                          (f) =>
-                            f.department === selectedDepartment &&
-                            f.role === "hod"
+                        const currentHod = faculties.find((f) =>
+                          normalizeDept(f.department) === normalizeDept(selectedDepartment) && f.role === "hod"
                         );
                         return currentHod ? (
                           <FacultyCard
@@ -1576,14 +1671,28 @@ export default function FacultyDashboard() {
                     Teaching Faculty
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredFaculties
-                      .filter(
+                    {(() => {
+                      const professors = filteredFaculties.filter(
                         (f) =>
                           (f.type === "teaching" || f.type === "hod") &&
-                          f.designation &&
-                          f.designation.trim().toLowerCase() === "professor"
-                      )
-                      .map((faculty) => (
+                          (f.designation || "").toString().trim().toLowerCase() === "professor"
+                      );
+                      const candidates =
+                        professors.length > 0
+                          ? professors
+                          : filteredFaculties.filter(
+                              (f) => f.type === "teaching" || f.type === "hod"
+                            );
+
+                      if (candidates.length === 0) {
+                        return (
+                          <p className="text-slate-500 text-xs">
+                            No teaching faculty available
+                          </p>
+                        );
+                      }
+
+                      return candidates.map((faculty) => (
                         <FacultyCard
                           key={faculty._id}
                           faculty={faculty}
@@ -1613,17 +1722,8 @@ export default function FacultyDashboard() {
                             </>
                           }
                         />
-                      ))}
-                    {filteredFaculties.filter(
-                      (f) =>
-                        (f.type === "teaching" || f.type === "hod") &&
-                        f.designation &&
-                        f.designation.trim().toLowerCase() === "professor"
-                    ).length === 0 && (
-                      <p className="text-slate-500 text-xs">
-                        No professor available
-                      </p>
-                    )}
+                      ));
+                    })()}
                   </div>
                 </div>
                 <div>
@@ -1634,16 +1734,28 @@ export default function FacultyDashboard() {
                     <FacultyCard
                       faculty={faculties.find((f) => f.role === "principal")}
                       buttons={
-                        <button
-                          onClick={() =>
-                            handleViewDetails(
-                              faculties.find((f) => f.role === "principal")
-                            )
-                          }
-                          className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs w-full"
-                        >
-                          View Details
-                        </button>
+                        <>
+                          <button
+                            onClick={() =>
+                              handleViewDetails(
+                                faculties.find((f) => f.role === "principal")
+                              )
+                            }
+                            className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-xs w-full"
+                          >
+                            View Details
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleRemovePrincipal(
+                                faculties.find((f) => f.role === "principal")._id
+                              )
+                            }
+                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs w-full mt-1"
+                          >
+                            Remove Principal
+                          </button>
+                        </>
                       }
                     />
                   ) : (

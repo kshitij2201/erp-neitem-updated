@@ -11,6 +11,7 @@ import MyBus from "../components/student/MyBus";
 import BusMonitor from "../components/student/BusMonitor";
 import BusSchedule from "../components/student/BusSchedule";
 import Announcements from "../components/Announcements";
+import IndustrialVisitList from "../../library/components/IndustrialVisitList";
 
 const StudentDashboard = () => {
   const [user, setUser] = useState(null);
@@ -329,6 +330,17 @@ const StudentDashboard = () => {
                     >
                       Announcements
                     </button>
+
+                    <button
+                      onClick={() => setActiveSection("industrial-visits")}
+                      className={`px-2 lg:px-4 py-2 rounded-lg text-sm lg:text-base font-medium transition-colors duration-200 whitespace-nowrap ${
+                        activeSection === "industrial-visits"
+                          ? "bg-indigo-600 text-white shadow-lg"
+                          : "text-gray-200 hover:bg-white/20 hover:text-white"
+                      }`}
+                    >
+                      Industrial Visits
+                    </button>
                   </nav>
                 </div>
               ) : (
@@ -389,6 +401,20 @@ const StudentDashboard = () => {
                 }`}
               >
                 All Buses
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveSection("industrial-visits");
+                  setIsSidebarOpen(false);
+                }}
+                className={`block w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                  activeSection === "industrial-visits"
+                    ? "bg-indigo-600 text-white shadow-lg transform scale-105"
+                    : "text-gray-200 hover:bg-white/20 hover:text-white hover:transform hover:scale-105"
+                }`}
+              >
+                Industrial Visits
               </button>
 
               <button
@@ -567,6 +593,12 @@ const StudentDashboard = () => {
             {activeSection === "my-bus" && <MyBus />}
             {activeSection === "schedule" && <BusSchedule />}
             {activeSection === "announcements" && <Announcements />}
+            {activeSection === "industrial-visits" && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Industrial Visits</h3>
+                <IndustrialVisitList department={user?.department || user?.dept || ''} />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -141,8 +141,65 @@ const Analytics = () => {
   const [booksBorrowedByMonth, setBooksBorrowedByMonth] = useState([]);
   const [booksAddedByMonth, setBooksAddedByMonth] = useState([]);
   const [issuedBooks, setIssuedBooks] = useState([]);
+  // Full issue history (used for historical aggregation per month)
+  const [issueHistory, setIssueHistory] = useState([]);
   const [totalBorrowedBooks, setTotalBorrowedBooks] = useState(0);
   const [activeStudents, setActiveStudents] = useState([]);
+
+  // Borrow filter: 'last12' or a specific year like '2024'
+  const [borrowFilter, setBorrowFilter] = useState("last12");
+
+  // Helper to generate last N months in YYYY-MM format
+  const generateLastNMonths = (n = 12) => {
+    const months = [];
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return months;
+  };
+
+  // Available years derived from issuedBooks plus current year range
+  const availableYears = useMemo(() => {
+    const yrs = new Set();
+    issueHistory.forEach((issue) => {
+      const dateStr =
+        issue.issueDate || issue.createdAt || issue.date || issue.transactionDate || issue.issuedAt || issue.borrowedAt || issue.updatedAt;
+      const d = new Date(dateStr);
+      if (!isNaN(d)) yrs.add(d.getFullYear());
+    });
+    const now = new Date().getFullYear();
+    for (let y = now; y >= now - 4; y--) yrs.add(y);
+    return Array.from(yrs).sort((a, b) => b - a);
+  }, [issueHistory]);
+
+  // Recompute booksBorrowedByMonth whenever issuedBooks or borrowFilter changes
+  useEffect(() => {
+    const months =
+      borrowFilter === "last12"
+        ? generateLastNMonths(12)
+        : Array.from({ length: 12 }, (_, i) => `${borrowFilter}-${String(i + 1).padStart(2, "0")}`);
+
+    const counts = {};
+    // Use full issue history to calculate actual borrow events per month
+    issueHistory.forEach((issue) => {
+      // Count only borrow events (issue or renew)
+      const tx = (issue.transactionType || "").toString().toLowerCase();
+      if (tx !== "issue" && tx !== "renew") return;
+
+      const dateStr =
+        issue.issueDate || issue.createdAt || issue.date || issue.transactionDate || issue.issuedAt || issue.borrowedAt || issue.updatedAt;
+      if (!dateStr) return;
+      const d = new Date(dateStr);
+      if (isNaN(d)) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    const data = months.map((m) => ({ month: m, count: counts[m] || 0 }));
+    setBooksBorrowedByMonth(data);
+  }, [issueHistory, borrowFilter]);
 
   if (!allowAccess) {
     return <Navigate to="/" />;
@@ -243,6 +300,9 @@ const Analytics = () => {
               issuedBooksData = [];
             }
 
+            // Keep a copy of the full issue history for historical aggregations
+            setIssueHistory(issuedBooksData);
+
             // Filter active issues only - more strict filtering and validate student exists
             const activeIssues = issuedBooksData.filter(
               (issue) => {
@@ -276,6 +336,7 @@ const Analytics = () => {
             console.warn("Failed to fetch issued books data - response not ok");
             // Set to 0 if API call fails
             setIssuedBooks([]);
+            setIssueHistory([]);
             setTotalBorrowedBooks(0);
           }
 
@@ -284,6 +345,7 @@ const Analytics = () => {
           const journalBooks = fetchedBooks.filter(
             (book) =>
               book.materialType === "journal" || book.SERIESCODE === "JOURNAL"
+            
           ).length;
 
           // Fetch real borrow counts from issues overview
@@ -323,21 +385,10 @@ const Analytics = () => {
             mostBorrowedBooks,
           };
 
-          // Mock books borrowed by month data (since we don't have borrow history yet)
-          const mockBooksBorrowedByMonth = [
-            { month: "Jan 2024", count: Math.floor(totalBooks * 0.03) },
-            { month: "Feb 2024", count: Math.floor(totalBooks * 0.04) },
-            { month: "Mar 2024", count: Math.floor(totalBooks * 0.03) },
-            { month: "Apr 2024", count: Math.floor(totalBooks * 0.05) },
-            { month: "May 2024", count: Math.floor(totalBooks * 0.04) },
-            { month: "Jun 2024", count: Math.floor(totalBooks * 0.05) },
-            { month: "Jul 2024", count: Math.floor(totalBooks * 0.06) },
-            { month: "Aug 2024", count: Math.floor(totalBooks * 0.04) },
-            { month: "Sep 2024", count: Math.floor(totalBooks * 0.05) },
-            { month: "Oct 2024", count: Math.floor(totalBooks * 0.04) },
-            { month: "Nov 2024", count: Math.floor(totalBooks * 0.04) },
-            { month: "Dec 2024", count: Math.floor(totalBooks * 0.03) },
-          ];
+          // Borrowed-by-month will be computed separately from `issuedBooks` state
+          // (the new effect will respond to filter changes or updated issue data)
+          // Set a fallback of last 12 months with zeros so chart has an initial shape
+          setBooksBorrowedByMonth(generateLastNMonths(12).map((m) => ({ month: m, count: 0 })));
 
           // Calculate real books added by month from ACCDATE
           const booksAddedByMonth = {};
@@ -358,7 +409,8 @@ const Analytics = () => {
 
           setAnalytics(realAnalyticsData);
           setBooks(fetchedBooks);
-          setBooksBorrowedByMonth(mockBooksBorrowedByMonth);
+          // Set fallback (last 12 months) — will be recomputed by the borrow filter effect when issuedBooks state is updated
+          setBooksBorrowedByMonth(generateLastNMonths(12).map((m) => ({ month: m, count: 0 })));
           setBooksAddedByMonth(
             realBooksAddedByMonth.length > 0
               ? realBooksAddedByMonth
@@ -519,6 +571,9 @@ const Analytics = () => {
               issuedBooksData = data;
             }
             
+            // Keep full history for aggregation
+            setIssueHistory(issuedBooksData);
+
             // Filter active issues only and validate student exists
             const activeIssues = issuedBooksData.filter(
               (issue) => {
@@ -580,6 +635,9 @@ const Analytics = () => {
             } else if (Array.isArray(data)) {
               issuedBooksData = data;
             }
+
+            // Keep full history for aggregation
+            setIssueHistory(issuedBooksData);
             
             // Filter active issues only and validate student exists
             const activeIssues = issuedBooksData.filter(
@@ -1108,6 +1166,23 @@ const Analytics = () => {
               <TrendingUp size={22} className="text-emerald-400" /> Books
               Borrowed Per Month
             </h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm text-slate-500">View:</div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={borrowFilter}
+                  onChange={(e) => setBorrowFilter(e.target.value)}
+                  className="px-3 py-2 border rounded bg-white text-sm"
+                >
+                  <option value="last12">Last 12 months</option>
+                  {availableYears.map((y) => (
+                    <option key={y} value={String(y)}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={booksBorrowedByMonth}>
                 <CartesianGrid

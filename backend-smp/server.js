@@ -158,6 +158,7 @@ import academicCalendarRoutes from "./routes/academicCalendar.js";
 import analyticsRoutes from "./routes/analytics.js";
 import feesRoutes from "./routes/fees.js";
 import examFeesRoutes from "./routes/examFees.js";
+import industrialVisitsRoutes from "./routes/industrialVisits.js";
 
 // Setup __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -390,6 +391,9 @@ app.use("/api/superadmin/subjects", adminSubjectRoutes);
 app.use("/api/superadmin/events", eventRoutes);
 app.use("/api/superadmin/semesters", semesterRoutes);
 app.use("/api/faculty/auth", facultyAuthRoutes);
+
+// Industrial visits
+app.use('/api/industrial-visits', industrialVisitsRoutes);
 app.use("/api/student/auth", studentAuthRoutes);
 // Mount public student routes first (without protection for /public endpoint)
 app.use("/api/students", studentsFeeRoutes);

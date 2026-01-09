@@ -20,13 +20,16 @@ import {
   Building,
 } from "lucide-react";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode";
+import * as jwtDecodeModule from "jwt-decode";
+const jwtDecode = jwtDecodeModule.default || jwtDecodeModule;
 import { useNavigate } from "react-router-dom";
 
 const ApproveLeaveByPrincipal = ({ userData }) => {
   const navigate = useNavigate();
   const [department, setDepartment] = useState("All Departments");
   const [viewMode, setViewMode] = useState("pending"); // "pending" or "all"
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
   const [leaves, setLeaves] = useState([]);
   const [filteredLeaves, setFilteredLeaves] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,6 +42,7 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState(""); // "success" or "error"
   const [loading, setLoading] = useState(false);
+  const [processingId, setProcessingId] = useState(""); // id of leave being processed
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState(null);
 
@@ -53,7 +57,67 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
     "Electrical",
   ];
 
-  // Filter leaves based on search term
+  // Month and Year filter options (used in View Mode controls)
+  const monthOptions = [
+    { value: "all", label: "All Months" },
+    { value: "1", label: "Jan" },
+    { value: "2", label: "Feb" },
+    { value: "3", label: "Mar" },
+    { value: "4", label: "Apr" },
+    { value: "5", label: "May" },
+    { value: "6", label: "Jun" },
+    { value: "7", label: "Jul" },
+    { value: "8", label: "Aug" },
+    { value: "9", label: "Sep" },
+    { value: "10", label: "Oct" },
+    { value: "11", label: "Nov" },
+    { value: "12", label: "Dec" },
+  ];
+
+  const yearOptions = (() => {
+    const years = new Set();
+    leaves.forEach((l) => {
+      const d = new Date(l.startDate || l.applicationDate || l.date);
+      if (!isNaN(d)) years.add(d.getFullYear());
+    });
+    const arr = Array.from(years).sort((a, b) => b - a);
+    if (arr.length === 0) {
+      const y = new Date().getFullYear();
+      return [String(y), String(y - 1), String(y + 1)];
+    }
+    return arr.map(String);
+  })();
+
+  // Utility: Levenshtein distance (small, iterative) for tolerant matching
+  const levenshteinDistance = (a = "", b = "") => {
+    const m = a.length;
+    const n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
+        else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  };
+
+  const matchesDepartment = (leaveDeptRaw = "", selectedDeptRaw = "") => {
+    const leaveDept = leaveDeptRaw.toString().trim().toLowerCase();
+    const selectedDept = selectedDeptRaw.toString().trim().toLowerCase();
+    if (!selectedDept || selectedDept === "all departments" || selectedDept === "all") return true;
+    if (leaveDept.includes(selectedDept) || selectedDept.includes(leaveDept)) return true;
+    // Tolerate small typos (distance threshold proportional to length)
+    const maxAllowed = Math.max(2, Math.floor(selectedDept.length * 0.2));
+    const dist = levenshteinDistance(leaveDept, selectedDept);
+    return dist <= maxAllowed;
+  };
+
+  // Filter leaves based on search term and month/year filters
   useEffect(() => {
     const filtered = leaves.filter((leave) => {
       const matchesSearch =
@@ -64,11 +128,19 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
         leave.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         leave.reason?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchesSearch;
+      // Month/Year filters (based on startDate or applicationDate)
+      const dateStr = leave.startDate || leave.applicationDate || leave.date || null;
+      const d = dateStr ? new Date(dateStr) : null;
+      const month = d && !isNaN(d) ? d.getMonth() + 1 : null;
+      const year = d && !isNaN(d) ? d.getFullYear() : null;
+      const matchesMonth = selectedMonth === "all" || (month && Number(selectedMonth) === month);
+      const matchesYear = selectedYear === "all" || (year && Number(selectedYear) === year);
+
+      return matchesSearch && matchesMonth && matchesYear;
     });
 
     setFilteredLeaves(filtered);
-  }, [leaves, searchTerm]);
+  }, [leaves, searchTerm, selectedMonth, selectedYear]);
 
   const fetchLeaves = async (isRefresh = false) => {
     if (!userData?.token) {
@@ -109,27 +181,39 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
 
       let filteredByStatus;
       if (viewMode === "pending") {
-        // Only show requests that are actually pending principal approval
+        // Include HOD Approved, Pending and recently Principal Approved so principal can still see their decisions
         filteredByStatus = regularLeavesOnly.filter(
           (leave) =>
             leave.status === "HOD Approved" ||
-            (leave.status === "Pending" && leave.type !== "Faculty")
+            leave.status === "Pending" ||
+            leave.status === "Principal Approved"
         );
       } else {
-        // Show all regular requests (including processed ones, but no OD leaves)
+        // Show all regular requests (including processed ones, including Pending)
         filteredByStatus = regularLeavesOnly.filter(
           (leave) =>
             leave.status === "HOD Approved" ||
             leave.status === "Principal Approved" ||
             leave.status === "Principal Rejected" ||
-            (leave.status === "Pending" && leave.type !== "Faculty")
+            leave.status === "Pending"
         );
       }
+
+      // Debug status breakdown for easier diagnosis
+      console.log("Status filter breakdown:", {
+        HODApproved: regularLeavesOnly.filter(l => l.status === 'HOD Approved').length,
+        Pending: regularLeavesOnly.filter(l => l.status === 'Pending').length,
+        PrincipalApproved: regularLeavesOnly.filter(l => l.status === 'Principal Approved').length,
+        PendingFaculty: regularLeavesOnly.filter(l => l.status === 'Pending' && l.type === 'Faculty').length
+      });
 
       const departmentFiltered =
         department === "All Departments"
           ? filteredByStatus
-          : filteredByStatus.filter((leave) => leave.department === department);
+          : filteredByStatus.filter((leave) => matchesDepartment(leave.department, department));
+
+      // Debug small mismatch cases
+      console.log("Department filter check sample:", filteredByStatus.slice(0,5).map(l => ({id: l._id, dept: l.department, matches: matchesDepartment(l.department, department)})));
 
       setLeaves(departmentFiltered);
 
@@ -137,6 +221,10 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
         "Principal - Regular leaves only (no OD):",
         departmentFiltered
       );
+      console.log("Principal department filter debug:", {
+        selectedDept: department,
+        resultCount: departmentFiltered.length,
+      });
       console.log("Principal filtering breakdown:", {
         totalLeaves: allLeaves.length,
         regularLeavesOnly: regularLeavesOnly.length,
@@ -198,7 +286,19 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
 
     try {
       setLoading(true);
-      const decoded = userData?.token ? jwtDecode(userData.token) : {};
+      const decoded = userData?.token ? (() => {
+        try {
+          return jwtDecode(userData.token);
+        } catch (err) {
+          try {
+            const payload = userData.token.split('.')[1];
+            return JSON.parse(atob(payload));
+          } catch (e) {
+            console.error('Token decode failed', err, e);
+            return {};
+          }
+        }
+      })() : {};
       const principalEmployeeId = decoded.employeeId || userData?.employeeId;
       console.log("Principal Employee ID:", principalEmployeeId);
       console.log("PUT request payload:", {
@@ -231,8 +331,23 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
       setShowDecisionModal(false);
       setSelectedLeave(null);
 
-      // Refresh leaves
-      await fetchLeaves(true);
+      // Update local leave item so it remains visible and reflects the decision
+      setLeaves((prev) =>
+        prev.map((l) =>
+          l._id === decision.leaveId
+            ? {
+                ...l,
+                status: decision.decision === "Approved" ? "Principal Approved" : "Principal Rejected",
+                principalDecision: {
+                  employeeId: principalEmployeeId,
+                  decision: decision.decision,
+                  comment: decision.comment || "",
+                  decidedAt: new Date().toISOString(),
+                },
+              }
+            : l
+        )
+      );
 
       // Clear message after 5 seconds
       setTimeout(() => setMessage(""), 5000);
@@ -251,6 +366,90 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Quick approve/reject handler for inline buttons
+  const quickDecide = async (leaveId, decisionValue) => {
+    try {
+      // mark which leave is being processed (local per-card state)
+      setProcessingId(leaveId);
+      console.log("QuickDecide request:", { leaveId, decisionValue });
+
+      const decoded = userData?.token ? (() => {
+        try {
+          return jwtDecode(userData.token);
+        } catch (err) {
+          try {
+            const payload = userData.token.split('.')[1];
+            return JSON.parse(atob(payload));
+          } catch (e) {
+            console.error('Token decode failed', err, e);
+            return {};
+          }
+        }
+      })() : {};
+      console.log('QuickDecide decoded token:', decoded);
+      const principalEmployeeId = decoded.employeeId || userData?.employeeId;
+      if (!principalEmployeeId) {
+        setMessage("Principal employee ID missing");
+        setMessageType("error");
+        setProcessingId("");
+        return;
+      }
+
+      // log payload for debugging
+      console.log("QuickDecide payload:", { principalEmployeeId, decisionValue });
+
+      const response = await axios.put(
+        `https://backenderp.tarstech.in/api/leave/principal/${leaveId}`,
+        { principalEmployeeId, decision: decisionValue, comment: "" },
+        {
+          headers: {
+            Authorization: `Bearer ${userData.token}`,
+          },
+        }
+      );
+
+      console.log("QuickDecide response:", response?.data);
+      setMessage(response.data.message || `Leave ${decisionValue}`);
+      setMessageType("success");
+
+      // Update local leave item so it remains visible with updated status
+      setLeaves((prev) =>
+        prev.map((l) =>
+          l._id === leaveId
+            ? {
+                ...l,
+                status: decisionValue === "Approved" ? "Principal Approved" : "Principal Rejected",
+                principalDecision: {
+                  employeeId: principalEmployeeId,
+                  decision: decisionValue,
+                  comment: "",
+                  decidedAt: new Date().toISOString(),
+                },
+              }
+            : l
+        )
+      );
+
+      // Clear processing flag
+      setProcessingId("");
+      setTimeout(() => setMessage(""), 4000);
+    } catch (error) {
+      const errorMsg =
+        error.response?.data?.message || error.message || "Error processing decision";
+      setMessage(errorMsg);
+      setMessageType("error");
+      console.error("Quick decision error:", {
+        message: errorMsg,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setTimeout(() => navigate("/login"), 2000);
+      }
+      setProcessingId("");
     }
   };
 
@@ -308,10 +507,8 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
   };
 
   const canApproveReject = (leave) => {
-    return (
-      leave.status === "HOD Approved" ||
-      (leave.status === "Pending" && leave.type !== "Faculty")
-    );
+    // Allow principal to act on HOD Approved or Pending requests (include Faculty)
+    return leave.status === "HOD Approved" || leave.status === "Pending";
   };
 
   // Statistics
@@ -479,6 +676,36 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
                     <Eye className="h-4 w-4 inline mr-2" />
                     All Requests & History
                   </button>
+
+                  {/* Month / Year filters */}
+                  <div className="mt-3 flex items-center space-x-2">
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={loading}
+                    >
+                      {monthOptions.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={loading}
+                    >
+                      <option value="all">All Years</option>
+                      {yearOptions.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -647,8 +874,34 @@ const ApproveLeaveByPrincipal = ({ userData }) => {
                       {canApproveReject(leave) ? (
                         <div className="flex space-x-2">
                           <button
+                            onClick={() => quickDecide(leave._id, 'Approved')}
+                            className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
+                            disabled={loading || processingId === leave._id}
+                          >
+                            {processingId === leave._id ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4 mr-2" />
+                            )}
+                            {processingId === leave._id ? "Processing..." : "Approve"}
+                          </button>
+
+                          <button
+                            onClick={() => { if (confirm('Reject this leave request?')) quickDecide(leave._id, 'Rejected') }}
+                            className="inline-flex items-center px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
+                            disabled={loading || processingId === leave._id}
+                          >
+                            {processingId === leave._id ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4 mr-2" />
+                            )}
+                            {processingId === leave._id ? "Processing..." : "Reject"}
+                          </button>
+
+                          <button
                             onClick={() => openDecisionModal(leave)}
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                            className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             Review

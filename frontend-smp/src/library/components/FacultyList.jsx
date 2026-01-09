@@ -12,6 +12,8 @@ const FacultyList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalFaculties, setTotalFaculties] = useState(0);
+  const [apiDepartments, setApiDepartments] = useState([]); // departments from admin API
+  const [departmentsList, setDepartmentsList] = useState([]); // merged departments for filter
   const [itemsPerPage] = useState(10);
   const navigate = useNavigate();
 
@@ -59,13 +61,23 @@ const FacultyList = () => {
     }
   };
 
+  // Helper to normalize department names for consistent display
+  // Use 'None' to represent unassigned/empty departments so they are included in totals
+  const normalizeDepartment = (dept) => {
+    if (!dept) return "None";
+    if (typeof dept === "object") dept = dept.name || dept.title || dept;
+    dept = String(dept).trim();
+    if (!dept) return "None";
+    dept = dept.replace(/\s+/g, " ");
+    return dept.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
   const fetchFaculties = async (page = 1, limit = itemsPerPage) => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log(`🔄 Fetching faculties from API (Page: ${page}, Limit: ${limit})...`);
-      
+      console.log(`🔄 Fetching faculties from API (Page: ${page}, Limit: ${limit})...`);      
       // Always fetch all data for local search functionality
       const actualLimit = 1000; // Always fetch all data for local filtering
       const actualPage = 1; // Always fetch from page 1
@@ -203,6 +215,17 @@ const FacultyList = () => {
           employeeId: faculty.employeeId,
           department: faculty.department
         });
+
+        // Collect department name for merging later
+        try {
+          const deptName = normalizeDepartment(
+            faculty.department?.name || faculty.department || faculty.dept || faculty.stream || faculty.branch || "Unknown Department"
+          );
+          // Add to apiDepartments temporary set if not already present - we'll merge properly later in effect
+          // (we don't mutate state here to avoid extra re-renders)
+        } catch (e) {
+          console.warn("Could not parse department for faculty", faculty._id, e);
+        }
         
         // Parse the joining date safely
         let joiningDate =
@@ -250,13 +273,14 @@ const FacultyList = () => {
           middleName: middleN,
           lastName: lastN,
           name: fullName,
-          department:
+          department: normalizeDepartment(
             faculty.department?.name ||
             faculty.department ||
             faculty.dept ||
             faculty.stream ||
             faculty.branch ||
-            "Unknown Department",
+            "Unknown Department"
+          ),
           designation: faculty.designation || faculty.position || "Not Specified",
           email: faculty.email || faculty.emailId || "",
           mobile: faculty.mobile || faculty.phone || faculty.phoneNumber || "",
@@ -272,6 +296,16 @@ const FacultyList = () => {
       setFaculties(formattedFaculties);
       console.log(`✅ Successfully loaded ${formattedFaculties.length} faculty members from API`);
       console.log("📋 Faculty list:", formattedFaculties);
+
+      // After we set faculties, if apiDepartments fetched earlier, merge
+      try {
+        const facDepts = formattedFaculties.map((f) => normalizeDepartment(f.department));
+        const combined = new Set([...(apiDepartments || []), ...facDepts]);
+        const arr = Array.from(combined).filter(Boolean).sort();
+        setDepartmentsList(arr);
+      } catch (e) {
+        console.warn("Error merging departments after fetching faculties", e);
+      }
 
       // Fetch real borrowed books for each faculty from MongoDB
       console.log(
@@ -543,6 +577,43 @@ const FacultyList = () => {
     fetchFaculties(currentPage, itemsPerPage);
   }, [currentPage, itemsPerPage]);
 
+  // Fetch admin departments once on mount so we can show all departments (including those with no faculty assigned)
+  useEffect(() => {
+    const fetchAdminDepartments = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("https://backenderp.tarstech.in/api/superadmin/departments", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        let depts = [];
+        if (Array.isArray(res.data)) depts = res.data;
+        else if (res.data.data && Array.isArray(res.data.data)) depts = res.data.data;
+        else if (res.data.departments && Array.isArray(res.data.departments)) depts = res.data.departments;
+
+        const names = Array.from(new Set(depts.map((d) => normalizeDepartment(d?.name || d || 'None')))).sort();
+        setApiDepartments(names);
+
+        // merge with any loaded faculties
+        const facDepts = (faculties || []).map((f) => normalizeDepartment(f.department));
+        const combined = Array.from(new Set([...names, ...facDepts])).filter(Boolean).sort();
+        setDepartmentsList(combined);
+        setTotalFaculties((prev)=>prev); // no change, placeholder to keep things explicit
+      } catch (err) {
+        console.warn("Failed to fetch admin departments:", err.message || err);
+      }
+    };
+
+    fetchAdminDepartments();
+  }, []);
+
+  // Recompute merged department list whenever faculties or admin departments change
+  useEffect(() => {
+    const facDepts = (faculties || []).map((f) => normalizeDepartment(f.department));
+    const combined = Array.from(new Set([...(facDepts || []), ...(apiDepartments || [])])).filter(Boolean).sort();
+    setDepartmentsList(combined);
+    console.log("🔁 Merged departments (faculties + admin):", combined);
+  }, [faculties, apiDepartments]);
+
   // Reset to page 1 when starting a search
   useEffect(() => {
     if (searchTerm.trim() !== "") {
@@ -659,7 +730,7 @@ const FacultyList = () => {
           <div className="bg-white rounded-xl shadow p-4">
             <h3 className="text-lg font-semibold text-gray-700">Departments</h3>
             <p className="text-3xl font-bold text-indigo-600">
-              {Object.keys(getFacultyStats().byDepartment).length}
+              {departmentsList.length}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow p-4">
@@ -690,7 +761,7 @@ const FacultyList = () => {
                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="all">All Departments</option>
-                {Object.keys(getFacultyStats().byDepartment).map((dept) => (
+                {(apiDepartments && apiDepartments.length > 0 ? apiDepartments : departmentsList).map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
                   </option>

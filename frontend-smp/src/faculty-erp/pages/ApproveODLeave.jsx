@@ -163,8 +163,13 @@ export default function ApproveODLeave() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const actionText =
-        userRole.toLowerCase() === "hod" ? "approved" : "approved";
+      let actionText;
+      if (userRole.toLowerCase() === "hod") {
+        // HOD approvals are forwarded to Principal
+        actionText = "forwarded to Principal";
+      } else {
+        actionText = "approved";
+      }
       setSuccessMessage(`OD leave request successfully ${actionText}!`);
       fetchRequests(); // Refresh the data
 
@@ -459,7 +464,7 @@ export default function ApproveODLeave() {
                               className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded text-green-700 bg-white hover:bg-green-50"
                             >
                               <Check className="h-4 w-4 mr-1" />
-                              Approve
+                              Forward to Principal
                             </button>
                           </div>
                         )}
@@ -497,7 +502,7 @@ export default function ApproveODLeave() {
                             )}
                             {request.status === "Principal Approved" && (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ✅ Fully Approved
+                                ✅ Forwarded to Principal
                               </span>
                             )}
                             {(request.status === "HOD Rejected" ||
@@ -709,7 +714,7 @@ export default function ApproveODLeave() {
                           </span>
                         ) : request.status === "Principal Approved" ? (
                           <span className="text-green-600">
-                            ✅ Fully Approved
+                            ✅ Forwarded to Principal
                           </span>
                         ) : request.status === "HOD Rejected" ? (
                           <span className="text-red-600">
@@ -903,7 +908,7 @@ export default function ApproveODLeave() {
                             </span>
                           ) : request.status === "Principal Approved" ? (
                             <span className="text-green-600 font-medium">
-                              ✅ Fully Approved
+                              ✅ Forwarded to Principal
                             </span>
                           ) : request.status === "HOD Rejected" ? (
                             <span className="text-red-600 font-medium">

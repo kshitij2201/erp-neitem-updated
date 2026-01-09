@@ -15,6 +15,7 @@ const StudentList = () => {
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalDepartments, setTotalDepartments] = useState(0);
   const [departmentsList, setDepartmentsList] = useState([]);
+  const [apiDepartments, setApiDepartments] = useState([]); // Departments from admin panel
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const navigate = useNavigate();
 
@@ -437,6 +438,21 @@ const StudentList = () => {
     return "";
   };
 
+  // Normalize department names to a canonical form for consistent counts
+  const normalizeDepartment = (dept) => {
+    // Represent missing or empty department as 'None' so it appears in totals
+    if (!dept) return "None";
+    if (typeof dept === "object") dept = dept.name || dept.title || dept;
+    dept = String(dept).trim();
+    if (!dept) return "None";
+    // Collapse multiple spaces and title-case
+    dept = dept.replace(/\s+/g, " ");
+    return dept
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+
   const fetchStudents = async (page = 1, limit = 10) => {
     try {
       setLoading(true);
@@ -558,11 +574,7 @@ const StudentList = () => {
           admissionType: student.admissionType || "",
           admissionThrough: student.admissionThrough || "",
           remark: student.remark || "",
-          department:
-            typeof student.department === "string"
-              ? student.department
-              : extractValue(student.department, "name") ||
-                "Unknown Department",
+          department: normalizeDepartment(student.department),
           stream:
             typeof student.stream === "string"
               ? student.stream
@@ -595,19 +607,12 @@ const StudentList = () => {
         return nameA.localeCompare(nameB);
       });
       setAllStudents(allStudentsData);
-      
-      // Compute department list and total departments across ALL students
-      const deptSet = new Set(
-        allStudentsData.map((s) => (s.department ? String(s.department) : "Unknown"))
-      );
-      const deptArray = Array.from(deptSet).sort();
-      setDepartmentsList(deptArray);
-      setTotalDepartments(deptArray.length);
       setTotalStudents(allStudentsData.length);
-      
+
+      // We'll merge student-derived departments with admin departments in an effect
       console.log("📄 All students loaded:", {
         totalStudents: allStudentsData.length,
-        departmentCount: deptArray.length
+        studentsSample: allStudentsData.length > 0 ? allStudentsData[0] : null
       });
     } catch (error) {
       console.error("Error fetching students:", error);
@@ -653,6 +658,40 @@ const StudentList = () => {
   useEffect(() => {
     fetchStudents(currentPage, itemsPerPage);
   }, [currentPage, itemsPerPage]);
+
+  // Fetch admin departments once on mount so we can show all departments
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("https://backenderp.tarstech.in/api/superadmin/departments", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        let depts = [];
+        if (Array.isArray(res.data)) depts = res.data;
+        else if (res.data.data && Array.isArray(res.data.data)) depts = res.data.data;
+        else if (res.data.departments && Array.isArray(res.data.departments)) depts = res.data.departments;
+
+        const names = depts.map((d) => normalizeDepartment(d?.name || d || 'None'));
+        setApiDepartments(Array.from(new Set(names)).sort());
+        console.log("📚 Loaded admin departments:", names);
+      } catch (err) {
+        console.warn("Failed to fetch admin departments:", err.message || err);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
+
+  // Merge student-derived and admin departments to show full list
+  useEffect(() => {
+    const studentDeptSet = new Set(allStudents.map((s) => normalizeDepartment(s.department)));
+    const combined = new Set([...studentDeptSet, ...apiDepartments]);
+    const arr = Array.from(combined).filter(Boolean).sort();
+    setDepartmentsList(arr);
+    setTotalDepartments(arr.length);
+    console.log("🔁 Departments merged (students + admin):", arr);
+  }, [allStudents, apiDepartments]);
 
   // Remove the separate pagination initialization since we'll handle it in fetchStudents
   // useEffect(() => {

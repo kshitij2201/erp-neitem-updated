@@ -183,6 +183,8 @@ export default function MarkAttendance() {
         response.data.data &&
         response.data.data.length > 0
       ) {
+        const recs = response.data.data;
+        setTodayRecords(recs);
         setAttendanceMarkedToday(true);
         setEditMode(true);
 
@@ -205,15 +207,15 @@ export default function MarkAttendance() {
         setExistingAttendance(attendanceMap);
 
         // Calculate today's class attendance percentage
-        const todayRecords = response.data.data;
-        const presentCount = todayRecords.filter(
+        const presentCount = recs.filter(
           (record) => record.status === "present"
         ).length;
-        const totalCount = todayRecords.length;
+        const totalCount = recs.length;
         const classPercentage =
           totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
         setTodayClassAttendance(classPercentage);
       } else {
+        setTodayRecords([]);
         setAttendanceMarkedToday(false);
         setEditMode(false);
         setExistingAttendance({});
@@ -1188,6 +1190,67 @@ export default function MarkAttendance() {
     }
   };
 
+  // Edit a single student's attendance for today (uses PUT replace endpoint)
+  const editSingleStudentAttendance = async (studentId, targetStatus) => {
+    if (!attendanceMarkedToday) {
+      return alert("Attendance not marked for today. Use mark attendance first.");
+    }
+
+    try {
+      setIsUpdating(true);
+      const token = localStorage.getItem("authToken");
+      const userDataStr = localStorage.getItem("user");
+      const userData = JSON.parse(userDataStr);
+      const facultyId = userData.employeeId;
+      const today = new Date().toISOString().split("T")[0];
+
+      // Compute current present list from today's records
+      const presentIds = (todayRecords || [])
+        .filter(r => r.status === "present")
+        .map(r => r.student?._id || r.student)
+        .filter(Boolean)
+        .map(String);
+
+      let updatedPresent = [...presentIds];
+      const idStr = String(studentId);
+      if (targetStatus === "absent") {
+        updatedPresent = updatedPresent.filter(id => id !== idStr);
+      } else if (targetStatus === "present") {
+        if (!updatedPresent.includes(idStr)) updatedPresent.push(idStr);
+      }
+
+      const attendanceData = {
+        subjectId: expandedSubject,
+        facultyId,
+        selectedStudents: updatedPresent,
+        date: today,
+      };
+
+      const res = await api.put(
+        "/faculty/markattendance",
+        attendanceData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.data.success) {
+        alert("Attendance updated successfully");
+        // Refresh today's records and stats
+        checkTodayAttendance(expandedSubject);
+        fetchAttendanceStats(students, expandedSubject);
+        calculateMonthlyClassAttendance(expandedSubject);
+      } else {
+        alert(res.data.message || "Failed to update attendance");
+      }
+    } catch (err) {
+      console.error("Error editing single student attendance:", err);
+      alert("Failed to update student attendance. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleDownloadReport = async () => {
     if (!logsRef.current) return;
 
@@ -1958,7 +2021,7 @@ export default function MarkAttendance() {
                         {" "}
                         | <span className="font-medium">
                           Total Students:
-                        </span>{" "}
+                        </span>{" "} 
                         {subjectDetails.totalStudents}
                       </>
                     )}

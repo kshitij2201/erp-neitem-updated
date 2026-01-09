@@ -36,13 +36,14 @@ const departmentCorrections = {
 // Create Subject
 router.post("/", async (req, res) => {
   try {
-    const { name, department } = req.body;
-    if (!name || !department) {
+    const { name, department, semester } = req.body;
+    if (!name || !department || !semester) {
       return res
         .status(400)
-        .json({ error: "Name and department are required." });
+        .json({ error: "Name, department and semester are required." });
     }
-    const subject = new Subject({ name, department });
+
+    const subject = new Subject({ name, department, semester });
     await subject.save();
     res.status(201).json(subject);
   } catch (err) {
@@ -65,10 +66,11 @@ router.get("/", async (req, res) => {
 // Update Subject
 router.put("/:id", async (req, res) => {
   try {
-    const { name, department } = req.body;
+    const { name, department, semester } = req.body;
     const updatedData = {};
     if (name) updatedData.name = name;
     if (department) updatedData.department = department;
+    if (semester) updatedData.semester = semester;
 
     const subject = await Subject.findByIdAndUpdate(
       req.params.id,

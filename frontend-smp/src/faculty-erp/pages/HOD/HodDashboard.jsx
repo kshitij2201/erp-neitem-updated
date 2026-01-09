@@ -13,6 +13,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import IndustrialVisitList from '../../../library/components/IndustrialVisitList';
 import {
   Users,
   GraduationCap,
@@ -938,6 +939,9 @@ export default function HodDashboard() {
               </div>
             </div>
           )}
+
+          {/* Industrial Visits (HOD sees department visits) */}
+
         </div>
       </div>
     </div>

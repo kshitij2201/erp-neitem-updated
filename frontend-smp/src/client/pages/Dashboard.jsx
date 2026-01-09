@@ -8,6 +8,7 @@ import Library from "../components/Library";
 import MaterialList from "../components/MaterialList";
 import StudentScholarship from "../components/StudentScholarship";
 import StudentDashboard from "./StudentDashboard";
+import StudentIndustrialVisits from "./StudentIndustrialVisits";
 
 const Dashboard = () => {
   const [section, setSection] = useState("announcements");
@@ -258,6 +259,7 @@ const Dashboard = () => {
                   <Library studentId={studentData.studentId} />
                 )}
                 {section === "scholarship" && <StudentScholarship />}
+                {section === "industrial-visits" && <StudentIndustrialVisits /> }
                 {section === "busManagement" && <StudentDashboard />}
                 {section === "materials" && (
                   <div>

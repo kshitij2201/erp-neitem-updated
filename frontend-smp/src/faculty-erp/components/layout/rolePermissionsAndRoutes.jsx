@@ -32,6 +32,8 @@ import SentChargeHandover from "../../pages/SentChargeHandover";
 import FilesPage from "../../pages/FilesPage";
 import CCDashboard from "../../pages/CC/CCDashboard";
 import CCClassStudents from "../../pages/CC/CCClassStudents";
+import IndustrialVisit from "../../pages/CC/IndustrialVisit";
+import HodIndustrialVisits from "../../pages/HOD/HodIndustrialVisits";
 import AcademicCalendar from "../../pages/HOD/AcademicCalendar";
 import FacultyAcademicCalendar from "../../pages/FacultyAcademicCalendar";
 import StudentFeedback from "../../components/StudentFeedback";
@@ -226,6 +228,7 @@ export const rolePermissionsAndRoutes = [
       "department_students",
       "academic_calendar",
       "mark_attendance",
+      "industrial_visit",
       // "sent_charge_handover",
     ],
     routes: [
@@ -484,6 +487,7 @@ export const rolePermissionsAndRoutes = [
       "department_students",
       "academic_calendar",
       "mark_attendance",
+      "industrial_visit",
       // "sent_charge_handover",
     ],
     routes: [
@@ -500,6 +504,18 @@ export const rolePermissionsAndRoutes = [
               userData={userData}
               onLogout={() => ({ action: "logout" })}
             />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "hod-industrial-visits",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="industrial_visit"
+          >
+            <HodIndustrialVisits userData={userData} />
           </ProtectedRoute>
         ),
       },
@@ -981,6 +997,7 @@ export const rolePermissionsAndRoutes = [
       "timetable",
       "fetched_timetable",
       "academic_calendar",
+      "industrial_visit",
       "files",
       "department_students",
       // "sent_charge_handover",
@@ -1067,6 +1084,18 @@ export const rolePermissionsAndRoutes = [
             routeName="compose_cc_announcement"
           >
             <ComposeAnnouncementByCourseCoordinator userData={userData} />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "industrial-visit",
+        element: (isAuthenticated, userRole, userData) => (
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            userRole={userRole}
+            routeName="industrial_visit"
+          >
+            <IndustrialVisit userData={userData} />
           </ProtectedRoute>
         ),
       },

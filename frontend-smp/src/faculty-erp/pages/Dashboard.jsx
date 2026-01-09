@@ -321,10 +321,10 @@ function Dashboard({ userData, onLogout }) {
             </div>
 
             {/* Enhanced Right Content - Beautiful Dashboard Preview */}
-            <div className="relative">
-              <div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl p-10 transform hover:scale-105 transition-transform duration-500">
+            {/* <div className="relative">
+              <div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl p-10 transform hover:scale-105 transition-transform duration-500"> */}
                 {/* Beautiful Mock Dashboard Cards */}
-                <div className="space-y-6">
+                {/* <div className="space-y-6">
                   <div className="group bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100/50 hover:shadow-lg transition-all duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -367,25 +367,25 @@ function Dashboard({ userData, onLogout }) {
                       <div className="w-14 h-7 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full shadow-sm"></div>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Enhanced Progress Indicator */}
-                <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-12 transition-transform duration-300">
+                {/* <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl flex items-center justify-center transform hover:rotate-12 transition-transform duration-300">
                   <TrendingUp size={24} className="text-white" />
-                </div>
+                </div> */}
 
                 {/* Decorative corner elements */}
-                <div className="absolute top-4 left-4 w-3 h-3 bg-blue-400 rounded-full opacity-60"></div>
+                {/* <div className="absolute top-4 left-4 w-3 h-3 bg-blue-400 rounded-full opacity-60"></div>
                 <div className="absolute bottom-4 right-4 w-2 h-2 bg-purple-400 rounded-full opacity-60"></div>
-              </div>
+              </div> */}
 
               {/* Floating decorative elements */}
-              <div className="absolute -top-8 -left-8 w-6 h-6 bg-gradient-to-br from-blue-200 to-indigo-200 rounded-full opacity-70 animate-pulse"></div>
+              {/* <div className="absolute -top-8 -left-8 w-6 h-6 bg-gradient-to-br from-blue-200 to-indigo-200 rounded-full opacity-70 animate-pulse"></div>
               <div
                 className="absolute -bottom-6 -right-6 w-4 h-4 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full opacity-70 animate-pulse"
                 style={{ animationDelay: "1s" }}
               ></div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

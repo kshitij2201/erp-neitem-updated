@@ -3,6 +3,7 @@ const expenseSchema = new mongoose.Schema({
   expenseId: {
     type: String,
     unique: true,
+    index: true
     // required: true
   },
   title: {
@@ -172,7 +173,6 @@ expenseSchema.pre('save', async function(next) {
 });
 
 // Index for better query performance
-expenseSchema.index({ expenseId: 1 });
 expenseSchema.index({ category: 1 });
 expenseSchema.index({ department: 1 });
 expenseSchema.index({ expenseDate: -1 });

@@ -299,6 +299,11 @@ export const getAcademicCalendarById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Validate ObjectId early to avoid casting errors and return a friendly 400
+    if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({ success: false, message: "Invalid academic calendar id" });
+    }
+
     const calendar = await AcademicCalendar.findById(id)
       .populate("subject", "name code")
       .populate("faculty", "name employeeId")

@@ -31,6 +31,8 @@ const LeaveManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState("overview");
 
@@ -42,6 +44,10 @@ const LeaveManagement = () => {
     try {
       setLoading(true);
       setError(null);
+
+      // local holders for normalized data (used to compute stats reliably)
+      let normalizedLeaves = [];
+      let normalizedOdLeaves = [];
 
       // Fetch all leaves for management dashboard
       const leavesResponse = await fetch(
@@ -58,18 +64,56 @@ const LeaveManagement = () => {
         "https://backenderp.tarstech.in/api/leave/management/statistics"
       );
 
-      // Process leaves data
+      // Process leaves data with defensive parsing
       if (leavesResponse.ok) {
-        const leavesData = await leavesResponse.json();
-        setLeaves(leavesData.leaves || []);
+        try {
+          const leavesBody = await leavesResponse.json();
+          const leavesArray = Array.isArray(leavesBody)
+            ? leavesBody
+            : leavesBody.leaves || leavesBody.data || leavesBody.data?.leaves || [];
+
+          normalizedLeaves = leavesArray.map((l) => {
+            const statusNormalized = normalizeStatus(l.status || l.statusText || "");
+            return {
+              ...l,
+              originalStatus: l.status || l.statusText || "",
+              statusNormalized,
+              statusDisplay: capitalize(statusNormalized) || (l.status || l.statusText || ""),
+            };
+          });
+
+          console.log("Fetched leaves:", normalizedLeaves.length);
+          setLeaves(normalizedLeaves);
+        } catch (parseErr) {
+          console.error("Failed to parse leaves response:", parseErr);
+        }
       } else {
         console.error("Failed to fetch leaves:", await leavesResponse.text());
       }
 
-      // Process OD leaves data
+      // Process OD leaves data with defensive parsing
       if (odLeavesResponse.ok) {
-        const odLeavesData = await odLeavesResponse.json();
-        setOdLeaves(odLeavesData.odLeaves || []);
+        try {
+          const odBody = await odLeavesResponse.json();
+          const odArray = Array.isArray(odBody)
+            ? odBody
+            : odBody.odLeaves || odBody.data || odBody.data?.odLeaves || [];
+
+          normalizedOdLeaves = odArray.map((l) => {
+            const statusNormalized = normalizeStatus(l.status || l.statusText || "");
+            return {
+              ...l,
+              originalStatus: l.status || l.statusText || "",
+              statusNormalized,
+              statusDisplay: capitalize(statusNormalized) || (l.status || l.statusText || ""),
+            };
+          });
+
+          console.log("Fetched OD leaves:", normalizedOdLeaves.length);
+          setOdLeaves(normalizedOdLeaves);
+        } catch (parseErr) {
+          console.error("Failed to parse OD leaves response:", parseErr);
+        }
       } else {
         console.error(
           "Failed to fetch OD leaves:",
@@ -80,23 +124,45 @@ const LeaveManagement = () => {
       // Process statistics data
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
-        setLeaveStats(statsData.summary || {});
+        // keep employee-level stats if provided
         setEmployeeLeaveStats(statsData.employeeStats || []);
+
+        // If we have fetched leave arrays, prefer deriving counts from them
+        if (normalizedLeaves.length || normalizedOdLeaves.length) {
+          calculateLeaveStats(
+            normalizedLeaves,
+            normalizedOdLeaves
+          );
+        } else if (statsData.summary) {
+          // Fallback: use the summary numbers provided by the server
+          const s = statsData.summary;
+          console.log("Using stats summary from API:", s);
+          setLeaveStats({
+            totalLeaves: s.totalLeaves || 0,
+            pendingLeaves: s.pendingLeaves || 0,
+            approvedLeaves: s.approvedLeaves || 0,
+            rejectedLeaves: s.rejectedLeaves || 0,
+            totalODLeaves: s.totalODLeaves || 0,
+            pendingODLeaves: s.pendingODLeaves || 0,
+            approvedODLeaves: s.approvedODLeaves || 0,
+            rejectedODLeaves: s.rejectedODLeaves || 0,
+          });
+        } else {
+          // last resort: compute from what we have (may be empty)
+          calculateLeaveStats(
+            normalizedLeaves.length ? normalizedLeaves : leaves,
+            normalizedOdLeaves.length ? normalizedOdLeaves : odLeaves
+          );
+        }
       } else {
         console.error(
           "Failed to fetch statistics:",
           await statsResponse.text()
         );
         // Calculate stats from fetched data if API fails
-        const leavesData = leavesResponse.ok
-          ? await leavesResponse.json()
-          : { leaves: [] };
-        const odLeavesData = odLeavesResponse.ok
-          ? await odLeavesResponse.json()
-          : { odLeaves: [] };
         calculateLeaveStats(
-          leavesData.leaves || [],
-          odLeavesData.odLeaves || []
+          normalizedLeaves.length ? normalizedLeaves : leaves,
+          normalizedOdLeaves.length ? normalizedOdLeaves : odLeaves
         );
       }
     } catch (error) {
@@ -112,25 +178,20 @@ const LeaveManagement = () => {
   const calculateLeaveStats = (regularLeaves, odLeaves) => {
     const stats = {
       totalLeaves: regularLeaves.length,
-      pendingLeaves: regularLeaves.filter(
-        (leave) => leave.status?.toLowerCase() === "pending"
-      ).length,
-      approvedLeaves: regularLeaves.filter(
-        (leave) => leave.status?.toLowerCase() === "approved"
-      ).length,
-      rejectedLeaves: regularLeaves.filter(
-        (leave) => leave.status?.toLowerCase() === "rejected"
-      ).length,
+      pendingLeaves: regularLeaves.filter((leave) => {
+        const s = normalizeStatus(leave.status || leave.originalStatus || "");
+        // pending includes everything not rejected and not principal-approved (this includes HOD-approved)
+        return !isApprovedByPrincipal(leave) && s !== "rejected";
+      }).length,
+      approvedLeaves: regularLeaves.filter((leave) => isApprovedByPrincipal(leave)).length,
+      rejectedLeaves: regularLeaves.filter((leave) => normalizeStatus(leave.status || leave.originalStatus || "") === "rejected").length,
       totalODLeaves: odLeaves.length,
-      pendingODLeaves: odLeaves.filter(
-        (leave) => leave.status?.toLowerCase() === "pending"
-      ).length,
-      approvedODLeaves: odLeaves.filter(
-        (leave) => leave.status?.toLowerCase() === "approved"
-      ).length,
-      rejectedODLeaves: odLeaves.filter(
-        (leave) => leave.status?.toLowerCase() === "rejected"
-      ).length,
+      pendingODLeaves: odLeaves.filter((leave) => {
+        const s = normalizeStatus(leave.status || leave.originalStatus || "");
+        return !isApprovedByPrincipal(leave) && s !== "rejected";
+      }).length,
+      approvedODLeaves: odLeaves.filter((leave) => isApprovedByPrincipal(leave)).length,
+      rejectedODLeaves: odLeaves.filter((leave) => normalizeStatus(leave.status || leave.originalStatus || "") === "rejected").length, 
     };
     setLeaveStats(stats);
   };
@@ -320,6 +381,111 @@ const LeaveManagement = () => {
     calculateLeaveStats(mockLeaves, mockODLeaves);
   };
 
+  // CSV export helpers
+  const objectToCsv = (items, columns) => {
+    const header = columns.map((c) => c.label).join(",");
+    const rows = items.map((item) =>
+      columns
+        .map((c) => {
+          const v = typeof c.key === "function" ? c.key(item) : item[c.key];
+          const cell = v === null || v === undefined ? "" : String(v);
+          return `"${cell.replace(/"/g, '""')}"`;
+        })
+        .join(",")
+    );
+    return [header].concat(rows).join("\r\n");
+  };
+
+  const downloadCsv = (csv, filename) => {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+      window.navigator.msSaveOrOpenBlob(blob, filename);
+    } else {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      let items = [];
+      let columns = [];
+      let filename = `export-${selectedTab}-${new Date().toISOString().slice(0, 10)}.csv`;
+
+      if (selectedTab === "leaves") {
+        items = filteredLeaves;
+        columns = [
+          { label: "Employee Name", key: "employeeName" },
+          { label: "Employee ID", key: "employeeId" },
+          { label: "Department", key: "department" },
+          { label: "Designation", key: "designation" },
+          { label: "Leave Type", key: "leaveType" },
+          { label: "Start Date", key: (r) => formatDate(r.startDate) },
+          { label: "End Date", key: (r) => formatDate(r.endDate) },
+          { label: "Days", key: "days" },
+          { label: "Status", key: (r) => getDisplayStatus(r) },
+          { label: "Approved By", key: "approvedBy" },
+          { label: "Approved By Role", key: "approvedByRole" },
+          { label: "Approved Date", key: "approvedDate" },
+          { label: "Reason", key: "reason" },
+          { label: "Comments", key: "comments" },
+        ];
+      } else if (selectedTab === "od-leaves") {
+        items = filteredODLeaves;
+        columns = [
+          { label: "Employee Name", key: "employeeName" },
+          { label: "Employee ID", key: "employeeId" },
+          { label: "Department", key: "department" },
+          { label: "Date", key: (r) => formatDate(r.date) },
+          { label: "Purpose", key: "purpose" },
+          { label: "Location", key: "location" },
+          { label: "Status", key: (r) => getDisplayStatus(r) },
+          { label: "Approved By", key: "approvedBy" },
+          { label: "Approved By Role", key: "approvedByRole" },
+          { label: "Approved Date", key: "approvedDate" },
+          { label: "Comments", key: "comments" },
+        ];
+      } else if (selectedTab === "employee-stats") {
+        items = employeeLeaveStats;
+        columns = [
+          { label: "Employee Name", key: "employeeName" },
+          { label: "Employee ID", key: "employeeId" },
+          { label: "Department", key: "department" },
+          { label: "Total Leaves", key: "totalLeaves" },
+          { label: "Used Leaves", key: "usedLeaves" },
+          { label: "Pending Leaves", key: "pendingLeaves" },
+          { label: "OD Leaves", key: "odLeaves" },
+          { label: "Last Leave Date", key: "lastLeaveDate" },
+        ];
+      } else {
+        // overview stats
+        items = [leaveStats];
+        columns = Object.keys(leaveStats).map((k) => ({ label: k, key: k }));
+        filename = `leave-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+      }
+
+      if (!items || items.length === 0) {
+        alert("No data to export for the selected tab.");
+        return;
+      }
+
+      const csv = objectToCsv(items, columns);
+      downloadCsv(csv, filename);
+      console.log(`Exported ${items.length} rows to ${filename}`);
+      alert(`Exported ${items.length} rows to ${filename}`);
+    } catch (err) {
+      console.error("Export failed", err);
+      alert("Export failed: " + (err.message || err));
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -335,9 +501,12 @@ const LeaveManagement = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    const s = normalizeStatus(status);
+    switch (s) {
       case "approved":
         return "text-green-600 bg-green-100";
+      case "hod-approved":
+        return "text-amber-700 bg-amber-100"; // HOD-approved (awaiting principal)
       case "pending":
         return "text-yellow-600 bg-yellow-100";
       case "rejected":
@@ -345,12 +514,15 @@ const LeaveManagement = () => {
       default:
         return "text-gray-600 bg-gray-100";
     }
-  };
+  }; 
 
   const getStatusIcon = (status) => {
-    switch (status) {
+    const s = (status || "").toString().trim().toLowerCase();
+    switch (s) {
       case "approved":
         return <CheckCircle size={16} />;
+      case "hod-approved":
+        return <User size={16} />; // HOD-approved icon
       case "pending":
         return <Clock size={16} />;
       case "rejected":
@@ -358,30 +530,151 @@ const LeaveManagement = () => {
       default:
         return <AlertCircle size={16} />;
     }
+  }; 
+
+  // Normalize various status text variants into canonical statuses
+  const normalizeStatus = (raw) => {
+    const s = (raw || "").toString().trim().toLowerCase();
+    if (!s) return "";
+    // approved variants
+    if (s.includes("approved") || /\bapproved\b/.test(s) || s.includes("accept")) return "approved";
+    // rejected variants
+    if (s.includes("reject") || s.includes("denied") || s.includes("declined")) return "rejected";
+    // pending variants
+    if (s.includes("pending") || s.includes("await") || s.includes("requested")) return "pending";
+    // fallback to the raw normalized string
+    return s;
   };
 
+  const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+  // Returns true only if the leave is approved by the Principal
+  const isApprovedByPrincipal = (leave) => {
+    const s = normalizeStatus(leave.status || leave.originalStatus || "");
+    // If status doesn't indicate approval, return false
+    if (!s.includes("approved") && s !== "approved") return false;
+    const role = (leave.approvedByRole || leave.approvedBy || "").toString().toLowerCase();
+    if (role.includes("principal")) return true;
+    // also support explicit 'principal approved' in status text
+    const raw = (leave.status || leave.originalStatus || "").toString().toLowerCase();
+    if (raw.includes("principal approved") || raw.includes("principal-approved") || raw.includes("principle approved")) return true;
+    return false;
+  };
+
+  const isHodApproved = (leave) => {
+    // HOD-approved: status indicates approval or approvedByRole contains hod, but not principal-approved
+    if (isApprovedByPrincipal(leave)) return false;
+    const s = normalizeStatus(leave.status || leave.originalStatus || "");
+    if (s.includes("approved")) return true;
+    const role = (leave.approvedByRole || "").toString().toLowerCase();
+    if (role.includes("hod") || role.includes("head")) return true;
+    const raw = (leave.status || leave.originalStatus || "").toString().toLowerCase();
+    if (raw.includes("hod approved") || raw.includes("hod-approved") || raw.includes("hod-approved")) return true;
+    return false;
+  };
+
+  const getStatusForUI = (leave) => {
+    if (isApprovedByPrincipal(leave)) return "approved";
+    if (isHodApproved(leave)) return "hod-approved";
+    const s = normalizeStatus(leave.status || leave.originalStatus || "");
+    if (s === "rejected") return "rejected";
+    return "pending"; // Everything else treated as pending until principal approves
+  };
+
+  const getDisplayStatus = (leave) => {
+    if (isApprovedByPrincipal(leave)) return "Approved";
+    if (isHodApproved(leave)) return "HOD Approved (Awaiting Principal)";
+    const s = normalizeStatus(leave.status || leave.originalStatus || "");
+    if (s === "rejected") return "Rejected";
+    if (s === "pending") return "Pending";
+    if (s.includes("approved")) return "Pending (Principal approval)";
+    return capitalize(s) || leave.originalStatus || "";
+  };  
+
+  const isPendingLeave = (leave) => {
+    if (!leave) return false;
+    const s = leave.statusNormalized || normalizeStatus(leave.status || leave.originalStatus || "");
+    return s === "pending";
+  }; 
+
+  const monthOptions = [
+    { value: "all", label: "All Month" },
+    { value: "1", label: "Jan" },
+    { value: "2", label: "Feb" },
+    { value: "3", label: "Mar" },
+    { value: "4", label: "Apr" },
+    { value: "5", label: "May" },
+    { value: "6", label: "Jun" },
+    { value: "7", label: "Jul" },
+    { value: "8", label: "Aug" },
+    { value: "9", label: "Sep" },
+    { value: "10", label: "Oct" },
+    { value: "11", label: "Nov" },
+    { value: "12", label: "Dec" },
+  ];
+
+  const yearOptions = (() => {
+    const years = new Set();
+    leaves.forEach((l) => {
+      const d = new Date(l.startDate || l.date);
+      if (!isNaN(d)) years.add(d.getFullYear());
+    });
+    odLeaves.forEach((l) => {
+      const d = new Date(l.date || l.startDate);
+      if (!isNaN(d)) years.add(d.getFullYear());
+    });
+    const arr = Array.from(years).sort((a, b) => b - a);
+    if (arr.length === 0) {
+      const y = new Date().getFullYear();
+      return [String(y), String(y - 1), String(y + 1)];
+    }
+    return arr.map(String);
+  })();
+
   const filteredLeaves = leaves.filter((leave) => {
+    const term = searchTerm.toString().toLowerCase();
     const matchesSearch =
-      leave.employeeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leave.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leave.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leave.leaveType?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" ||
-      leave.status?.toLowerCase() === filterStatus.toLowerCase();
-    return matchesSearch && matchesStatus;
+      (leave.employeeName || "").toString().toLowerCase().includes(term) ||
+      (leave.employeeId || "").toString().toLowerCase().includes(term) ||
+      (leave.department || "").toString().toLowerCase().includes(term) ||
+      (leave.leaveType || "").toString().toLowerCase().includes(term);
+
+    const leaveStatus = leave.statusNormalized || (leave.status || "").toString().trim().toLowerCase();
+    const filter = filterStatus ? filterStatus.toString().trim().toLowerCase() : "all";
+    const matchesStatus = filter === "all" || leaveStatus === filter;
+
+    // month/year filtering (use startDate for regular leaves)
+    const dateStr = leave.startDate || leave.date || null;
+    const d = dateStr ? new Date(dateStr) : null;
+    const month = d && !isNaN(d) ? d.getMonth() + 1 : null;
+    const year = d && !isNaN(d) ? d.getFullYear() : null;
+    const matchesMonth = selectedMonth === "all" || (month && Number(selectedMonth) === month);
+    const matchesYear = selectedYear === "all" || (year && Number(selectedYear) === year);
+
+    return matchesSearch && matchesStatus && matchesMonth && matchesYear;
   });
 
   const filteredODLeaves = odLeaves.filter((leave) => {
+    const term = searchTerm.toString().toLowerCase();
     const matchesSearch =
-      leave.employeeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leave.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leave.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leave.purpose?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" ||
-      leave.status?.toLowerCase() === filterStatus.toLowerCase();
-    return matchesSearch && matchesStatus;
+      (leave.employeeName || "").toString().toLowerCase().includes(term) ||
+      (leave.employeeId || "").toString().toLowerCase().includes(term) ||
+      (leave.department || "").toString().toLowerCase().includes(term) ||
+      (leave.purpose || "").toString().toLowerCase().includes(term);
+
+    const leaveStatus = leave.statusNormalized || (leave.status || "").toString().trim().toLowerCase();
+    const filter = filterStatus ? filterStatus.toString().trim().toLowerCase() : "all";
+    const matchesStatus = filter === "all" || leaveStatus === filter;
+
+    // month/year filtering (use date for OD leaves)
+    const dateStr = leave.date || leave.startDate || null;
+    const d = dateStr ? new Date(dateStr) : null;
+    const month = d && !isNaN(d) ? d.getMonth() + 1 : null;
+    const year = d && !isNaN(d) ? d.getFullYear() : null;
+    const matchesMonth = selectedMonth === "all" || (month && Number(selectedMonth) === month);
+    const matchesYear = selectedYear === "all" || (year && Number(selectedYear) === year);
+
+    return matchesSearch && matchesStatus && matchesMonth && matchesYear; 
   });
 
   if (loading) {
@@ -427,7 +720,7 @@ const LeaveManagement = () => {
             Leave Management
           </h2>
           <div className="flex space-x-2">
-            <button className="flex items-center px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700">
+            <button type="button" onClick={handleExport} className="flex items-center px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700">
               <Download size={16} className="mr-1" />
               Export
             </button>
@@ -558,6 +851,35 @@ const LeaveManagement = () => {
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
+
+                <select
+                  className="border rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 ml-2"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  {monthOptions.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="border rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 ml-2"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                >
+                  <option value="all">All Years</option>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+
+                {/* <div className="text-sm text-gray-500 ml-3">
+                  {filteredLeaves.length}/{leaves.length} shown
+                </div> */}
               </div>
             </div>
 
@@ -634,7 +956,7 @@ const LeaveManagement = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {leave.status !== "pending" && leave.approvedBy ? (
+                        {!isPendingLeave(leave) && leave.approvedBy ? (
                           <div>
                             <div className="text-sm font-medium text-gray-900">
                               {leave.approvedBy}
@@ -705,6 +1027,35 @@ const LeaveManagement = () => {
                   <option value="approved">Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
+
+                <select
+                  className="border rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 ml-2"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  {monthOptions.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="border rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 ml-2"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                >
+                  <option value="all">All Years</option>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="text-sm text-gray-500 ml-3">
+                  {filteredODLeaves.length}/{odLeaves.length} shown
+                </div>
               </div>
             </div>
 
@@ -777,7 +1128,7 @@ const LeaveManagement = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {leave.status !== "pending" && leave.approvedBy ? (
+                        {!isPendingLeave(leave) && leave.approvedBy ? (
                           <div>
                             <div className="text-sm font-medium text-gray-900">
                               {leave.approvedBy}

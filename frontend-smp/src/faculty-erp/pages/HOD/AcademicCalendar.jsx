@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Calendar,
   Plus,
@@ -13,6 +13,8 @@ import {
   Filter,
   X,
   FileText,
+  Upload,
+  Download,
 } from "lucide-react";
 import AcademicCalendarPrint from "./AcademicCalendarPrint";
 
@@ -25,6 +27,23 @@ const AcademicCalendar = ({ userData }) => {
   const [selectedCalendar, setSelectedCalendar] = useState(null);
   const [showPrintView, setShowPrintView] = useState(false);
   const [printCalendar, setPrintCalendar] = useState(null);
+
+  // Upload state
+  const [uploadedPlans, setUploadedPlans] = useState([]);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Preview state
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+  // Editing state
+  const [isEditingPreview, setIsEditingPreview] = useState(false);
+  const [editingFile, setEditingFile] = useState(null);
+  const [savingPreview, setSavingPreview] = useState(false);
+
   const [filters, setFilters] = useState({
     academicYear: "",
     semester: "",
@@ -39,6 +58,7 @@ const AcademicCalendar = ({ userData }) => {
     fetchCalendars();
     fetchSubjects();
     fetchFaculty();
+    fetchUploadedPlans();
   }, [filters]);
 
   // Keep local user data in sync with prop
@@ -191,6 +211,276 @@ const AcademicCalendar = ({ userData }) => {
       }
     } catch (error) {
       console.error("Error fetching faculty:", error);
+    }
+  };
+
+  // Local helper: decide whether current user can view a file (for local fallback entries)
+  const canViewLocalFile = (file) => {
+    const user = currentUserData;
+    if (!user) return false;
+    // Owner always sees their own uploads
+    if (file?.meta && file.meta.uploaderId && String(file.meta.uploaderId) === String(user._id)) return true;
+    // HOD sees files uploaded by their department
+    const role = String(user.role || '').toLowerCase();
+    const userDept = user.department?._id || user.department;
+    if (role === 'hod' && file?.meta && file.meta.uploaderDepartment && String(file.meta.uploaderDepartment) === String(userDept)) return true;
+    return false;
+  };
+
+  // Extract metadata from a File object or fallback local file object
+  const readMetaFromFileObject = (file) => {
+    if (!file) return null;
+    // If already present, return meta directly
+    if (file.meta) return file.meta;
+
+    // Some fallback objects may store uploader info directly on the object
+    const meta = {};
+    if (file.uploaderId) meta.uploaderId = file.uploaderId;
+    if (file.uploaderName) meta.uploaderName = file.uploaderName;
+    if (file.uploaderDepartment) meta.uploaderDepartment = file.uploaderDepartment;
+    if (file.originalName) meta.originalName = file.originalName;
+
+    return Object.keys(meta).length ? meta : null;
+  };
+
+  // Fetch list of uploaded teaching plans (server endpoint optional)
+  const fetchUploadedPlans = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const url = `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/uploads`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        // Fallback to any locally saved uploads
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        setUploadedPlans((local || []).filter(canViewLocalFile));
+        return;
+      }
+
+      const data = await response.json();
+      if (data && data.success) {
+        setUploadedPlans(data.data || []);
+      } else {
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        setUploadedPlans((local || []).filter(canViewLocalFile));
+      }
+    } catch (err) {
+      console.error("Failed to fetch uploaded plans:", err);
+      const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+      setUploadedPlans((local || []).filter(canViewLocalFile));
+    }
+  };
+
+  // Handle file upload (accepts .doc, .docx, .xls, .xlsx, .csv)
+  const handleUpload = async (e) => {
+    const file = e?.target?.files?.[0];
+    if (!file) return;
+
+    // Validate extension
+    if (!/\.(docx?|xlsx?|csv|xls)$/i.test(file.name)) {
+      setUploadError("Unsupported file type. Use .docx/.doc/.xlsx/.xls/.csv");
+      return;
+    }
+
+    setUploadLoading(true);
+    setUploadError(null);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const token = localStorage.getItem("authToken");
+      const url = `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+
+      if (!res.ok) {
+        // Try to parse a JSON error first, otherwise fall back to text
+        let errMsg = null;
+        try {
+          const errJson = await res.json();
+          errMsg = errJson?.message || errJson?.error || JSON.stringify(errJson);
+        } catch (e) {
+          try {
+            errMsg = await res.text();
+        const fallback = { name: file.name, uploadedAt: new Date().toISOString(), meta: { uploaderId: currentUserData?._id, uploaderName: currentUserData?.firstName || currentUserData?.name, uploaderDepartment: currentUserData?.department?._id || currentUserData?.department } };
+        setUploadedPlans((prev) => [fallback, ...prev]);
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        localStorage.setItem("localUploadedPlans", JSON.stringify([fallback, ...local]));
+        setUploadError(`Upload failed (server ${res.status})` + (errMsg ? `: ${String(errMsg).substring(0,300)}` : ""));
+        return;
+          } catch (t) {
+            errMsg = String(t);
+          }
+        }
+
+        console.error('Upload failed server response:', res.status, errMsg);
+        const fallback = { name: file.name, uploadedAt: new Date().toISOString(), meta: { uploaderId: currentUserData?._id, uploaderDepartment: currentUserData?.department?._id || currentUserData?.department } };
+        setUploadedPlans((prev) => [fallback, ...prev]);
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        localStorage.setItem("localUploadedPlans", JSON.stringify([fallback, ...local]));
+        setUploadError(`Upload failed (server ${res.status})` + (errMsg ? `: ${String(errMsg).substring(0,300)}` : ""));
+        return;
+      }
+
+      const result = await res.json();
+
+      if (result && result.success) {
+        // If server returns the uploaded file record, prepend it
+        const uploaded = result.file || result.data || { name: file.name, uploadedAt: new Date().toISOString() };
+        setUploadedPlans((prev) => [uploaded, ...prev]);
+        // Save minimal info locally as fallback
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        localStorage.setItem("localUploadedPlans", JSON.stringify([uploaded, ...local]));
+        // Refresh calendars/list
+        fetchCalendars();
+        alert("Upload successful");
+      } else {
+        const fallback = { name: file.name, uploadedAt: new Date().toISOString(), meta: { uploaderId: currentUserData?._id, uploaderName: currentUserData?.firstName || currentUserData?.name, uploaderDepartment: currentUserData?.department?._id || currentUserData?.department } };
+        setUploadedPlans((prev) => [fallback, ...prev]);
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        localStorage.setItem("localUploadedPlans", JSON.stringify([fallback, ...local]));
+        setUploadError(result?.message || "Upload failed (server) - saved locally");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      const fallback = { name: file.name, uploadedAt: new Date().toISOString(), meta: { uploaderId: currentUserData?._id, uploaderName: currentUserData?.firstName || currentUserData?.name, uploaderDepartment: currentUserData?.department?._id || currentUserData?.department } };
+      setUploadedPlans((prev) => [fallback, ...prev]);
+      const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+      localStorage.setItem("localUploadedPlans", JSON.stringify([fallback, ...local]));
+      setUploadError(err.message || "Upload failed");
+    } finally {
+      setUploadLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Delete an uploaded plan (remove file from server)
+  const handleDeleteUpload = async (file) => {
+    if (!file || !file._id) return;
+    if (!window.confirm(`Delete uploaded file "${file.originalName || file.name}"? This cannot be undone.`)) return;
+
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${file._id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Remove from state and localStorage fallback
+        setUploadedPlans((prev) => prev.filter((p) => p._id !== file._id));
+        const local = JSON.parse(localStorage.getItem("localUploadedPlans") || "[]");
+        localStorage.setItem(
+          "localUploadedPlans",
+          JSON.stringify(local.filter((p) => p._id !== file._id))
+        );
+        alert("File deleted");
+      } else {
+        console.error("Failed to delete upload", data);
+        alert(data?.message || "Failed to delete file");
+      }
+    } catch (err) {
+      console.error("Error deleting upload:", err);
+      alert("Error deleting file");
+    }
+  };
+
+  // Rename an uploaded plan (change server filename and URL)
+  // Open preview in editing mode for a file
+  const handleEditUpload = async (file) => {
+    if (!file || !file._id) return;
+
+    setEditingFile(file);
+    setIsEditingPreview(true);
+    // Reuse preview loader
+    await handlePreviewUpload(file);
+  };
+
+  // NOTE: kept for backward compatibility if direct renaming is needed in future
+  const handleRenameUpload = async (file) => {
+    alert('Filename renaming is disabled. Use Edit to modify the file contents instead.');
+  };
+
+  // Preview uploaded file (CSV / Excel)
+  const handlePreviewUpload = async (file) => {
+    if (!file || !file._id) return;
+    // remember which file we're previewing so Edit can operate on it
+    setEditingFile(file);
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewData(null);
+    setShowPreviewModal(true);
+
+    try {
+      const token = localStorage.getItem("authToken");
+
+      // Allow calling preview endpoint for CSV/XLS/XLSX and DOCX (server supports docx text extraction)
+      const ext = file.originalName ? String(file.originalName).split('.').pop().toLowerCase() : '';
+      if (!['csv', 'xls', 'xlsx', 'docx'].includes(ext)) {
+        setPreviewError('Preview not available for this file type. You can download or open the file instead.');
+        setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: file.url || null });
+        setPreviewLoading(false);
+        return;
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || "https://backenderp.tarstech.in"}/api/academic-calendar/upload/${file._id}/preview`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        // Try parse JSON for more useful message
+        let jsonErr = null;
+        try {
+          jsonErr = await res.json();
+        } catch (e) {
+          // fallback to text
+          const text = await res.text();
+          setPreviewError(`Preview failed (server ${res.status}): ${text.substring(0, 300)}`);
+          // attach basic file info so user can download/open it
+          setPreviewData({ meta: readMetaFromFileObject(file), fileUrl: file.url || null });
+          return;
+        }
+
+        // Known case: preview not available for this file type
+        if (jsonErr && jsonErr.message && jsonErr.message.toLowerCase().includes('preview not available')) {
+          setPreviewError('Preview not available for this file type. You can download or open the file instead.');
+          setPreviewData({ meta: jsonErr.file?.meta || readMetaFromFileObject(file), fileUrl: file.url || null });
+          return;
+        }
+
+        setPreviewError(jsonErr?.message || `Preview failed (server ${res.status})`);
+        setPreviewData({ meta: jsonErr?.file?.meta || readMetaFromFileObject(file), fileUrl: file.url || null });
+        return;
+      }
+
+      const data = await res.json();
+      if (data && data.success && data.preview) {
+        // Attach meta if available so preview modal knows uploader info
+        const pd = data.preview;
+        pd.meta = data.file?.meta || readMetaFromFileObject(file) || pd.meta || null;
+        setPreviewData(pd);
+      } else {
+        setPreviewError(data?.message || 'No preview available');
+      }
+    } catch (err) {
+      console.error('Preview error:', err);
+      setPreviewError(err.message || 'Preview failed');
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -406,13 +696,31 @@ const AcademicCalendar = ({ userData }) => {
             Manage subject-wise academic schedules and track progress
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={20} />
-          Create Teaching Plan
-        </button>
+        <div className="flex items-center gap-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".doc,.docx,.xls,.xlsx,.csv"
+            className="hidden"
+            onChange={handleUpload}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            className="flex items-center gap-2 bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Upload size={18} />
+            Upload Plan
+          </button>
+
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Create Teaching Plan
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -441,9 +749,9 @@ const AcademicCalendar = ({ userData }) => {
             }
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">All Semesters</option>
+            <option value="" key="all-semesters">All Semesters</option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-              <option key={sem} value={sem}>
+              <option key={`semester-${sem}`} value={sem}>
                 Semester {sem}
               </option>
             ))}
@@ -476,6 +784,151 @@ const AcademicCalendar = ({ userData }) => {
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Uploaded Plans */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border mb-4">
+        <h3 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+          <FileText size={18} />
+          Uploaded Teaching Plans
+        </h3>
+        {uploadError && (
+          <div className="text-sm text-red-600 mb-2">{uploadError}</div>
+        )}
+        {uploadedPlans.length === 0 ? (
+          <div className="text-sm text-gray-500">No uploaded plans found.</div>
+        ) : (
+          (() => {
+            const isHodUser = String(currentUserData?.role || '').toLowerCase() === 'hod';
+            const userDept = currentUserData?.department?._id || currentUserData?.department;
+
+            if (!isHodUser) {
+              return (
+                <div className="space-y-2">
+                  {uploadedPlans.map((p) => (
+                    <div
+                      key={p._id || p.name}
+                      className="flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()}
+                          {p?.meta?.uploaderName ? (
+                            <span> • Uploaded by {p.meta.uploaderName}</span>
+                          ) : p?.meta?.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? (
+                            <span> • Uploaded by You</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <>
+                          <button
+                            onClick={() => handlePreviewUpload(p)}
+                            className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+                            title="Preview file"
+                          >
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => handleEditUpload(p)}
+                            disabled={!(p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id))}
+                            className={`text-sm px-2 py-1 rounded ${p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? 'text-gray-600 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
+                            title={p?.meta && p?.meta.uploaderId && String(p.meta.uploaderId) === String(currentUserData?._id) ? 'Edit file contents' : 'Only the uploader can edit this file'}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUpload(p)}
+                            className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50"
+                            title="Delete file"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            const hodUploads = uploadedPlans.filter(p => p?.meta && String(p.meta.uploaderId) === String(currentUserData?._id));
+            const deptUploads = uploadedPlans.filter(p => p?.meta && p?.meta.uploaderDepartment && String(p.meta.uploaderDepartment) === String(userDept) && String(p.meta.uploaderId) !== String(currentUserData?._id));
+            const otherUploads = uploadedPlans.filter(p => !hodUploads.includes(p) && !deptUploads.includes(p));
+
+            return (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Your Uploads ({hodUploads.length})</h4>
+                  {hodUploads.length === 0 ? (
+                    <div className="text-sm text-gray-500">No uploads by you.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {hodUploads.map((p) => (
+                        <div key={p._id || p.name} className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                            <div className="text-xs text-gray-500">{new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()} • Uploaded by You</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handlePreviewUpload(p)} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100" title="Preview file">Preview</button>
+                            <button onClick={() => handleEditUpload(p)} className="text-sm px-2 py-1 rounded text-gray-600 hover:bg-gray-100" title="Edit file contents">Edit</button>
+                            <button onClick={() => handleDeleteUpload(p)} className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Delete file">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Department Uploads ({deptUploads.length})</h4>
+                  {deptUploads.length === 0 ? (
+                    <div className="text-sm text-gray-500">No uploads from your department.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {deptUploads.map((p) => (
+                        <div key={p._id || p.name} className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                            <div className="text-xs text-gray-500">{new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()} {p?.meta?.uploaderName ? (<span> • Uploaded by {p.meta.uploaderName}</span>) : null}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handlePreviewUpload(p)} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100" title="Preview file">Preview</button>
+                            <button onClick={() => handleEditUpload(p)} disabled className="text-sm px-2 py-1 rounded text-gray-400 cursor-not-allowed" title="Only the uploader can edit this file">Edit</button>
+                            <button onClick={() => handleDeleteUpload(p)} className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Delete file">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {otherUploads.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Other Uploads ({otherUploads.length})</h4>
+                    <div className="space-y-2">
+                      {otherUploads.map((p) => (
+                        <div key={p._id || p.name} className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm text-gray-800">{p.originalName || p.name}</div>
+                            <div className="text-xs text-gray-500">{new Date(p.uploadedAt || p.createdAt || Date.now()).toLocaleString()} {p?.meta?.uploaderName ? (<span> • Uploaded by {p.meta.uploaderName}</span>) : null}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handlePreviewUpload(p)} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100" title="Preview file">Preview</button>
+                            <button onClick={() => handleEditUpload(p)} disabled className="text-sm px-2 py-1 rounded text-gray-400 cursor-not-allowed" title="Only the uploader can edit this file">Edit</button>
+                            <button onClick={() => handleDeleteUpload(p)} className="text-sm text-red-600 px-2 py-1 rounded hover:bg-red-50" title="Delete file">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        )}
       </div>
 
       {/* Calendar Grid */}
@@ -681,6 +1134,187 @@ const AcademicCalendar = ({ userData }) => {
           onClose={() => setSelectedCalendar(null)}
           onUpdate={fetchCalendars}
         />
+      )}
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">File Preview</h3>
+              <div className="flex items-center gap-2">
+                {isEditingPreview ? (
+                  <>
+                    <button
+                      onClick={async () => {
+                        // Save edited preview
+                        if (!editingFile) return;
+                        setSavingPreview(true);
+                        try {
+                          const token = localStorage.getItem('authToken');
+                          const res = await fetch(
+                            `${import.meta.env.VITE_API_URL || 'https://backenderp.tarstech.in'}/api/academic-calendar/upload/${encodeURIComponent(editingFile.name)}/save`,
+                            {
+                              method: 'POST',
+                              headers: {
+                                Authorization: `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({ sheets: previewData.sheets }),
+                            }
+                          );
+
+                          const data = await res.json();
+                          if (res.ok && data.success) {
+                            // update uploadedPlans entry's timestamp/size
+                            setUploadedPlans((prev) => prev.map((p) => p.name === editingFile.name ? ({ ...p, ...data.file }) : p));
+                            const local = JSON.parse(localStorage.getItem('localUploadedPlans') || '[]');
+                            localStorage.setItem('localUploadedPlans', JSON.stringify(local.map((p) => p.name === editingFile.name ? ({ ...p, ...data.file }) : p)));
+                            alert('Saved successfully');
+                            setIsEditingPreview(false);
+                            setEditingFile(null);
+                            setShowPreviewModal(false);
+                            setPreviewData(null);
+                          } else {
+                            console.error('Failed to save edited file', data);
+                            alert(data?.message || 'Failed to save file');
+                          }
+                        } catch (err) {
+                          console.error('Save error:', err);
+                          alert('Error saving file');
+                        } finally {
+                          setSavingPreview(false);
+                        }
+                      }}
+                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                      disabled={savingPreview}
+                    >
+                      {savingPreview ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingPreview(false);
+                        setEditingFile(null);
+                        setShowPreviewModal(false);
+                        setPreviewData(null);
+                        setPreviewError(null);
+                      }}
+                      className="text-gray-600 px-3 py-1 rounded hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowPreviewModal(false);
+                        setPreviewData(null);
+                        setPreviewError(null);
+                      }}
+                      className="text-gray-600 px-3 py-1 rounded hover:bg-gray-100"
+                    >
+                      Close
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {previewLoading && <div>Loading preview...</div>}
+            {previewError && <div className="text-red-600">{previewError}</div>}
+
+            {/* If server returned plain text preview (DOCX), show it */}
+            {previewData && previewData.text && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Document Preview</h4>
+                  {previewData.meta && previewData.meta.uploaderName && (
+                    <div className="text-xs text-gray-500">Uploaded by {previewData.meta.uploaderName}</div>
+                  )}
+                </div>
+                <div className="border rounded p-4 max-h-[60vh] overflow-auto bg-gray-50">
+                  <pre className="whitespace-pre-wrap break-words text-sm text-gray-800">{previewData.text}</pre>
+                </div>
+              </div>
+            )}
+
+            {/* If preview not available but we have a file URL, offer download/open fallback */}
+            {previewData && previewData.fileUrl && !previewData.sheets && !previewData.text && (
+              <div className="py-4">
+                <div className="text-sm text-gray-700 mb-2">No preview available for this file. You can download or open it:</div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewData.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                  >
+                    Open file
+                  </a>
+                  <a
+                    href={previewData.fileUrl}
+                    download
+                    className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {previewData && previewData.sheets && (
+              <div>
+                {previewData.sheets.map((sheet, sIdx) => (
+                  <div key={sIdx} className="mb-6">
+                    <h4 className="font-medium mb-2">{sheet.name}</h4>
+                    <div className="overflow-auto border rounded">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50">
+                          {sheet.rows && sheet.rows.length > 0 && (
+                            <tr>
+                              {sheet.rows[0].map((h, i) => (
+                                <th key={i} className="px-3 py-2 text-left border">{h}</th>
+                              ))}
+                            </tr>
+                          )}
+                        </thead>
+                        <tbody>
+                          {sheet.rows && sheet.rows.slice(1).map((r, ri) => (
+                            <tr key={ri} className="odd:bg-white even:bg-gray-50">
+                              {r.map((cell, ci) => (
+                                <td key={ci} className="px-3 py-2 border">
+                                  {isEditingPreview ? (
+                                    <input
+                                      value={previewData.sheets[sIdx].rows[ri+1][ci] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setPreviewData((prev) => {
+                                          const copy = JSON.parse(JSON.stringify(prev));
+                                          if (copy.sheets && copy.sheets[sIdx] && copy.sheets[sIdx].rows) {
+                                            copy.sheets[sIdx].rows[ri+1][ci] = val;
+                                          }
+                                          return copy;
+                                        });
+                                      }}
+                                      className="w-full px-1 py-0 border rounded"
+                                    />
+                                  ) : (
+                                    cell
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

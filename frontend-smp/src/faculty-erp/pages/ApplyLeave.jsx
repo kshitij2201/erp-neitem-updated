@@ -51,12 +51,9 @@ const ApplyLeave = ({ userData }) => {
 
     if (!formData.startDate) {
       newErrors.startDate = "Start date is required";
-    } else {
-      const startDate = new Date(formData.startDate);
-      if (startDate < today) {
-        newErrors.startDate = "Start date cannot be in the past";
-      }
     }
+    // Past start dates are allowed per request — no validation against today
+    
 
     if (!formData.endDate) {
       newErrors.endDate = "End date is required";

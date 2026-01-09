@@ -23,12 +23,15 @@ const verifyToken = (req, res, next) => {
 // Create Stream
 router.post("/", verifyToken, async (req, res) => {
   try {
+    console.log('POST /api/superadmin/streams - body:', req.body, 'user:', req.user);
     const { name, description } = req.body;
     const newStream = new Stream({ name, description });
     await newStream.save();
+    console.log('Stream created:', newStream);
     res.status(201).json(newStream);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error creating stream:', err);
+    res.status(500).json({ error: err.message || 'Server error while creating stream' });
   }
 });
 
