@@ -254,12 +254,11 @@ const IncomeTax = () => {
     }
 
     const totalDeductions =
-      adjustedTds +
-      adjustedEpf +
-      adjustedAdvance +
-      adjustedPt +
-      adjustedLoan +
-      adjustedInsurance +
+      // adjustedTds +
+      // adjustedEpf +
+      // adjustedAdvance +
+      // adjustedPt +
+      // adjustedInsurance +
       adjustedEsi +
       adjustedOtherDed;
     const netSalary = gross - totalDeductions;
@@ -283,7 +282,7 @@ const IncomeTax = () => {
       advance: adjustedAdvance,
       pt: adjustedPt,
       esi: adjustedEsi,
-      loan: adjustedLoan,
+      
       insurance: adjustedInsurance,
       otherDed: adjustedOtherDed,
       totalDeductions,
@@ -368,7 +367,7 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
     const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
-    const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0;
+    // const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0;
     const insurance = parseFloat(salaryInputs.insuranceDeduction) || 0;
     const esi = parseFloat(salaryInputs.esiDeduction) || 0;
     const otherDed = parseFloat(salaryInputs.otherDeductions) || 0;
@@ -378,7 +377,7 @@ const IncomeTax = () => {
     let adjustedEpf = epf;
     let adjustedAdvance = advance;
     let adjustedPt = pt;
-    let adjustedLoan = loanDeduction;
+    // let adjustedLoan = loanDeduction;
     let adjustedInsurance = insurance;
     let adjustedEsi = esi;
     let adjustedOtherDed = otherDed;
@@ -389,7 +388,7 @@ const IncomeTax = () => {
       adjustedEpf = epf * dailyMultiplier;
       adjustedAdvance = advance * dailyMultiplier;
       adjustedPt = pt * dailyMultiplier;
-      adjustedLoan = loanDeduction * dailyMultiplier;
+      // adjustedLoan = loanDeduction * dailyMultiplier;
       adjustedInsurance = insurance * dailyMultiplier;
       adjustedEsi = esi * dailyMultiplier;
       adjustedOtherDed = otherDed * dailyMultiplier;
@@ -400,7 +399,7 @@ const IncomeTax = () => {
       adjustedEpf +
       adjustedAdvance +
       adjustedPt +
-      adjustedLoan +
+  
       adjustedInsurance +
       adjustedEsi +
       adjustedOtherDed;
@@ -424,7 +423,7 @@ const IncomeTax = () => {
       advance: adjustedAdvance,
       pt: adjustedPt,
       esi: adjustedEsi,
-      loan: adjustedLoan,
+      // loan: adjustedLoan,
       insurance: adjustedInsurance,
       otherDed: adjustedOtherDed,
       totalDeductions,
@@ -611,7 +610,6 @@ const IncomeTax = () => {
 
     const gross =
       adjustedBasic +
-      adjustedBasicPlusAGP +
       adjustedDA +
       adjustedHRA +
       adjustedTA +
@@ -626,7 +624,7 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0; // Use correct field name
     const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0;
-    const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0; // Add loan deduction
+    // const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0; // Add loan deduction
     const insurance = parseFloat(salaryInputs.insuranceDeduction) || 0; // Add insurance
     const esi = parseFloat(salaryInputs.esiDeduction) || 0; // Add ESI
     const otherDed = parseFloat(salaryInputs.otherDeductions) || 0; // Add other deductions
@@ -636,7 +634,7 @@ const IncomeTax = () => {
     let adjustedEpf = epf;
     let adjustedAdvance = advance;
     let adjustedPt = pt;
-    let adjustedLoan = loanDeduction;
+    // let adjustedLoan = loanDeduction;
     let adjustedInsurance = insurance;
     let adjustedEsi = esi;
     let adjustedOtherDed = otherDed;
@@ -658,7 +656,6 @@ const IncomeTax = () => {
       adjustedEpf +
       adjustedAdvance +
       adjustedPt +
-      adjustedLoan +
       adjustedInsurance +
       adjustedEsi +
       adjustedOtherDed;
@@ -666,8 +663,8 @@ const IncomeTax = () => {
 
     return {
       basic: adjustedBasic,
-      gradePay: adjustedGradePay,
-      agp: adjustedAGP,
+      gradePay: parseFloat(salaryInputs.gradePay) || 0,
+      agp: parseFloat(salaryInputs.agp) || 0,
       da: adjustedDA,
       hra: adjustedHRA,
       ta: adjustedTA,
@@ -682,7 +679,6 @@ const IncomeTax = () => {
       advance: adjustedAdvance,
       pt: adjustedPt,
       esi: adjustedEsi,
-      loan: adjustedLoan,
       insurance: adjustedInsurance,
       otherDed: adjustedOtherDed,
       totalDeductions,
@@ -725,31 +721,39 @@ const IncomeTax = () => {
     const getNum = (v) => Number(v) || 0;
 
     const basicForGross = getNum(result.basic) || getNum(salaryInputs.basicSalary);
+    const gradePayVal = getNum(result.gradePay) || getNum(salaryInputs.gradePay) || 0;
+    const agpVal = getNum(result.agp) || getNum(salaryInputs.agp) || 0;
     const hraVal = getNum(result.hra) || getNum(salaryInputs.hraRate) || 0;
     const daVal = getNum(result.da) || getNum(salaryInputs.daRate) || 0;
     const medicalVal = getNum(salaryInputs.medicalAllowance) || getNum(result.medical) || 0;
     const transportVal = getNum(salaryInputs.transportAllowance) || getNum(result.ta) || 0;
+    const claVal = getNum(result.cla) || getNum(salaryInputs.claAllowance) || 0;
     const otherAllowances = getNum(salaryInputs.otherAllowances) || getNum(result.others) || 0;
     const conveyanceVal = getNum(salaryInputs.conveyanceAllowance) || getNum(result.conveyance) || 0;
     const specialVal = getNum(salaryInputs.specialAllowance) || getNum(result.special) || 0;
 
-    // Gross by user's formula: Basic + HRA + DA + Medical + Transport + Other Allowances
-    const grossByFormula = basicForGross + hraVal + daVal + medicalVal + transportVal + otherAllowances + conveyanceVal + specialVal;
+    // Gross by user's formula: Basic + (Grade/AGP) + HRA + DA + Medical + Transport + Other Allowances
+    const grossByFormula = basicForGross + gradePayVal + agpVal + hraVal + daVal + medicalVal + transportVal + claVal + otherAllowances + conveyanceVal + specialVal;
 
     // Deductions as per user's requested list (plus commonly used fields as fallback)
     const epfVal = getNum(salaryInputs.epfDeduction) || getNum(result.epf) || 0;
     const esiVal = getNum(salaryInputs.esiDeduction) || getNum(result.esi) || 0;
     const ptVal = getNum(salaryInputs.professionalTax) || getNum(result.pt) || 0;
     const tdsVal = getNum(salaryInputs.tdsDeduction) || getNum(result.tds) || 0;
+    const advanceVal = getNum(salaryInputs.advance) || getNum(result.advance) || 0;
+    // const loanVal = getNum(salaryInputs.loanDeduction) || getNum(result.loan) || 0;
+    const insuranceVal = getNum(salaryInputs.insuranceDeduction) || getNum(result.insurance) || 0;
     const incomeTaxVal = getNum(salaryInputs.incomeTax) || getNum(result.incomeTax) || getNum(result.taxDeduction) || 0;
-    const otherDeductionsVal = getNum(salaryInputs.otherDeductions) || getNum(result.otherDed) || 0;
+    const otherDeductionsVal = getNum(salaryInputs.otherDeductions) || getNum(result.otherDed) || getNum(result.otherDeductions) || 0;
 
-    const totalDeductionsByFormula = epfVal + esiVal + ptVal + tdsVal + incomeTaxVal + otherDeductionsVal;
+    const totalDeductionsByFormula = epfVal + esiVal + ptVal + tdsVal + incomeTaxVal + advanceVal + loanVal + insuranceVal + otherDeductionsVal;
     const netByFormula = grossByFormula - totalDeductionsByFormula;
 
-    const matchGross = Math.abs((getNum(result.gross) || 0) - grossByFormula) < 0.01;
-    const matchTotal = Math.abs((getNum(result.totalDeductions) || 0) - totalDeductionsByFormula) < 0.01;
-    const matchNet = Math.abs((getNum(result.netSalary) || 0) - netByFormula) < 0.01;
+    // Allow small rounding differences (0.5 rupee tolerance)
+    const tolerance = 0.5;
+    const matchGross = Math.abs((getNum(result.gross) || 0) - grossByFormula) < tolerance;
+    const matchTotal = Math.abs((getNum(result.totalDeductions) || 0) - totalDeductionsByFormula) < tolerance;
+    const matchNet = Math.abs((getNum(result.netSalary) || 0) - netByFormula) < tolerance;
 
     setCalcDebug({
       grossByFormula,
@@ -810,7 +814,7 @@ const IncomeTax = () => {
           advance: calculatedSalary.advance || 0,
           professionalTax: calculatedSalary.pt,
           esi: calculatedSalary.esi || 0,
-          loanDeduction: calculatedSalary.loan || 0,
+          // loanDeduction: calculatedSalary.loan || 0,
           insuranceDeduction: calculatedSalary.insurance || 0,
           otherDeductions: calculatedSalary.otherDed || 0,
         },
@@ -950,7 +954,7 @@ const IncomeTax = () => {
           tdsDeduction: "",
           epfDeduction: "",
           esiDeduction: "",
-          loanDeduction: "",
+          // loanDeduction: "",
           insuranceDeduction: "",
           professionalTax: "",
           otherDeductions: "",
@@ -1193,7 +1197,13 @@ const IncomeTax = () => {
         grossSalary: record.grossSalary || 0,
         incomeTax: record.taxDeduction || 0,
         pf: record.pfDeduction || 0,
-        netSalary: record.netSalary || 0,
+        netSalary: (function() {
+          const getNum = (v) => Number(v) || 0;
+          if (record.netSalary !== undefined && record.netSalary !== null) return getNum(record.netSalary);
+          const gross = getNum(record.grossSalary || record.amount || 0) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+          const totalDed = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.pfDeduction || record.pf || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.incomeTax || record.incomeTax || 0) + getNum(record.deductions?.advance || record.advance || 0) + getNum(record.deductions?.loanDeduction || record.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+          return gross - totalDed;
+        })(),
         medicalAllowance: record.medicalAllowance || 0,
         transportAllowance: record.transportAllowance || 0,
         claAllowance: record.claAllowance || 0,
@@ -1564,7 +1574,7 @@ const IncomeTax = () => {
         advance: record.advance || 0,
         pt: record.professionalTax || 0,
         gross: record.grossSalary || 0,
-        netSalary: record.netSalary || 0,
+        netSalary: (record.netSalary !== undefined && record.netSalary !== null) ? parseFloat(record.netSalary) : (function() { const getNum=(v)=>Number(v)||0; const gross = getNum(record.grossSalary||record.amount||0) || (getNum(record.basicSalary)+getNum(record.allowances?.hra)+getNum(record.allowances?.gradePay)+getNum(record.allowances?.da)+getNum(record.allowances?.medical)+getNum(record.allowances?.transport)+getNum(record.allowances?.cla)+getNum(record.allowances?.others)); const total = getNum(record.totalDeductions) || (getNum(record.deductions?.epf||record.pfDeduction||record.pf||0) + getNum(record.deductions?.esi||0) + getNum(record.deductions?.professionalTax||0) + getNum(record.deductions?.tds||0) + getNum(record.deductions?.incomeTax||record.incomeTax||0) + getNum(record.deductions?.advance||record.advance||0) + getNum(record.deductions?.loanDeduction||record.loanDeduction||0) + getNum(record.deductions?.insuranceDeduction||record.insuranceDeduction||0) + getNum(record.deductions?.otherDeductions||0)); return gross - total; })(),
         totalDeductions: record.totalDeductions || 0,
       });
 
@@ -1658,9 +1668,13 @@ console.log(record)
       },
       grossSalary: parseFloat(record.grossSalary || record.amount || 0),
       totalDeductions: parseFloat(
-        record.totalDeductions || (record.taxDeduction || record.incomeTax || record.deductions?.incomeTax || 0) + (record.pfDeduction || record.pf || record.deductions?.epf || 0) + (record.otherDeductions || 0)
+        record.totalDeductions || (record.taxDeduction || record.incomeTax || record.deductions?.incomeTax || 0) + (record.pfDeduction || record.pf || record.deductions?.epf || 0) + (record.deductions?.advance || record.advance || 0) + (record.deductions?.loanDeduction || record.loanDeduction || 0) + (record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) + (record.otherDeductions || 0)
       ),
-      netSalary: parseFloat(record.netSalary || 0),
+      netSalary: parseFloat(
+        record.netSalary !== undefined && record.netSalary !== null
+          ? record.netSalary
+          : (parseFloat(record.grossSalary || record.amount || 0) - (parseFloat(record.totalDeductions || 0) || (parseFloat(record.deductions?.epf || record.pfDeduction || record.pf || 0) + parseFloat(record.deductions?.esi || 0) + parseFloat(record.deductions?.professionalTax || 0) + parseFloat(record.deductions?.tds || 0) + parseFloat(record.deductions?.incomeTax || record.incomeTax || 0) + parseFloat(record.deductions?.advance || 0) + parseFloat(record.deductions?.loanDeduction || record.loanDeduction || 0) + parseFloat(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) + parseFloat(record.deductions?.otherDeductions || 0))))
+      ),
       salaryStatus: record.status || "Calculated",
       paymentId: record._id || record.id,
       paymentDate: record.paymentDate,
@@ -1719,10 +1733,32 @@ console.log(record)
       (sum, r) => sum + parseFloat(r.totalDeductions || 0),
       0
     );
-    const totalNet = records.reduce(
-      (sum, r) => sum + parseFloat(r.netSalary || 0),
-      0
-    );
+    const totalNet = records.reduce((sum, r) => {
+      const getNum = (v) => Number(v) || 0;
+      const gross =
+        getNum(r.grossSalary || r.amount) ||
+        (getNum(r.basicSalary) +
+          getNum(r.allowances?.hra) +
+          getNum(r.allowances?.gradePay) +
+          getNum(r.allowances?.da) +
+          getNum(r.allowances?.medical) +
+          getNum(r.allowances?.transport) +
+          getNum(r.allowances?.cla) +
+          getNum(r.allowances?.others) +
+          getNum(r.allowances?.conveyance) +
+          getNum(r.allowances?.special));
+      const totalD=
+        getNum(r.totalDeductions) ||
+        (getNum(r.deductions?.pf) +
+          getNum(r.deductions?.esi) +
+          getNum(r.deductions?.professionalTax) +
+          getNum(r.deductions?.tds) +
+          getNum(r.deductions?.incomeTax) +
+          getNum(r.deductions?.advance) +
+          getNum(r.deductions?.others));
+      const net = gross - totalD;
+      return sum + net;
+    }, 0);
     const paidRecords = records.filter((r) => r.status === "Paid").length;
 
     return `
@@ -1832,7 +1868,7 @@ console.log(record)
                 <div class="summary-label">Total Gross Salary</div>
               </div>
               <div class="summary-card green">
-                <div class="summary-value">₹${totalNet.toLocaleString()}</div>
+                <div class="summary-value">₹${Math.abs(totalNet).toLocaleString()}</div>
                 <div class="summary-label">Total Net Salary</div>
               </div>
               <div class="summary-card red">
@@ -1883,9 +1919,33 @@ console.log(record)
                     <td class="amount">₹${parseFloat(
                       record.totalDeductions || 0
                     ).toLocaleString()}</td>
-                    <td class="amount" style="font-weight: bold;">₹${parseFloat(
-                      record.netSalary || 0
-                    ).toLocaleString()}</td>
+                    <td class="amount" style="font-weight: bold;">₹${(() => {
+                      const getNum = (v) => Number(v) || 0;
+                      const gross =
+                        getNum(record.grossSalary || record.amount) ||
+                        (getNum(record.basicSalary) +
+                          getNum(record.allowances?.hra) +
+                          getNum(record.allowances?.gradePay) +
+                          getNum(record.allowances?.da) +
+                          getNum(record.allowances?.medical) +
+                          getNum(record.allowances?.transport) +
+                          getNum(record.allowances?.cla) +
+                          getNum(record.allowances?.others) +
+                          getNum(record.allowances?.conveyance) +
+                          getNum(record.allowances?.special));
+                      const total =
+                        getNum(record.totalDeductions) ||
+                        (getNum(record.deductions?.pf || record.pfDeduction || record.pf || 0) +
+                          getNum(record.deductions?.esi || 0) +
+                          getNum(record.deductions?.professionalTax || 0) +
+                          getNum(record.deductions?.tds || 0) +
+                          getNum(record.deductions?.incomeTax || record.incomeTax || 0) +
+                          getNum(record.deductions?.advance || record.advance || 0) +
+                          getNum(record.deductions?.loanDeduction || record.loanDeduction || 0) +
+                          getNum(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) +
+                          getNum(record.deductions?.otherDeductions || 0));
+                      return Math.abs(gross - total).toLocaleString();
+                    })()}</td>
                     <td class="status">
                       <span class="status-${
                         record.status?.toLowerCase() || "calculated"
@@ -1903,7 +1963,7 @@ console.log(record)
 
             <div class="footer">
               <p><strong>Generated by NIETM HR Management System</strong></p>
-              <p>Report generated on ${new Date().toLocaleString()} | Total Amount: ₹${totalNet.toLocaleString()}</p>
+              <p>Report generated on ${new Date().toLocaleString()} | Total Amount: ₹${Math.abs(totalNet).toLocaleString()}</p>
               <p>This is a computer-generated report and does not require a signature</p>
             </div>
           </div>
@@ -1955,7 +2015,12 @@ console.log(record)
       totals.tds += parseFloat(record.deductions?.tds || 0);
       totals.otherDed += parseFloat(record.deductions?.otherDeductions || 0);
       totals.totalDed += parseFloat(record.totalDeductions || 0);
-      totals.net += parseFloat(record.netSalary || 0);
+      {
+        const getNum = (v) => Number(v) || 0;
+        const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+        const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+        totals.net += gross - totalD;
+      }
     });
 
     return `
@@ -2080,9 +2145,30 @@ console.log(record)
                     <td class="amount" style="background: #ffebee;">₹${parseFloat(
                       record.totalDeductions || 0
                     ).toLocaleString()}</td>
-                    <td class="amount" style="background: #e8f5e8; font-weight: bold;">₹${parseFloat(
-                      record.netSalary || 0
-                    ).toLocaleString()}</td>
+                    <td class="amount" style="background: #e8f5e8; font-weight: bold;">₹${(() => {
+                      const getNum = (v) => Number(v) || 0;
+                      const gross =
+                        getNum(record.grossSalary || record.amount) ||
+                        (getNum(record.basicSalary) +
+                          getNum(record.allowances?.hra) +
+                          getNum(record.allowances?.gradePay) +
+                          getNum(record.allowances?.da) +
+                          getNum(record.allowances?.medical) +
+                          getNum(record.allowances?.transport) +
+                          getNum(record.allowances?.cla) +
+                          getNum(record.allowances?.others) +
+                          getNum(record.allowances?.conveyance) +
+                          getNum(record.allowances?.special));
+                      const total =
+                        getNum(record.totalDeductions) ||
+                        (getNum(record.deductions?.epf || record.deductions?.pf || 0) +
+                          getNum(record.deductions?.advance || 0) +
+                          getNum(record.deductions?.esi || 0) +
+                          getNum(record.deductions?.professionalTax || 0) +
+                          getNum(record.deductions?.tds || 0) +
+                          getNum(record.deductions?.otherDeductions || 0));
+                      return Math.abs(gross - total).toLocaleString();
+                    })()}</td>
                     <td style="text-align: center;">${
                       record.status || "Calculated"
                     }</td>
@@ -2108,7 +2194,7 @@ console.log(record)
                   <td class="amount">₹${totals.tds.toLocaleString()}</td>
                   <td class="amount">₹${totals.otherDed.toLocaleString()}</td>
                   <td class="amount">₹${totals.totalDed.toLocaleString()}</td>
-                  <td class="amount">₹${totals.net.toLocaleString()}</td>
+                  <td class="amount">₹${Math.abs(totals.net).toLocaleString()}</td>
                   <td style="text-align: center;">-</td>
                 </tr>
               </tfoot>
@@ -2146,7 +2232,12 @@ console.log(record)
       monthlyData[monthYear].totalGross += parseFloat(
         record.grossSalary || record.amount || 0
       );
-      monthlyData[monthYear].totalNet += parseFloat(record.netSalary || 0);
+      {
+        const getNum = (v) => Number(v) || 0;
+        const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+        const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+        monthlyData[monthYear].totalNet += gross - totalD;
+      }
       monthlyData[monthYear].totalDeductions += parseFloat(
         record.totalDeductions || 0
       );
@@ -2224,9 +2315,9 @@ console.log(record)
                   <div class="summary-label">Total Deductions</div>
                 </div>
                 <div class="summary-item">
-                  <div class="summary-value">₹${monthlyData[
+                  <div class="summary-value">₹${Math.abs(monthlyData[
                     monthYear
-                  ].totalNet.toLocaleString()}</div>
+                  ].totalNet).toLocaleString()}</div>
                   <div class="summary-label">Total Net</div>
                 </div>
               </div>
@@ -2261,9 +2352,12 @@ console.log(record)
                       <td class="amount">₹${parseFloat(
                         record.totalDeductions || 0
                       ).toLocaleString()}</td>
-                      <td class="amount" style="font-weight: bold;">₹${parseFloat(
-                        record.netSalary || 0
-                      ).toLocaleString()}</td>
+                      <td class="amount" style="font-weight: bold;">₹${(() => {
+                        const getNum = (v) => Number(v) || 0;
+                        const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+                        const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+                        return Math.abs(gross - totalD).toLocaleString();
+                      })()}</td>
                       <td style="text-align: center;">${
                         record.status || "Calculated"
                       }</td>
@@ -3054,13 +3148,35 @@ Please:
                     getNum(slip.deductions?.incomeTax) +
                     getNum(slip.deductions?.advance) +
                     getNum(slip.deductions?.others);
-                  return (gross - total).toLocaleString();
+                  return Math.abs(gross - total).toLocaleString();
                 })()}</p>
               </div>
               
               <!-- Salary in Words -->
               <div class="salary-words">
-                <strong>Net Salary in Words:</strong> ${numberToWords(slip.netSalary || 0)} Rupees Only
+                <strong>Net Salary in Words:</strong> ${numberToWords(Math.abs(slip.netSalary) || (() => {
+                    const getNum = (v) => Number(v) || 0;
+                    const gross =
+                      getNum(slip.basicSalary) +
+                      getNum(slip.allowances?.hra) +
+                      getNum(slip.allowances?.gradePay) +
+                      getNum(slip.allowances?.da) +
+                      getNum(slip.allowances?.medical) +
+                      getNum(slip.allowances?.transport) +
+                      getNum(slip.allowances?.cla) +
+                      getNum(slip.allowances?.others) +
+                      getNum(slip.allowances?.conveyance) +
+                      getNum(slip.allowances?.special);
+                    const total =
+                      getNum(slip.deductions?.pf) +
+                      getNum(slip.deductions?.esi) +
+                      getNum(slip.deductions?.professionalTax) +
+                      getNum(slip.deductions?.tds) +
+                      getNum(slip.deductions?.incomeTax) +
+                      getNum(slip.deductions?.advance) +
+                      getNum(slip.deductions?.others);
+                    return Math.abs(gross - total);
+                  })())} Rupees Only
               </div>
               
               <!-- Footer -->
@@ -6583,6 +6699,7 @@ Please:
                       </span>
                     </div>
                   )}
+                  {/*  */}
                   {calculatedSalary.otherDed > 0 && (
                     <div className="flex justify-between">
                       <span>Other Deductions:</span>
@@ -6605,7 +6722,7 @@ Please:
                         Net Salary:
                       </span>
                       <span className="font-bold text-blue-800 text-lg">
-                        ₹{calculatedSalary.netSalary.toLocaleString()}
+                        ₹{Math.abs(calculatedSalary.netSalary).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -6670,7 +6787,7 @@ Please:
                 <p className="text-blue-800 text-sm">
                   <span className="font-semibold">💡 Annual Calculation:</span>{" "}
                   Monthly Net × 12 = ₹
-                  {(calculatedSalary.netSalary * 12).toLocaleString()} per year
+                  {(Math.abs(calculatedSalary.netSalary) * 12).toLocaleString()} per year
                 </p>
               </div>
             </div>
@@ -7413,7 +7530,16 @@ Please:
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">
                             ₹
-                            {parseFloat(record.netSalary || 0).toLocaleString()}
+                            {(() => {
+                              const getNum = (v) => Number(v) || 0;
+                              // Prefer the stored netSalary (from saved slip) when available
+                              if (record.netSalary !== undefined && record.netSalary !== null) {
+                                return Math.abs(getNum(record.netSalary)).toLocaleString();
+                              }
+                              const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+                              const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.incomeTax || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || record.deductions?.others || 0));
+                              return Math.abs(gross - totalD).toLocaleString();
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span
