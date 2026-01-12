@@ -204,28 +204,42 @@ router.post("/", async (req, res) => {
       semesterId = new mongoose.Types.ObjectId();
     }
 
-    // Prepare attendance records
-    const records = allStudents.map((student) => ({
+    // Prepare attendance records - only for selected students
+    const { status = "present" } = req.body; // Get status from request, default to "present"
+    
+    // Filter only selected students
+    const studentsToMark = allStudents.filter(student => 
+      selectedStudents.includes(student._id.toString())
+    );
+    
+    if (studentsToMark.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No students selected for attendance marking"
+      });
+    }
+    
+    const records = studentsToMark.map((student) => ({
       student: student._id,
+      studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
       subject: adminSubject._id,
       faculty: faculty._id,
       date: today,
-      status: selectedStudents.includes(student._id.toString()) ? "present" : "absent",
+      status: status,
       semester: semesterId,
       department: departmentId,
     }));
 
     await Attendance.insertMany(records);
     
-    console.log("[MarkAttendance] Attendance marked successfully for", records.length, "students");
+    console.log("[MarkAttendance] Attendance marked successfully for", records.length, "students with status:", status);
 
     res.json({ 
       success: true, 
-      message: "Attendance marked for all students.",
+      message: `Attendance marked for ${records.length} selected students.`,
       data: {
-        totalStudents: allStudents.length,
-        presentStudents: selectedStudents.length,
-        absentStudents: allStudents.length - selectedStudents.length,
+        markedStudents: records.length,
+        status: status,
         subject: {
           name: adminSubject.name,
           department: adminSubject.department?.name || adminSubject.department,

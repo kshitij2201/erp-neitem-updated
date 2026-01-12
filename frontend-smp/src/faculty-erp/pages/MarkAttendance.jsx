@@ -73,6 +73,37 @@ export default function MarkAttendance() {
     return "N/A";
   };
 
+  // Format date as DD/MM/YYYY or return "N/A"
+  const formatDateDMY = (dateInput) => {
+    if (!dateInput) return "N/A";
+    const d = new Date(dateInput);
+    if (Number.isNaN(d.getTime())) return "N/A";
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  // Retry helper for axios requests: retries on network errors and timeouts
+  const retryAxiosRequest = async (fn, retries = 2, delay = 1000) => {
+    let attempt = 0;
+    while (attempt <= retries) {
+      try {
+        return await fn();
+      } catch (err) {
+        const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'));
+        const isNetwork = !err.response;
+        attempt += 1;
+        if (attempt > retries || (!isTimeout && !isNetwork)) {
+          throw err;
+        }
+        console.warn(`Request failed (attempt ${attempt}) - retrying in ${delay}ms`, err.message || err);
+        // exponential backoff
+        await new Promise((res) => setTimeout(res, delay * attempt));
+      }
+    }
+  };
+
   const [subjects, setSubjects] = useState([]);
   const [expandedSubject, setExpandedSubject] = useState("");
   const [students, setStudents] = useState([]);
@@ -82,6 +113,8 @@ export default function MarkAttendance() {
   const [error, setError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState({});
+  // Records for the selected date (today or selectedDate); used in edit/update flows
+  const [todayRecords, setTodayRecords] = useState([]);
   const [studentNotes, setStudentNotes] = useState({});
   const [subjectDetails, setSubjectDetails] = useState(null);
   const [loadingSubjectDetails, setLoadingSubjectDetails] = useState(false);
@@ -110,6 +143,8 @@ export default function MarkAttendance() {
   const [editMode, setEditMode] = useState(false);
   const [existingAttendance, setExistingAttendance] = useState({});
   const [loadingExistingAttendance, setLoadingExistingAttendance] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [chartRefreshTrigger, setChartRefreshTrigger] = useState(0);
 
   const logsRef = useRef(null);
 
@@ -118,7 +153,7 @@ export default function MarkAttendance() {
     fetchSubjects();
   }, []);
 
-  // Load students and stats when subject is expanded
+  // Load students and stats when subject is expanded or date changes
   useEffect(() => {
     if (expandedSubject) {
       fetchSubjectDetails(expandedSubject);
@@ -126,7 +161,7 @@ export default function MarkAttendance() {
       checkTodayAttendance(expandedSubject);
       calculateMonthlyClassAttendance(expandedSubject);
     }
-  }, [expandedSubject]);
+  }, [expandedSubject, selectedDate]);
 
   // Function to fetch subject details automatically
   const fetchSubjectDetails = async (subjectId) => {
@@ -155,7 +190,7 @@ export default function MarkAttendance() {
     }
   };
 
-  // Function to check if attendance is already marked for today
+  // Function to check if attendance is already marked for selected date
   const checkTodayAttendance = async (subjectId) => {
     try {
       setCheckingTodayAttendance(true);
@@ -163,7 +198,7 @@ export default function MarkAttendance() {
       const userData = JSON.parse(userDataStr);
       const employeeId = userData.employeeId;
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = selectedDate;
 
       const params = {
         facultyId: employeeId,
@@ -171,7 +206,7 @@ export default function MarkAttendance() {
         type: "day",
         date: today,
         page: 1,
-        limit: 1000, // Get all students' attendance for today
+        limit: 1000, // Get all students' attendance for selected date
       };
 
       const response = await api.get("/faculty/attendance/query", { params });
@@ -302,30 +337,44 @@ export default function MarkAttendance() {
     const currentStudentIds = students.map(student => student._id);
     console.log("Filtering attendance for students:", currentStudentIds); // Debug log
 
+    // For week, month, and range queries, fetch all data without pagination limit
+    const shouldFetchAll = queryType === "week" || queryType === "month" || queryType === "range" || queryType === "day";
+
     let params = {
       facultyId: employeeId,
       subjectId: expandedSubject,
       type: queryType,
       page: 1,
-      limit: entriesPerPage,
+      limit: shouldFetchAll ? 10000 : entriesPerPage, // Use large limit for aggregate queries
       studentIds: currentStudentIds.join(','), // Add student IDs filter
     };
     if (queryType === "day") params.date = queryDate;
-    if (queryType === "week") params.from = queryFrom;
-    if (queryType === "week") params.to = queryTo;
+    if (queryType === "week") {
+      // normalize week dates to YYYY-MM-DD if provided
+      params.from = queryFrom ? new Date(queryFrom).toISOString().slice(0,10) : queryFrom;
+      params.to = queryTo ? new Date(queryTo).toISOString().slice(0,10) : queryTo;
+    }
     if (queryType === "month") {
       params.month = queryMonth;
       params.year = queryYear;
     }
     if (queryType === "range") {
-      params.from = queryFrom;
-      params.to = queryTo;
+      // validate range inputs
+      if (!queryFrom || !queryTo) {
+        alert("Please provide both From and To dates for Custom Range.");
+        setFilterLoading(false);
+        return;
+      }
+      if (new Date(queryFrom) > new Date(queryTo)) {
+        alert("Start date cannot be after End date.");
+        setFilterLoading(false);
+        return;
+      }
+      params.from = new Date(queryFrom).toISOString().slice(0,10);
+      params.to = new Date(queryTo).toISOString().slice(0,10);
     }
 
-    // For day filter, fetch all records without pagination
-    if (queryType === "day") {
-      params.limit = 10000;
-    }
+    // Remove the day filter limit override since we're handling it above now
 
     try {
       console.log("Sending attendance query with params:", params); // Debug log
@@ -487,16 +536,16 @@ export default function MarkAttendance() {
       };
       if (queryType === "day") params.date = queryDate;
       if (queryType === "week") {
-        params.from = queryFrom;
-        params.to = queryTo;
+        params.from = queryFrom ? new Date(queryFrom).toISOString().slice(0,10) : queryFrom;
+        params.to = queryTo ? new Date(queryTo).toISOString().slice(0,10) : queryTo;
       }
       if (queryType === "month") {
         params.month = queryMonth;
         params.year = queryYear;
       }
       if (queryType === "range") {
-        params.from = queryFrom;
-        params.to = queryTo;
+        params.from = queryFrom ? new Date(queryFrom).toISOString().slice(0,10) : queryFrom;
+        params.to = queryTo ? new Date(queryTo).toISOString().slice(0,10) : queryTo;
       }
 
       try {
@@ -642,16 +691,16 @@ export default function MarkAttendance() {
       };
       if (queryType === "day") params.date = queryDate;
       if (queryType === "week") {
-        params.from = queryFrom;
-        params.to = queryTo;
+        params.from = queryFrom ? new Date(queryFrom).toISOString().slice(0,10) : queryFrom;
+        params.to = queryTo ? new Date(queryTo).toISOString().slice(0,10) : queryTo;
       }
       if (queryType === "month") {
         params.month = queryMonth;
         params.year = queryYear;
       }
       if (queryType === "range") {
-        params.from = queryFrom;
-        params.to = queryTo;
+        params.from = queryFrom ? new Date(queryFrom).toISOString().slice(0,10) : queryFrom;
+        params.to = queryTo ? new Date(queryTo).toISOString().slice(0,10) : queryTo;
       }
 
       try {
@@ -852,6 +901,13 @@ export default function MarkAttendance() {
   const fetchAttendanceStats = async (studentsData, subjectId) => {
     try {
       const token = localStorage.getItem("authToken");
+
+      if (!token) {
+        console.warn("No auth token found; skipping attendance stats requests (will show zeros).");
+        setAttendanceStats({});
+        return;
+      }
+
       const statsPromises = studentsData.map(async (student) => {
         try {
           // Get current month and year for monthly stats
@@ -872,15 +928,21 @@ export default function MarkAttendance() {
             }),
           ]);
 
-          return {
-            studentId: student._id,
+          console.log(`Stats for student ${student._id}:`, {
             monthly: monthlyResponse.data,
             overall: overallResponse.data,
+          });
+
+          return {
+            studentId: student._id,
+            monthly: monthlyResponse.data?.data || monthlyResponse.data,
+            overall: overallResponse.data?.data || overallResponse.data,
           };
         } catch (error) {
           console.error(
             `Error fetching stats for student ${student._id}:`,
-            error
+            error.response?.status,
+            error.response?.data || error.message
           );
           return {
             studentId: student._id,
@@ -905,7 +967,7 @@ export default function MarkAttendance() {
 
       setAttendanceStats(statsObject);
     } catch (error) {
-      console.error("Error fetching attendance stats:", error);
+      console.error("Error fetching attendance stats:", error.response?.status, error.response?.data || error.message);
       setAttendanceStats({});
     }
   };
@@ -925,63 +987,69 @@ export default function MarkAttendance() {
       const userData = JSON.parse(userDataStr);
       const facultyId = userData.employeeId;
 
-      // If in edit mode, update each student individually
+      // If in edit mode, update only selected students
       if (editMode) {
-        console.log("Batch marking in edit mode - updating individual records");
+        console.log("Batch marking in edit mode - updating only selected students");
         
-        // Update all students individually
-        const updatePromises = students.map(async (student) => {
-          const isPresent = status === "present" 
-            ? selectedStudents.includes(student._id)
-            : !selectedStudents.includes(student._id);
-          
-          const newStatus = isPresent ? "present" : "absent";
+        // Update only selected students
+        const updatePromises = selectedStudents.map(async (studentId) => {
+          const student = students.find((s) => s._id === studentId);
+          if (!student) return null;
           
           // Check if student has existing attendance record
-          const existingRecord = existingAttendance[student._id];
+          const existingRecord = existingAttendance[studentId];
           
           if (existingRecord) {
             // Update existing record only if status changed
-            if (existingRecord.status !== newStatus) {
-              return api.put(
-                `/attendance/${existingRecord.id}`,
-                { status: newStatus },
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
+            if (existingRecord.status !== status) {
+              const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+              return retryAxiosRequest(() => api.put(`/attendance/${existingRecord.id}`, { status: status }, requestOptions), 2, 1000);
             }
           } else {
             // Create new record for students who don't have attendance yet
-            return api.post(
-              "/attendance",
-              {
-                student: student._id,
-                subject: expandedSubject,
-                faculty: facultyId,
-                status: newStatus,
-                date: new Date().toISOString().split("T")[0],
-                semester: student.semester?._id || student.semester,
-                department: student.department?._id || student.department,
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const payload = {
+              student: studentId,
+              studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+              subject: expandedSubject,
+              faculty: facultyId,
+              status: status,
+              date: selectedDate,
+              semester: student.semester?._id || student.semester,
+              department: student.department?._id || student.department,
+            };
+
+            // Basic client-side validation to avoid 400s from malformed requests
+            const required = ['student', 'subject', 'faculty', 'status', 'date'];
+            const missing = required.filter((k) => !payload[k]);
+            if (missing.length > 0) {
+              console.error('Skipping create - missing attendance fields for student', studentId, missing, payload);
+              // reject promise so outer Promise.all will fail and be handled by outer catch
+              return Promise.reject({ message: `Missing required fields: ${missing.join(', ')}`, validation: true, payload });
+            }
+
+            console.log('Creating attendance (batch) for student', studentId, payload);
+            const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+            return retryAxiosRequest(() => api.post('/attendance', payload, requestOptions), 2, 1000);
           }
         });
 
         await Promise.all(updatePromises.filter(p => p)); // Filter out undefined promises
 
-        // Calculate overall class attendance percentage
-        const totalStudents = students.length;
-        const presentCount =
-          status === "present"
-            ? selectedStudents.length
-            : totalStudents - selectedStudents.length;
+        // Count current present students
+        const presentCount = Object.values(existingAttendance).filter(
+          record => record.status === "present"
+        ).length + (status === "present" ? selectedStudents.length : 0);
+        
+        const totalMarkedStudents = Object.keys(existingAttendance).length + 
+          selectedStudents.filter(id => !existingAttendance[id]).length;
+        
         const classAttendancePercent =
-          totalStudents > 0
-            ? Math.round((presentCount / totalStudents) * 100)
+          totalMarkedStudents > 0
+            ? Math.round((presentCount / totalMarkedStudents) * 100)
             : 0;
 
         alert(
-          `Attendance updated successfully! Today's Class Attendance: ${classAttendancePercent}%`
+          `Attendance updated successfully for ${selectedStudents.length} student(s) on ${new Date(selectedDate).toLocaleDateString()}!`
         );
         setSelectedStudents([]);
         setTodayClassAttendance(classAttendancePercent);
@@ -990,67 +1058,57 @@ export default function MarkAttendance() {
         await checkTodayAttendance(expandedSubject);
         fetchAttendanceStats(students, expandedSubject);
         calculateMonthlyClassAttendance(expandedSubject);
+        setChartRefreshTrigger(prev => prev + 1);
         
         setIsUpdating(false);
         return;
       }
 
       // Original batch marking logic for first-time marking
-      // For the backend API, if status is "present", we send the selected students
-      // If status is "absent", we need to send all other students as selected (inverse logic)
-      let studentsToMarkPresent = [];
-
-      if (status === "present") {
-        studentsToMarkPresent = selectedStudents;
-      } else {
-        // For absent, mark all non-selected students as present (backend marks others as absent)
-        studentsToMarkPresent = students
-          .filter((student) => !selectedStudents.includes(student._id))
-          .map((student) => student._id);
-      }
-
-      // Calculate overall class attendance percentage
-      const totalStudents = students.length;
-      const presentCount =
-        status === "present"
-          ? selectedStudents.length
-          : totalStudents - selectedStudents.length;
-      const classAttendancePercent =
-        totalStudents > 0
-          ? Math.round((presentCount / totalStudents) * 100)
-          : 0;
-
+      // Only mark attendance for selected students
       const attendanceData = {
         subjectId: expandedSubject,
         facultyId: facultyId,
-        selectedStudents: studentsToMarkPresent,
-        date: new Date().toISOString().split("T")[0],
+        selectedStudents: selectedStudents,
+        status: status, // Pass the status to backend
+        date: selectedDate,
       };
 
-      const response = await api.post(
-        "/faculty/markattendance",
-        attendanceData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+      // Make the request with a higher timeout and retry on network/timeouts
+      const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+      let response;
+      try {
+        response = await retryAxiosRequest(() => api.post("/faculty/markattendance", attendanceData, requestOptions), 2, 1000);
+      } catch (reqErr) {
+        console.error("Attendance mark request failed after retries:", reqErr.response?.status, reqErr.response?.data || reqErr.message);
+        if (reqErr.code === 'ECONNABORTED' || (reqErr.message && reqErr.message.toLowerCase().includes('timeout'))) {
+          alert("Request timed out. The server may be slow or unreachable. Please try again.");
+        } else if (!reqErr.response) {
+          alert("Network error while marking attendance. Check your connection and try again.");
+        } else {
+          alert(reqErr.response?.data?.message || "Failed to mark attendance. Please try again.");
         }
-      );
+
+        setIsUpdating(false);
+        return;
+      }
 
       if (response.data.success) {
         alert(
-          `Attendance marked successfully! Today's Class Attendance: ${classAttendancePercent}%`
+          `Attendance marked successfully for ${selectedStudents.length} student(s) as ${status} on ${new Date(selectedDate).toLocaleDateString()}!`
         );
         setSelectedStudents([]);
         setAttendanceMarkedToday(true);
-        setTodayClassAttendance(classAttendancePercent);
         
         // Reload attendance to enter edit mode
         await checkTodayAttendance(expandedSubject);
         fetchAttendanceStats(students, expandedSubject);
         calculateMonthlyClassAttendance(expandedSubject);
+        setChartRefreshTrigger(prev => prev + 1);
         try {
           // Notify other parts of the app (e.g., Profile page) that attendance changed
           const eventDetail = {
-            studentIds: studentsToMarkPresent,
+            studentIds: selectedStudents,
             subjectId: expandedSubject,
             date: attendanceData.date,
           };
@@ -1062,7 +1120,7 @@ export default function MarkAttendance() {
         // Check if attendance was already marked
         if (response.data.alreadyMarked) {
           alert(
-            "Attendance has already been marked for today for this subject!"
+            `Attendance has already been marked for ${new Date(selectedDate).toLocaleDateString()} for this subject!`
           );
           setAttendanceMarkedToday(true);
           // Reload to enter edit mode
@@ -1073,15 +1131,24 @@ export default function MarkAttendance() {
       }
     } catch (err) {
       console.error("Error marking attendance:", err);
+      console.error("Error marking attendance response:", err.response?.status, err.response?.data || err.message);
+
+      // Timeout or network checks
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'));
+      const isNetwork = !err.response;
 
       // Check if the error is due to attendance already marked
       if (err.response?.status === 400 && err.response?.data?.alreadyMarked) {
-        alert("Attendance has already been marked for today for this subject!");
+        alert(`Attendance has already been marked for ${new Date(selectedDate).toLocaleDateString()} for this subject!`);
         setAttendanceMarkedToday(true);
         // Reload to enter edit mode
         await checkTodayAttendance(expandedSubject);
+      } else if (isTimeout) {
+        alert("Request timed out. The server may be slow or unreachable. Please try again.");
+      } else if (isNetwork) {
+        alert("Network error while marking attendance. Please check your connection and try again.");
       } else {
-        alert("Failed to mark attendance. Please try again.");
+        alert(err.response?.data?.message || "Failed to mark attendance. Please try again.");
       }
     } finally {
       setIsUpdating(false);
@@ -1095,7 +1162,7 @@ export default function MarkAttendance() {
       const userDataStr = localStorage.getItem("user");
       const userData = JSON.parse(userDataStr);
       const facultyId = userData.employeeId;
-      const today = new Date().toISOString().split("T")[0];
+      const today = selectedDate;
 
       const existing = existingAttendance[studentId];
       
@@ -1106,23 +1173,25 @@ export default function MarkAttendance() {
       if (existing) {
         // Update existing record
         console.log("Updating attendance record:", existing.id);
-        const response = await api.put(
-          `/attendance/${existing.id}`,
-          { status: status },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        console.log("Update response:", response.data);
-        
-        // Immediately update the existingAttendance state
-        setExistingAttendance(prev => ({
-          ...prev,
-          [studentId]: {
-            ...prev[studentId],
-            status: status
-          }
-        }));
-        
-        alert(`Attendance updated to ${status} successfully!`);
+        const requestOptions = { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 };
+        try {
+          const response = await retryAxiosRequest(() => api.put(`/attendance/${existing.id}`, { status: status }, requestOptions), 2, 1000);
+          console.log("Update response:", response.data);
+
+          // Immediately update the existingAttendance state
+          setExistingAttendance(prev => ({
+            ...prev,
+            [studentId]: {
+              ...prev[studentId],
+              status: status
+            }
+          }));
+
+          alert(`Attendance updated to ${status} successfully!`);
+        } catch (err) {
+          console.error('Failed to update attendance record:', err.response?.status, err.response?.data || err.message);
+          throw err;
+        }
       } else {
         // Create new record - Need to get semester and department from student
         console.log("Creating new attendance record");
@@ -1132,19 +1201,34 @@ export default function MarkAttendance() {
           throw new Error("Student not found");
         }
         
-        const response = await api.post(
-          "/attendance",
-          {
-            student: studentId,
-            subject: expandedSubject,
-            faculty: facultyId,
-            status: status,
-            date: today,
-            semester: student.semester?._id || student.semester,
-            department: student.department?._id || student.department,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const payload = {
+          student: studentId,
+          studentName: `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim(),
+          subject: expandedSubject,
+          faculty: facultyId,
+          status: status,
+          date: today,
+          semester: student.semester?._id || student.semester,
+          department: student.department?._id || student.department,
+        };
+
+        // Basic validation before sending
+        const required = ['student', 'subject', 'faculty', 'status', 'date'];
+        const missing = required.filter(k => !payload[k]);
+        if (missing.length > 0) {
+          console.error('Attendance create validation failed for student', studentId, 'missing:', missing, payload);
+          throw new Error(`Missing required fields: ${missing.join(', ')}`);
+        }
+
+        console.log('Creating attendance for student', studentId, payload);
+        let response;
+        try {
+          response = await retryAxiosRequest(() => api.post('/attendance', payload, { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }), 2, 1000);
+        } catch (createErr) {
+          console.error('Failed to create attendance for student', studentId, createErr.response?.status, createErr.response?.data || createErr.message);
+          // Re-throw to be caught by outer catch and show user-friendly message
+          throw createErr;
+        }
         console.log("Create response:", response.data);
         
         // Add the new record to existingAttendance state
@@ -1163,10 +1247,21 @@ export default function MarkAttendance() {
       // Refresh attendance stats (but NOT the existingAttendance state - already updated above)
       await fetchAttendanceStats(students, expandedSubject);
       await calculateMonthlyClassAttendance(expandedSubject);
+      setChartRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error("Error marking individual attendance:", err);
-      console.error("Error details:", err.response?.data);
-      alert(`Failed to mark attendance: ${err.response?.data?.message || err.message}`);
+      console.error("Error details:", err.response?.data || err.message);
+
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.toLowerCase().includes('timeout'));
+      const isNetwork = !err.response;
+
+      if (isTimeout) {
+        alert("Request timed out while marking attendance. Please try again.");
+      } else if (isNetwork) {
+        alert("Network error while marking attendance. Check your connection.");
+      } else {
+        alert(`Failed to mark attendance: ${err.response?.data?.message || err.message}`);
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -1256,71 +1351,367 @@ export default function MarkAttendance() {
       // Import xlsx library
       const XLSX = await import('xlsx');
 
-      // Prepare data for Excel based on queryType
-      let excelData;
+      // Get subject details
+      const currentSubject = subjects.find(s => s._id === expandedSubject);
+      const subjectName = currentSubject?.name || "N/A";
+      const departmentName = currentSubject?.department?.name || "N/A";
+
+      // Create array of arrays for the sheet
+      const rows = [];
+      
+      // Add professional header (3 rows)
+      rows.push(["Maitrey Educational Society's"]);
+      rows.push(["NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT"]);
+      rows.push(["Nagpur - 440023"]);
+      rows.push([]); // Empty row
+      
+      // Add Subject and Department
+      rows.push([`Subject: ${subjectName}`, `Department: ${departmentName}`]);
+      rows.push([]); // Empty row
+
       let colWidths;
 
       if (queryType === "week" || queryType === "range") {
-        excelData = filteredAttendance.map(log => ({
-          'Student Name': log.student?.firstName && log.student?.lastName
-            ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
-            : log.student?.name || log.studentId || "Unknown Student",
-          'Start Date': log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A",
-          'End Date': log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A",
-          'Present Days': `${log.presentCount || 0} / ${log.totalDays || 0}`,
-          'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
-          'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
-          'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
-          'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
-        }));
+        // Build per-date columns for the selected range (week/custom range)
+        // If from/to are not set, fall back to aggregated view
+        if (!queryFrom || !queryTo) {
+          // Fall back to previous aggregated layout (without Subject/Department/Semester columns)
+          rows.push([
+            'S.No',
+            'Student Name',
+            'Start Date',
+            'End Date',
+            'Present Days',
+            'Section'
+          ]);
 
-        colWidths = [
-          { wch: 25 }, // Student Name
-          { wch: 12 }, // Start Date
-          { wch: 12 }, // End Date
-          { wch: 15 }, // Present Days
-          { wch: 20 }, // Subject
-          { wch: 15 }, // Department
-          { wch: 10 }, // Semester
-          { wch: 8 }   // Section
-        ];
+          // Add data rows (fallback)
+          filteredAttendance.forEach((log, idx) => {
+            rows.push([
+              idx + 1,
+              log.student?.firstName && log.student?.lastName
+                ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+                : log.student?.name || log.studentId || "Unknown Student",
+              log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A",
+              log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A",
+              `${log.presentCount || 0} / ${log.totalDays || 0}`,
+              subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+            ]);
+          });
+
+          colWidths = [
+            { wch: 6 },  // S.No
+            { wch: 25 }, // Student Name
+            { wch: 12 }, // Start Date
+            { wch: 12 }, // End Date
+            { wch: 15 }, // Present Days
+            { wch: 8 }   // Section
+          ];
+        } else {
+          // Build date array from queryFrom to queryTo (inclusive)
+          const start = new Date(queryFrom);
+          const end = new Date(queryTo);
+          const dates = [];
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(new Date(d));
+          }
+
+          const dateLabels = dates.map(d => {
+            const dd = ("0" + d.getDate()).slice(-2);
+            const mm = ("0" + (d.getMonth() + 1)).slice(-2);
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+          });
+
+          // Header: S.No + Student Name + each date + Present Days
+          rows.push([
+            'S.No',
+            'Student Name',
+            ...dateLabels,
+            'Present Days'
+          ]);
+
+          // Fetch raw logs for the date range so we can show per-date P/A
+          try {
+            const userDataStr = localStorage.getItem('user');
+            const userData = JSON.parse(userDataStr || '{}');
+            const facultyId = userData.employeeId;
+
+            const params = {
+              facultyId,
+              subjectId: expandedSubject,
+              type: 'range',
+              from: queryFrom ? new Date(queryFrom).toISOString().slice(0,10) : queryFrom,
+              to: queryTo ? new Date(queryTo).toISOString().slice(0,10) : queryTo,
+              page: 1,
+              limit: 10000,
+              studentIds: students.map(s => s._id).join(',')
+            };
+
+            const res = await api.get('/faculty/attendance/query', { params });
+            const rawLogs = (res.data && res.data.success && Array.isArray(res.data.data)) ? res.data.data : [];
+
+            // Map logs by studentId and date (YYYY-MM-DD)
+            const logsByStudent = {};
+            rawLogs.forEach(rec => {
+              const sid = rec.studentId || rec.student?._id || rec.student;
+              if (!sid) return;
+              const dateKey = rec.date ? new Date(rec.date).toISOString().slice(0,10) : null;
+              if (!dateKey) return;
+              logsByStudent[sid] = logsByStudent[sid] || {};
+              logsByStudent[sid][dateKey] = rec.status; // 'present' or 'absent'
+            });
+
+            // Add a row for each enrolled student (keeps student list order)
+            const dateTotals = new Array(dates.length).fill(0);
+            let totalPresentAll = 0;
+            students.forEach((student, idx) => {
+              const sid = student._id;
+              const name = student.firstName && student.lastName
+                ? `${student.firstName} ${student.middleName || ''} ${student.lastName}`.trim()
+                : student.name || sid;
+
+              const row = [idx + 1, name];
+              let presentCount = 0;
+              dates.forEach((d, di) => {
+                const key = d.toISOString().slice(0,10);
+                const status = logsByStudent[sid] && logsByStudent[sid][key];
+                if (status === 'present') {
+                  row.push('P');
+                  presentCount++;
+                  dateTotals[di] += 1;
+                  totalPresentAll += 1;
+                } else if (status === 'absent') {
+                  row.push('A');
+                } else {
+                  row.push('-'); // Not marked
+                }
+              });
+
+              // Only include Present Days summary for per-date exports
+              row.push(`${presentCount} / ${dates.length}`);
+
+              rows.push(row);
+            });
+
+            // Totals row aligned under date columns
+            const totalsRow = ['', 'Totals', ...dateTotals.map(n => n), `${totalPresentAll} / ${dates.length * students.length}`];
+            rows.push(totalsRow);
+
+            // Column widths: S.No small, Student Name wider, each date slightly wider to fit markers
+            colWidths = [
+              { wch: 6 },  // S.No
+              { wch: 28 }, // Student Name
+              ...dates.map(() => ({ wch: 16 })), // each date
+              { wch: 18 } // Present Days
+            ];
+          } catch (fetchErr) {
+            console.error('Failed to fetch raw logs for range export, falling back to aggregated output', fetchErr);
+            // Fallback to aggregated output (without Subject/Department/Semester columns)
+            filteredAttendance.forEach(log => {
+              rows.push([
+                log.student?.firstName && log.student?.lastName
+                  ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+                  : log.student?.name || log.studentId || "Unknown Student",
+                log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A",
+                log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A",
+                `${log.presentCount || 0} / ${log.totalDays || 0}`,
+                subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+              ]);
+            });
+
+            colWidths = [
+              { wch: 25 }, // Student Name
+              { wch: 12 }, // Start Date
+              { wch: 12 }, // End Date
+              { wch: 15 }, // Present Days
+              { wch: 8 }   // Section
+            ];
+          }
+        }
       } else if (queryType === "month") {
-        excelData = filteredAttendance.map(log => ({
-          'Student Name': log.student?.firstName && log.student?.lastName
-            ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
-            : log.student?.name || log.studentId || "Unknown Student",
-          'Month': log.month && log.year ? `${new Date(log.year, log.month - 1).toLocaleString("default", { month: "long" })} ${log.year}` : "N/A",
-          'Present Days': `${log.presentCount || 0} / ${log.totalDays || 0}`,
-          'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
-          'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
-          'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
-          'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
-        }));
+        // Month per-date export: build dates for selected month and show per-date Present/Absent/Not Marked
+        if (!queryMonth || !queryYear) {
+          // Fallback aggregated month layout (without Subject/Department/Semester per-row columns)
+          rows.push([
+            'S.No',
+            'Student Name',
+            'Month',
+            'Present Days',
+            'Section'
+          ]);
 
-        colWidths = [
-          { wch: 25 }, // Student Name
-          { wch: 15 }, // Month
-          { wch: 15 }, // Present Days
-          { wch: 20 }, // Subject
-          { wch: 15 }, // Department
-          { wch: 10 }, // Semester
-          { wch: 8 }   // Section
-        ];
+          filteredAttendance.forEach((log, idx) => {
+            rows.push([
+              idx + 1,
+              log.student?.firstName && log.student?.lastName
+                ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+                : log.student?.name || log.studentId || "Unknown Student",
+              log.month && log.year ? `${new Date(log.year, log.month - 1).toLocaleString("default", { month: "long" })} ${log.year}` : "N/A",
+              `${log.presentCount || 0} / ${log.totalDays || 0}`,
+              subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+            ]);
+          });
+
+          colWidths = [
+            { wch: 6 },  // S.No
+            { wch: 25 }, // Student Name
+            { wch: 15 }, // Month
+            { wch: 15 }, // Present Days
+            { wch: 8 }   // Section
+          ];
+        } else {
+          // Build date array for the month
+          const start = new Date(queryYear, queryMonth - 1, 1);
+          const end = new Date(queryYear, queryMonth, 0);
+          const dates = [];
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(new Date(d));
+          }
+
+          const dateLabels = dates.map(d => {
+            const dd = ("0" + d.getDate()).slice(-2);
+            const mm = ("0" + (d.getMonth() + 1)).slice(-2);
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+          });
+
+          // Header: S.No + Student Name + each date + Present Days
+          rows.push([
+            'S.No',
+            'Student Name',
+            ...dateLabels,
+            'Present Days'
+          ]);
+
+          // Fetch raw logs for the month (as a range)
+          try {
+            const userDataStr = localStorage.getItem('user');
+            const userData = JSON.parse(userDataStr || '{}');
+            const facultyId = userData.employeeId;
+
+            const params = {
+              facultyId,
+              subjectId: expandedSubject,
+              type: 'range',
+              from: start.toISOString().slice(0,10),
+              to: end.toISOString().slice(0,10),
+              page: 1,
+              limit: 10000,
+              studentIds: students.map(s => s._id).join(',')
+            };
+
+            const res = await api.get('/faculty/attendance/query', { params });
+            const rawLogs = (res.data && res.data.success && Array.isArray(res.data.data)) ? res.data.data : [];
+
+            // Map logs by studentId and date (YYYY-MM-DD)
+            const logsByStudent = {};
+            rawLogs.forEach(rec => {
+              const sid = rec.studentId || rec.student?._id || rec.student;
+              if (!sid) return;
+              const dateKey = rec.date ? new Date(rec.date).toISOString().slice(0,10) : null;
+              if (!dateKey) return;
+              logsByStudent[sid] = logsByStudent[sid] || {};
+              logsByStudent[sid][dateKey] = rec.status; // 'present' or 'absent'
+            });
+
+            // Add a row for each enrolled student (keeps student list order)
+            const dateTotals = new Array(dates.length).fill(0);
+            let totalPresentAll = 0;
+            students.forEach((student, idx) => {
+              const sid = student._id;
+              const name = student.firstName && student.lastName
+                ? `${student.firstName} ${student.middleName || ''} ${student.lastName}`.trim()
+                : student.name || sid;
+
+              const row = [idx + 1, name];
+              let presentCount = 0;
+              dates.forEach((d, di) => {
+                const key = d.toISOString().slice(0,10);
+                const status = logsByStudent[sid] && logsByStudent[sid][key];
+                if (status === 'present') {
+                  row.push('P');
+                  presentCount++;
+                  dateTotals[di] += 1;
+                  totalPresentAll += 1;
+                } else if (status === 'absent') {
+                  row.push('A');
+                } else {
+                  row.push('-'); // Not marked
+                }
+              });
+
+              // Present Days summary
+              row.push(`${presentCount} / ${dates.length}`);
+
+              rows.push(row);
+            });
+
+            // Totals row (align under date columns)
+            const totalsRow = ['', 'Totals', ...dateTotals.map(n => n), `${totalPresentAll} / ${dates.length * students.length}`];
+            rows.push(totalsRow);
+
+            // Column widths: S.No small, Student Name wider, each date slightly wider to fit markers
+            colWidths = [
+              { wch: 6 },  // S.No
+              { wch: 28 }, // Student Name
+              ...dates.map(() => ({ wch: 12 })), // each date
+              { wch: 18 } // Present Days
+            ];
+          } catch (fetchErr) {
+            console.error('Failed to fetch raw logs for month export, falling back to aggregated output', fetchErr);
+            // Fallback aggregated month layout (without Subject/Department/Semester per-row columns)
+            filteredAttendance.forEach(log => {
+              rows.push([
+                log.student?.firstName && log.student?.lastName
+                  ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+                  : log.student?.name || log.studentId || "Unknown Student",
+                log.month && log.year ? `${new Date(log.year, log.month - 1).toLocaleString("default", { month: "long" })} ${log.year}` : "N/A",
+                `${log.presentCount || 0} / ${log.totalDays || 0}`,
+                subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+              ]);
+            });
+
+            colWidths = [
+              { wch: 25 }, // Student Name
+              { wch: 15 }, // Month
+              { wch: 15 }, // Present Days
+              { wch: 8 }   // Section
+            ];
+          }
+        }
       } else {
         // Default format for day
-        excelData = filteredAttendance.map(log => ({
-          'Student Name': log.student?.firstName && log.student?.lastName
-            ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
-            : log.student?.name || log.studentId || "Unknown Student",
-          'Date': log.date ? new Date(log.date).toLocaleDateString() : "N/A",
-          'Status': log.status || "N/A",
-          'Subject': subjects.find(s => s._id === expandedSubject)?.name || "N/A",
-          'Department': subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
-          'Semester': getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
-          'Section': subjects.find(s => s._id === expandedSubject)?.section || "N/A"
-        }));
+        // Add column headers (include S.No)
+        rows.push([
+          'S.No',
+          'Student Name',
+          'Date',
+          'Status',
+          'Subject',
+          'Department',
+          'Semester',
+          'Section'
+        ]);
+
+        // Add data rows
+        filteredAttendance.forEach((log, idx) => {
+          rows.push([
+            idx + 1,
+            log.student?.firstName && log.student?.lastName
+              ? `${log.student.firstName} ${log.student.middleName || ""} ${log.student.lastName}`.trim()
+              : log.student?.name || log.studentId || "Unknown Student",
+            log.date ? new Date(log.date).toLocaleDateString() : "N/A",
+            (log.status === 'present') ? 'P' : (log.status === 'absent') ? 'A' : '-',
+            subjects.find(s => s._id === expandedSubject)?.name || "N/A",
+            subjects.find(s => s._id === expandedSubject)?.department?.name || "N/A",
+            getSemester(subjects.find(s => s._id === expandedSubject)) || "N/A",
+            subjects.find(s => s._id === expandedSubject)?.section || "N/A"
+          ]);
+        });
 
         colWidths = [
+          { wch: 6 },  // S.No
           { wch: 25 }, // Student Name
           { wch: 12 }, // Date
           { wch: 10 }, // Status
@@ -1331,12 +1722,109 @@ export default function MarkAttendance() {
         ];
       }
 
-      // Create workbook and worksheet
+      // Create workbook and worksheet from array of arrays
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      const numCols = colWidths
+        ? colWidths.length
+        : rows.filter(r => Array.isArray(r)).reduce((max, r) => Math.max(max, r.length), 7);
+
+      // Merge the main top header rows across all columns for a centered title (do NOT include the sheet header row)
+      ws['!merges'] = ws['!merges'] || [];
+      ws['!merges'].push(
+        { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: numCols - 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: numCols - 1 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: numCols - 1 } }
+      );
+
+      // Helper to set a cell value and style
+      const setCell = (r, c, value) => {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        ws[ref] = { t: 's', v: value };
+      };
+
+      // Apply simple styling where supported (font size, bold, center)
+      const setCellStyle = (r, c, style) => {
+        const cellRef = XLSX.utils.encode_cell({ r, c });
+        if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
+        ws[cellRef].s = { ...(ws[cellRef].s || {}), ...style };
+      };
+
+      // Put header text into the first column of merged ranges (top-left of each merge)
+      setCell(0, 0, "Maitrey Educational Society's");
+      setCell(1, 0, 'NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT');
+      setCell(2, 0, 'Nagpur - 440023');
+      // Include Semester in the merged header instead of repeating per-row
+      const semesterLabel = getSemester(currentSubject) || 'N/A';
+      setCell(4, 0, `Subject: ${subjectName} | Department: ${departmentName} | Semester: ${semesterLabel}`);
+
+      // Apply bold and center styling to header rows
+      setCellStyle(0, 0, { font: { sz: 12, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
+      setCellStyle(1, 0, { font: { sz: 14, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
+      setCellStyle(2, 0, { font: { sz: 11, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
+      setCellStyle(4, 0, { font: { sz: 11, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
+
+      // Ensure the top header rows are centered across all columns for visual centering on-sheet
+      [0, 1, 2, 4].forEach(r => {
+        for (let c = 0; c < numCols; c++) {
+          setCellStyle(r, c, { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center' } });
+        }
+      });
+
+      // Clear other cells in header rows to avoid duplicate visible text
+      [0, 1, 2, 4].forEach((r) => {
+        for (let c = 1; c < numCols; c++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          ws[ref] = { t: 's', v: '' };
+        }
+      });
+
+      // Also set page margins so the centered header remains centered when printing
+      ws['!margins'] = {
+        left: 0.9,
+        right: 0.5,
+        top: 0.75,
+        bottom: 0.75,
+        header: 0.3,
+        footer: 0.3
+      };
+
+      // Center column header row (if present)
+      let headerRowIndex = rows.findIndex(r => Array.isArray(r) && (r.includes('Student Name') || r.includes('S.No') || r.includes('Date') || r.includes('Month')));
+      if (headerRowIndex !== -1) {
+        for (let c = 0; c < numCols; c++) {
+          setCellStyle(headerRowIndex, c, { font: { bold: true }, alignment: { horizontal: 'center' } });
+        }
+      }
+
+      // Style the Totals row (if present) - bold and center
+      const totalsRowIndex = rows.findIndex(r => Array.isArray(r) && r.includes('Totals'));
+      if (totalsRowIndex !== -1) {
+        for (let c = 0; c < numCols; c++) {
+          setCellStyle(totalsRowIndex, c, { font: { bold: true }, alignment: { horizontal: 'center' } });
+        }
+      }
 
       // Set column widths
       ws['!cols'] = colWidths;
+
+      // Ensure header prints centered on the page and looks balanced
+      ws['!pageSetup'] = {
+        orientation: 'portrait',
+        paperSize: 9,
+        fitToPage: true,
+        horizontalCentered: true,
+        verticalCentered: true
+      };
+
+      // Increase header row heights for better visual centering
+      ws['!rows'] = ws['!rows'] || [];
+      ws['!rows'][0] = { hpt: 18 }; // Title
+      ws['!rows'][1] = { hpt: 22 }; // Institute name
+      ws['!rows'][2] = { hpt: 14 }; // Address
+      ws['!rows'][4] = { hpt: 14 }; // Subject/Department row
 
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
@@ -1598,9 +2086,9 @@ export default function MarkAttendance() {
         {/* Student List and Attendance Marking */}
         {expandedSubject && (
           <div className="bg-white rounded-2xl shadow-xl border border-blue-100 p-6 mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 mt-">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2 ml-23">
                   <Users className="h-6 w-6 text-green-600" />
                   Students & Attendance
                 </h2>
@@ -1634,33 +2122,47 @@ export default function MarkAttendance() {
                 ) : null}
               </div>
 
-              {/* Today's Attendance Status */}
+              {/* Date Selector for Attendance */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Select Date for Attendance
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  className="px-4 py-2 border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-800 font-medium"
+                />
+              </div>
+
+              {/* Date Attendance Status */}
               {checkingTodayAttendance ? (
                 <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
                   <span className="text-blue-700 text-sm">
-                    Checking today's attendance...
+                    Checking attendance for {new Date(selectedDate).toLocaleDateString()}...
                   </span>
                 </div>
               ) : attendanceMarkedToday ? (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                  <div className="flex items-center gap-2 px-4 py-3  ">
+                    {/* <CheckCircle className="h-5 w-5 text-blue-600" /> */}
                     <div>
-                      <span className="text-blue-800 font-semibold block">
-                        📝 Edit Mode - Attendance exists for today
+                      {/* <span className="text-blue-800 font-semibold block">
+                        📝 Edit Mode - Attendance exists for {new Date(selectedDate).toLocaleDateString()}
                       </span>
                       <span className="text-blue-600 text-xs">
                         You can update attendance for any student
-                      </span>
+                      </span> */}
                     </div>
                   </div>
                   {todayClassAttendance !== null && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                      <Users className="h-5 w-5 text-blue-600" />
-                      <span className="text-blue-700 font-medium">
-                        Today's Class Attendance: {todayClassAttendance}%
-                      </span>
+                    <div className="flex items-center gap-2 px-4 py-2  rounded-lg">
+                      {/* <Users className="h-5 w-5 text-blue-600" /> */}
+                      {/* <span className="text-blue-700 font-medium">
+                        Class Attendance for {new Date(selectedDate).toLocaleDateString()}: {todayClassAttendance}%
+                      </span> */}
                     </div>
                   )}
                   {monthlyAttendanceLoading ? (
@@ -1672,22 +2174,22 @@ export default function MarkAttendance() {
                     </div>
                   ) : (
                     monthlyClassAttendance !== null && (
-                      <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
-                        <Calendar className="h-5 w-5 text-purple-600" />
-                        <span className="text-purple-700 font-medium">
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-lg">
+                        {/* <Calendar className="h-5 w-5 text-purple-600" /> */}
+                        {/* <span className="text-purple-700 font-medium">
                           This Month's Class Attendance:{" "}
                           {monthlyClassAttendance}%
-                        </span>
+                        </span> */}
                       </div>
                     )
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <Clock className="h-5 w-5 text-yellow-600" />
-                  <span className="text-yellow-700 font-medium">
-                    Attendance not marked for today
-                  </span>
+                <div className="flex items-center gap-2 px-4 py-2    rounded-lg">
+                  {/* <Clock className="h-5 w-5 text-yellow-600" /> */}
+                  {/* <span className="text-yellow-700 font-medium">
+                    Attendance not marked for {new Date(selectedDate).toLocaleDateString()}
+                  </span> */}
                 </div>
               )}
 
@@ -1759,14 +2261,8 @@ export default function MarkAttendance() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Year/Sem/Section
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Monthly %
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Overall %
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Today's Status
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status ({new Date(selectedDate).toLocaleDateString()})
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Reason/Note
@@ -1808,86 +2304,6 @@ export default function MarkAttendance() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {student.year} / Sem {student.semester?.number || 'N/A'} / {student.section}
-                        </td>
-                        <td className="px-6 py-4">
-                          {stats.monthly ? (
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`font-semibold ${
-                                  stats.monthly.percentage >= 75
-                                    ? "text-green-600"
-                                    : "text-red-600"
-                                }`}
-                              >
-                                {stats.monthly.percentage}%
-                              </span>
-                              <div
-                                className={`h-2 w-16 rounded-full ${
-                                  stats.monthly.percentage >= 75
-                                    ? "bg-green-200"
-                                    : "bg-red-200"
-                                }`}
-                              >
-                                <div
-                                  className={`h-full rounded-full ${
-                                    stats.monthly.percentage >= 75
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
-                                  }`}
-                                  style={{
-                                    width: `${Math.min(
-                                      stats.monthly.percentage,
-                                      100
-                                    )}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ) : stats.error ? (
-                            <span className="text-red-400 text-sm">Error</span>
-                          ) : (
-                            <div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {stats.overall ? (
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`font-semibold ${
-                                  stats.overall.percentage >= 75
-                                    ? "text-green-600"
-                                    : "text-red-600"
-                                }`}
-                              >
-                                {stats.overall.percentage}%
-                              </span>
-                              <div
-                                className={`h-2 w-16 rounded-full ${
-                                  stats.overall.percentage >= 75
-                                    ? "bg-green-200"
-                                    : "bg-red-200"
-                                }`}
-                              >
-                                <div
-                                  className={`h-full rounded-full ${
-                                    stats.overall.percentage >= 75
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
-                                  }`}
-                                  style={{
-                                    width: `${Math.min(
-                                      stats.overall.percentage,
-                                      100
-                                    )}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ) : stats.error ? (
-                            <span className="text-red-400 text-sm">Error</span>
-                          ) : (
-                            <div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div>
-                          )}
                         </td>
                         <td className="px-6 py-4">
                           {existingAttendance[student._id] ? (
@@ -1978,18 +2394,18 @@ export default function MarkAttendance() {
               Attendance Analytics
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl p-4 border border-green-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-medium text-green-800">
-                      High Attendance
+                      Present Today
                     </h3>
                     <p className="text-2xl font-bold text-green-600">
                       {
                         students.filter((s) => {
-                          const stats = attendanceStats[s._id];
-                          return stats?.overall?.percentage >= 75;
+                          const attendance = existingAttendance[s._id];
+                          return attendance?.status === "present";
                         }).length
                       }
                     </p>
@@ -1998,27 +2414,43 @@ export default function MarkAttendance() {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl p-4 border border-orange-200">
+              <div className="bg-gradient-to-r from-red-100 to-pink-100 rounded-xl p-4 border border-red-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-orange-800">
-                      Low Attendance
+                    <h3 className="text-sm font-medium text-red-800">
+                      Absent Today
                     </h3>
-                    <p className="text-2xl font-bold text-orange-600">
+                    <p className="text-2xl font-bold text-red-600">
                       {
                         students.filter((s) => {
-                          const stats = attendanceStats[s._id];
-                          return (
-                            stats?.overall?.percentage < 75 &&
-                            stats?.overall?.percentage >= 0
-                          );
+                          const attendance = existingAttendance[s._id];
+                          return attendance?.status === "absent";
                         }).length
                       }
                     </p>
                   </div>
-                  <XCircle className="h-8 w-8 text-orange-600" />
+                  <XCircle className="h-8 w-8 text-red-600" />
                 </div>
               </div>
+
+              {/* <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl p-4 border border-orange-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-orange-800">
+                      Not Marked
+                    </h3>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {
+                        students.filter((s) => {
+                          const attendance = existingAttendance[s._id];
+                          return !attendance;
+                        }).length
+                      }
+                    </p>
+                  </div>
+                  <Clock className="h-8 w-8 text-orange-600" />
+                </div>
+              </div> */}
 
               <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl p-4 border border-blue-200">
                 <div className="flex items-center justify-between">
@@ -2037,16 +2469,21 @@ export default function MarkAttendance() {
 
             {/* Analytics Chart */}
             <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6">
-              <AttendanceBarChart
-                data={students.map(
-                  (student) =>
-                    attendanceStats[student._id]?.overall?.percentage || 0
-                )}
-                labels={students.map((student) =>
-                  `${student.firstName} ${student.lastName}`.trim()
-                )}
-                title="Overall Attendance % by Student"
-              />
+              {students.length > 0 && expandedSubject ? (
+                <AttendanceBarChart
+                  students={students}
+                  subjectId={expandedSubject}
+                  title="Monthly Attendance % by Student"
+                  refreshTrigger={chartRefreshTrigger}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading attendance statistics...</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2084,21 +2521,27 @@ export default function MarkAttendance() {
                 )}
 
                 {queryType === "week" && (
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryFrom}
-                      onChange={(e) => setQueryFrom(e.target.value)}
-                      placeholder="Start Date"
-                    />
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryTo}
-                      onChange={(e) => setQueryTo(e.target.value)}
-                      placeholder="End Date"
-                    />
+                  <div className="flex gap-2 items-end">
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">Start Date (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryFrom}
+                        onChange={(e) => setQueryFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">End Date (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryTo}
+                        onChange={(e) => setQueryTo(e.target.value)}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -2129,21 +2572,27 @@ export default function MarkAttendance() {
                 )}
 
                 {queryType === "range" && (
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryFrom}
-                      onChange={(e) => setQueryFrom(e.target.value)}
-                      placeholder="From"
-                    />
-                    <input
-                      type="date"
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={queryTo}
-                      onChange={(e) => setQueryTo(e.target.value)}
-                      placeholder="To"
-                    />
+                  <div className="flex gap-2 items-end">
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">From (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryFrom}
+                        onChange={(e) => setQueryFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500">To (DD/MM/YYYY)</label>
+                      <input
+                        type="date"
+                        title="DD/MM/YYYY"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={queryTo}
+                        onChange={(e) => setQueryTo(e.target.value)}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -2226,11 +2675,11 @@ export default function MarkAttendance() {
                         {queryType === "week" || queryType === "range" ? (
                           <>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.startDate ? new Date(log.startDate).toLocaleDateString() : "N/A"}
-                            </td>
+                              {formatDateDMY(log.startDate)}
+                            </td> 
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.endDate ? new Date(log.endDate).toLocaleDateString() : "N/A"}
-                            </td>
+                              {formatDateDMY(log.endDate)}
+                            </td> 
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {log.presentCount || 0} / {log.totalDays || 0}
                             </td>
@@ -2247,10 +2696,8 @@ export default function MarkAttendance() {
                         ) : (
                           <>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {log.date
-                                ? new Date(log.date).toLocaleDateString()
-                                : "N/A"}
-                            </td>
+                              {formatDateDMY(log.date)}
+                            </td>   
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
                                 className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

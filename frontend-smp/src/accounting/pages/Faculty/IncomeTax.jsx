@@ -15,6 +15,9 @@ const IncomeTax = () => {
 
   const [salaryData, setSalaryData] = useState([]);
   const [availableEmployees, setAvailableEmployees] = useState([]);
+  // Split available employees by type for filtered dropdowns
+  const [availableTeaching, setAvailableTeaching] = useState([]);
+  const [availableNonTeaching, setAvailableNonTeaching] = useState([]);
   const [taxCalculations, setTaxCalculations] = useState({
     totalEmployees: 0,
     totalGrossSalary: 0,
@@ -42,7 +45,6 @@ const IncomeTax = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const searchTimeoutRef = useRef(null);
-
   // Salary calculation states
   const [salaryCalculationType, setSalaryCalculationType] = useState("actual");
   const [staffType, setStaffType] = useState("teaching"); // teaching or non-teaching
@@ -80,6 +82,10 @@ const IncomeTax = () => {
     decidedSalary: "", // Total fixed monthly salary amount
   });
   const [calculatedSalary, setCalculatedSalary] = useState(null);
+  const [calcDebug, setCalcDebug] = useState(null); // Debug panel values for Gross/TotalDeductions/Net
+
+  // Edit mode state: set when user clicks edit on a saved record
+  const [editingSalaryId, setEditingSalaryId] = useState(null);
 
   // 6th Pay Commission Pay Scales for Teaching Staff
   const teachingPayScales = {
@@ -170,6 +176,8 @@ const IncomeTax = () => {
     const ta = parseFloat(salaryInputs.transportAllowance) || 0; // TA
     const cla = parseFloat(salaryInputs.claAllowance) || 0; // City Compensatory Allowance
     const medical = parseFloat(salaryInputs.medicalAllowance) || 0;
+    const conveyance = parseFloat(salaryInputs.conveyanceAllowance) || 0;
+    const special = parseFloat(salaryInputs.specialAllowance) || 0;
     const others = parseFloat(salaryInputs.otherAllowances) || 0;
 
     // Daily salary calculation if working days are specified
@@ -182,6 +190,8 @@ const IncomeTax = () => {
     let adjustedTA = ta;
     let adjustedCLA = cla;
     let adjustedMedical = medical;
+    let adjustedConveyance = conveyance;
+    let adjustedSpecial = special;
     let adjustedOthers = others;
     let isProRata = false;
 
@@ -194,6 +204,8 @@ const IncomeTax = () => {
       adjustedTA = ta * dailyMultiplier;
       adjustedCLA = cla * dailyMultiplier;
       adjustedMedical = medical * dailyMultiplier;
+      adjustedConveyance = conveyance * dailyMultiplier;
+      adjustedSpecial = special * dailyMultiplier;
       adjustedOthers = others * dailyMultiplier;
       isProRata = true;
     }
@@ -205,6 +217,8 @@ const IncomeTax = () => {
       adjustedTA +
       adjustedCLA +
       adjustedMedical +
+      adjustedConveyance +
+      adjustedSpecial +
       adjustedOthers;
 
     // Deductions
@@ -212,12 +226,20 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
     const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
+    const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0;
+    const insurance = parseFloat(salaryInputs.insuranceDeduction) || 0;
+    const esi = parseFloat(salaryInputs.esiDeduction) || 0;
+    const otherDed = parseFloat(salaryInputs.otherDeductions) || 0;
 
     // Apply proportional deductions if working partial days
     let adjustedTds = tds;
     let adjustedEpf = epf;
     let adjustedAdvance = advance;
     let adjustedPt = pt;
+    let adjustedLoan = loanDeduction;
+    let adjustedInsurance = insurance;
+    let adjustedEsi = esi;
+    let adjustedOtherDed = otherDed;
 
     if (workingDays > 0 && totalMonthDays > 0 && workingDays < totalMonthDays) {
       const dailyMultiplier = workingDays / totalMonthDays;
@@ -225,11 +247,22 @@ const IncomeTax = () => {
       adjustedEpf = epf * dailyMultiplier;
       adjustedAdvance = advance * dailyMultiplier;
       adjustedPt = pt * dailyMultiplier;
+      adjustedLoan = loanDeduction * dailyMultiplier;
+      adjustedInsurance = insurance * dailyMultiplier;
+      adjustedEsi = esi * dailyMultiplier;
+      adjustedOtherDed = otherDed * dailyMultiplier;
     }
 
     const totalDeductions =
-      adjustedTds + adjustedEpf + adjustedAdvance + adjustedPt;
+      // adjustedTds +
+      // adjustedEpf +
+      // adjustedAdvance +
+      // adjustedPt +
+      // adjustedInsurance +
+      adjustedEsi +
+      adjustedOtherDed;
     const netSalary = gross - totalDeductions;
+    
 
     return {
       basic,
@@ -240,20 +273,26 @@ const IncomeTax = () => {
       ta: adjustedTA,
       cla: adjustedCLA,
       medical: adjustedMedical,
+      conveyance: adjustedConveyance,
+      special: adjustedSpecial,
       others: adjustedOthers,
       gross,
       tds: adjustedTds,
       epf: adjustedEpf,
       advance: adjustedAdvance,
       pt: adjustedPt,
+      esi: adjustedEsi,
+      
+      insurance: adjustedInsurance,
+      otherDed: adjustedOtherDed,
       totalDeductions,
       netSalary,
       type: "6th Pay Commission - Teaching Staff",
       // Daily calculation details
-      fullMonthSalary: basicPlusAGP + da + hra + ta + cla + medical + others,
+      fullMonthSalary: basicPlusAGP + da + hra + ta + cla + medical + conveyance + special + others,
       perDayRate:
         workingDays > 0 && totalMonthDays > 0
-          ? (basicPlusAGP + da + hra + ta + cla + medical + others) /
+          ? (basicPlusAGP + da + hra + ta + cla + medical + conveyance + special + others) /
             totalMonthDays
           : 0,
       workingDays: workingDays || totalMonthDays,
@@ -273,11 +312,13 @@ const IncomeTax = () => {
     const hraRate = hraRates[salaryInputs.city] || 0.15;
 
     const basicPlusGrade = basic + grade;
-    const da = (basicPlusGrade * 90) / 100; // Fixed 90% DA for Non-Teaching Staff
+    const da = (basicPlusGrade * 164) / 100; // Fixed 164% DA for Non-Teaching Staff
     const hra = basicPlusGrade * hraRate;
     const ta = parseFloat(salaryInputs.transportAllowance) || 800;
     const cla = parseFloat(salaryInputs.claAllowance) || 120;
     const medical = parseFloat(salaryInputs.medicalAllowance) || 0;
+    const conveyance = parseFloat(salaryInputs.conveyanceAllowance) || 0;
+    const special = parseFloat(salaryInputs.specialAllowance) || 0;
     const others = parseFloat(salaryInputs.otherAllowances) || 0;
 
     // Daily salary calculation if working days are specified
@@ -290,6 +331,8 @@ const IncomeTax = () => {
     let adjustedTA = ta;
     let adjustedCLA = cla;
     let adjustedMedical = medical;
+    let adjustedConveyance = conveyance;
+    let adjustedSpecial = special;
     let adjustedOthers = others;
     let isProRata = false;
 
@@ -302,6 +345,8 @@ const IncomeTax = () => {
       adjustedTA = ta * dailyMultiplier;
       adjustedCLA = cla * dailyMultiplier;
       adjustedMedical = medical * dailyMultiplier;
+      adjustedConveyance = conveyance * dailyMultiplier;
+      adjustedSpecial = special * dailyMultiplier;
       adjustedOthers = others * dailyMultiplier;
       isProRata = true;
     }
@@ -313,6 +358,8 @@ const IncomeTax = () => {
       adjustedTA +
       adjustedCLA +
       adjustedMedical +
+      adjustedConveyance +
+      adjustedSpecial +
       adjustedOthers;
 
     // Deductions
@@ -320,12 +367,20 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0;
     const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0; // Manual PT entry
+    // const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0;
+    const insurance = parseFloat(salaryInputs.insuranceDeduction) || 0;
+    const esi = parseFloat(salaryInputs.esiDeduction) || 0;
+    const otherDed = parseFloat(salaryInputs.otherDeductions) || 0;
 
     // Apply proportional deductions if working partial days
     let adjustedTds = tds;
     let adjustedEpf = epf;
     let adjustedAdvance = advance;
     let adjustedPt = pt;
+    // let adjustedLoan = loanDeduction;
+    let adjustedInsurance = insurance;
+    let adjustedEsi = esi;
+    let adjustedOtherDed = otherDed;
 
     if (workingDays > 0 && totalMonthDays > 0 && workingDays < totalMonthDays) {
       const dailyMultiplier = workingDays / totalMonthDays;
@@ -333,10 +388,21 @@ const IncomeTax = () => {
       adjustedEpf = epf * dailyMultiplier;
       adjustedAdvance = advance * dailyMultiplier;
       adjustedPt = pt * dailyMultiplier;
+      // adjustedLoan = loanDeduction * dailyMultiplier;
+      adjustedInsurance = insurance * dailyMultiplier;
+      adjustedEsi = esi * dailyMultiplier;
+      adjustedOtherDed = otherDed * dailyMultiplier;
     }
 
     const totalDeductions =
-      adjustedTds + adjustedEpf + adjustedAdvance + adjustedPt;
+      adjustedTds +
+      adjustedEpf +
+      adjustedAdvance +
+      adjustedPt +
+  
+      adjustedInsurance +
+      adjustedEsi +
+      adjustedOtherDed;
     const netSalary = gross - totalDeductions;
 
     return {
@@ -348,20 +414,26 @@ const IncomeTax = () => {
       ta: adjustedTA,
       cla: adjustedCLA,
       medical: adjustedMedical,
+      conveyance: adjustedConveyance,
+      special: adjustedSpecial,
       others: adjustedOthers,
       gross,
       tds: adjustedTds,
       epf: adjustedEpf,
       advance: adjustedAdvance,
       pt: adjustedPt,
+      esi: adjustedEsi,
+      // loan: adjustedLoan,
+      insurance: adjustedInsurance,
+      otherDed: adjustedOtherDed,
       totalDeductions,
       netSalary,
       type: "6th Pay Commission - Non-Teaching Staff",
       // Daily calculation details
-      fullMonthSalary: basicPlusGrade + da + hra + ta + cla + medical + others,
+      fullMonthSalary: basicPlusGrade + da + hra + ta + cla + medical + adjustedConveyance + adjustedSpecial + others,
       perDayRate:
         workingDays > 0 && totalMonthDays > 0
-          ? (basicPlusGrade + da + hra + ta + cla + medical + others) /
+          ? (basicPlusGrade + da + hra + ta + cla + medical + adjustedConveyance + adjustedSpecial + others) /
             totalMonthDays
           : 0,
       workingDays: workingDays || totalMonthDays,
@@ -415,14 +487,16 @@ const IncomeTax = () => {
       } else {
         // Auto-distribute decided salary into components based on staff type
         if (staffType === "teaching") {
-          // Teaching staff - Decided salary becomes basic salary (no breakdown)
-          basic = fullMonthSalary; // Decided salary = Basic salary for teaching staff
-          da = 0; // No DA for teaching
-          hra = 0; // No auto HRA breakdown
-          ta = 0; // No auto TA breakdown
-          cla = 0; // No auto CLA breakdown
-          medical = 0; // No auto medical breakdown
-          others = 0; // No auto others breakdown
+          // Teaching staff - Decided salary becomes basic salary; compute DA and HRA using formulas (basic + AGP)
+          basic = fullMonthSalary; // Decided salary becomes Basic for teaching staff
+          const agpVal = parseFloat(salaryInputs.agp) || 0;
+          const baseForAllowances = basic + agpVal;
+          da = Math.round((baseForAllowances * 164) / 100); // DA = (basic + AGP) * 164%
+          hra = Math.round((baseForAllowances * 15) / 100); // HRA = (basic + AGP) * 15%
+          ta = 0; // Keep TA/CLA/medical/others zero unless provided
+          cla = 0;
+          medical = 0;
+          others = 0;
         } else {
           // Non-teaching staff - Use decided salary as total package, calculate components properly
           // For non-teaching: decided salary includes all components, so break it down properly
@@ -459,8 +533,10 @@ const IncomeTax = () => {
             // Auto-calculate from decided salary for non-teaching staff
             // Use decided salary as the total target amount
             basic = Math.round(fullMonthSalary * 0.4); // 40% basic
-            da = Math.round(basic * 0.9); // 90% of basic as DA (correct DA rate)
-            hra = Math.round(basic * 0.15); // 15% of basic as HRA
+            const gradeVal = parseFloat(salaryInputs.gradePay) || 0;
+            const baseForAllowancesNT = basic + gradeVal;
+            da = Math.round((baseForAllowancesNT * 164) / 100); // DA = (basic + grade) * 164%
+            hra = Math.round((baseForAllowancesNT * 15) / 100); // HRA = (basic + grade) * 15%
             ta = Math.round(fullMonthSalary * 0.05); // 5% as TA
             cla = Math.round(fullMonthSalary * 0.03); // 3% as CLA
             medical = Math.round(fullMonthSalary * 0.02); // 2% as Medical
@@ -474,8 +550,17 @@ const IncomeTax = () => {
     } else {
       // Calculate from individual components
       basic = parseFloat(salaryInputs.basicSalary) || 0;
-      da = staffType === "teaching" ? 0 : parseFloat(salaryInputs.daRate) || 0; // No DA for teaching staff
-      hra = parseFloat(salaryInputs.hraRate) || 0;
+      const agpVal = parseFloat(salaryInputs.agp) || 0;
+      if (staffType === "teaching") {
+        const baseForAllowances = basic + agpVal;
+        da = Math.round((baseForAllowances * 164) / 100); // DA = (basic + AGP) * 164%
+        hra = Math.round((baseForAllowances * 15) / 100); // HRA = (basic + AGP) * 15%
+      } else {
+        const gradeVal = parseFloat(salaryInputs.gradePay) || 0;
+        const baseForAllowances = basic + gradeVal;
+        da = Math.round((baseForAllowances * 164) / 100); // DA = (basic + grade) * 164%
+        hra = Math.round((baseForAllowances * 15) / 100); // HRA = (basic + grade) * 15%
+      }
       ta = parseFloat(salaryInputs.transportAllowance) || 0;
       cla = parseFloat(salaryInputs.claAllowance) || 0;
       medical = parseFloat(salaryInputs.medicalAllowance) || 0;
@@ -539,7 +624,7 @@ const IncomeTax = () => {
     const epf = parseFloat(salaryInputs.epfDeduction) || 0; // Use correct field name
     const advance = parseFloat(salaryInputs.advance) || 0;
     const pt = parseFloat(salaryInputs.professionalTax) || 0;
-    const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0; // Add loan deduction
+    // const loanDeduction = parseFloat(salaryInputs.loanDeduction) || 0; // Add loan deduction
     const insurance = parseFloat(salaryInputs.insuranceDeduction) || 0; // Add insurance
     const esi = parseFloat(salaryInputs.esiDeduction) || 0; // Add ESI
     const otherDed = parseFloat(salaryInputs.otherDeductions) || 0; // Add other deductions
@@ -549,7 +634,7 @@ const IncomeTax = () => {
     let adjustedEpf = epf;
     let adjustedAdvance = advance;
     let adjustedPt = pt;
-    let adjustedLoan = loanDeduction;
+    // let adjustedLoan = loanDeduction;
     let adjustedInsurance = insurance;
     let adjustedEsi = esi;
     let adjustedOtherDed = otherDed;
@@ -571,7 +656,6 @@ const IncomeTax = () => {
       adjustedEpf +
       adjustedAdvance +
       adjustedPt +
-      adjustedLoan +
       adjustedInsurance +
       adjustedEsi +
       adjustedOtherDed;
@@ -579,8 +663,8 @@ const IncomeTax = () => {
 
     return {
       basic: adjustedBasic,
-      gradePay: 0,
-      agp: 0,
+      gradePay: parseFloat(salaryInputs.gradePay) || 0,
+      agp: parseFloat(salaryInputs.agp) || 0,
       da: adjustedDA,
       hra: adjustedHRA,
       ta: adjustedTA,
@@ -595,7 +679,6 @@ const IncomeTax = () => {
       advance: adjustedAdvance,
       pt: adjustedPt,
       esi: adjustedEsi,
-      loan: adjustedLoan,
       insurance: adjustedInsurance,
       otherDed: adjustedOtherDed,
       totalDeductions,
@@ -634,10 +717,59 @@ const IncomeTax = () => {
     }
     setCalculatedSalary(result);
 
-    console.log(`Calculated salary for ${salaryInputs.employeeName}:`, result);
+    // Compute debug-friendly values using the exact formula requested by the user:
+    const getNum = (v) => Number(v) || 0;
+
+    const basicForGross = getNum(result.basic) || getNum(salaryInputs.basicSalary);
+    const gradePayVal = getNum(result.gradePay) || getNum(salaryInputs.gradePay) || 0;
+    const agpVal = getNum(result.agp) || getNum(salaryInputs.agp) || 0;
+    const hraVal = getNum(result.hra) || getNum(salaryInputs.hraRate) || 0;
+    const daVal = getNum(result.da) || getNum(salaryInputs.daRate) || 0;
+    const medicalVal = getNum(salaryInputs.medicalAllowance) || getNum(result.medical) || 0;
+    const transportVal = getNum(salaryInputs.transportAllowance) || getNum(result.ta) || 0;
+    const claVal = getNum(result.cla) || getNum(salaryInputs.claAllowance) || 0;
+    const otherAllowances = getNum(salaryInputs.otherAllowances) || getNum(result.others) || 0;
+    const conveyanceVal = getNum(salaryInputs.conveyanceAllowance) || getNum(result.conveyance) || 0;
+    const specialVal = getNum(salaryInputs.specialAllowance) || getNum(result.special) || 0;
+
+    // Gross by user's formula: Basic + (Grade/AGP) + HRA + DA + Medical + Transport + Other Allowances
+    const grossByFormula = basicForGross + gradePayVal + agpVal + hraVal + daVal + medicalVal + transportVal + claVal + otherAllowances + conveyanceVal + specialVal;
+
+    // Deductions as per user's requested list (plus commonly used fields as fallback)
+    const epfVal = getNum(salaryInputs.epfDeduction) || getNum(result.epf) || 0;
+    const esiVal = getNum(salaryInputs.esiDeduction) || getNum(result.esi) || 0;
+    const ptVal = getNum(salaryInputs.professionalTax) || getNum(result.pt) || 0;
+    const tdsVal = getNum(salaryInputs.tdsDeduction) || getNum(result.tds) || 0;
+    const advanceVal = getNum(salaryInputs.advance) || getNum(result.advance) || 0;
+    // const loanVal = getNum(salaryInputs.loanDeduction) || getNum(result.loan) || 0;
+    const insuranceVal = getNum(salaryInputs.insuranceDeduction) || getNum(result.insurance) || 0;
+    const incomeTaxVal = getNum(salaryInputs.incomeTax) || getNum(result.incomeTax) || getNum(result.taxDeduction) || 0;
+    const otherDeductionsVal = getNum(salaryInputs.otherDeductions) || getNum(result.otherDed) || getNum(result.otherDeductions) || 0;
+
+    const totalDeductionsByFormula = epfVal + esiVal + ptVal + tdsVal + incomeTaxVal + advanceVal + loanVal + insuranceVal + otherDeductionsVal;
+    const netByFormula = grossByFormula - totalDeductionsByFormula;
+
+    // Allow small rounding differences (0.5 rupee tolerance)
+    const tolerance = 0.5;
+    const matchGross = Math.abs((getNum(result.gross) || 0) - grossByFormula) < tolerance;
+    const matchTotal = Math.abs((getNum(result.totalDeductions) || 0) - totalDeductionsByFormula) < tolerance;
+    const matchNet = Math.abs((getNum(result.netSalary) || 0) - netByFormula) < tolerance;
+
+    setCalcDebug({
+      grossByFormula,
+      totalDeductionsByFormula,
+      netByFormula,
+      match: { gross: matchGross, total: matchTotal, net: matchNet },
+    });
+
+    // console.log(`Calculated salary for ${salaryInputs.employeeName}:`, result);
+
+    if (!matchGross || !matchTotal || !matchNet) {
+      console.warn('Calculation mismatch detected', { result, calcDebug: { grossByFormula, totalDeductionsByFormula, netByFormula } });
+    }
   };
 
-  // Save calculated salary to database
+  // Save calculated salary to database (or update existing)
   const saveSalaryRecord = async () => {
     if (!calculatedSalary) {
       setError("Please calculate salary first");
@@ -672,13 +804,19 @@ const IncomeTax = () => {
           transportAllowance: calculatedSalary.ta,
           claAllowance: calculatedSalary.cla,
           medicalAllowance: calculatedSalary.medical,
+          conveyanceAllowance: calculatedSalary.conveyance || calculatedSalary.conveyanceAllowance || 0,
+          specialAllowance: calculatedSalary.special || calculatedSalary.specialAllowance || 0,
           otherAllowances: calculatedSalary.others,
         },
         deductions: {
           tds: calculatedSalary.tds,
           epf: calculatedSalary.epf,
-          advance: calculatedSalary.advance,
+          advance: calculatedSalary.advance || 0,
           professionalTax: calculatedSalary.pt,
+          esi: calculatedSalary.esi || 0,
+          // loanDeduction: calculatedSalary.loan || 0,
+          insuranceDeduction: calculatedSalary.insurance || 0,
+          otherDeductions: calculatedSalary.otherDed || 0,
         },
         amount: calculatedSalary.gross, // Gross salary as total amount
         grossSalary: calculatedSalary.gross,
@@ -707,6 +845,86 @@ const IncomeTax = () => {
         },
       };
 
+      // If editing, perform update by record _id
+      if (editingSalaryId) {
+        const response = await fetch(`https://backenderp.tarstech.in/api/salary/byId/${editingSalaryId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(salaryRecord),
+        });
+
+        if (response.ok) {
+          const updatedRecord = await response.json();
+          alert(`✅ Salary record updated successfully for ${salaryInputs.employeeName}!`);
+          
+          // Refresh both salary data and history to show updated values
+          await Promise.all([
+            fetchSalaryData(),
+            fetchSalaryHistory()
+          ]);
+          
+          // If there's an active salary slip being viewed, regenerate it with updated data
+          if (salarySlip && salarySlip.paymentId === editingSalaryId) {
+            try {
+              // Find the updated record in the refreshed history
+              const updatedHistoryRecord = salaryHistory.find(r => r._id === editingSalaryId);
+              if (updatedHistoryRecord) {
+                // Regenerate the slip with updated data
+                await generateSlipFromHistory(updatedHistoryRecord);
+              }
+            } catch (err) {
+              console.warn('Could not auto-regenerate slip after update:', err);
+            }
+          }
+          
+          // Clear edit state + form
+          setEditingSalaryId(null);
+          setCalculatedSalary(null);
+        } else {
+          // Try to read JSON first, fallback to text (handles HTML error pages)
+          let errText;
+          try {
+            const errJson = await response.json();
+            errText = errJson.message || JSON.stringify(errJson);
+          } catch (e) {
+            errText = await response.text();
+          }
+
+          // If server returned 404, give a helpful hint and include server body
+          if (response.status === 404) {
+            setError(`Failed to update salary record: Not found (404). Server response: ${errText}`);
+            // Optional: try fallback update by employeeId if available
+            const originalRecord = salaryHistory.find((r) => r._id === editingSalaryId);
+            if (originalRecord && originalRecord.employeeId) {
+              // attempt fallback to update by employeeId
+              try {
+                const resp2 = await fetch(`https://backenderp.tarstech.in/api/salary/${encodeURIComponent(originalRecord.employeeId)}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(salaryRecord),
+                });
+                if (resp2.ok) {
+                  alert(`✅ (Fallback) Salary record updated successfully for ${salaryInputs.employeeName}!`);
+                  await fetchSalaryData();
+                  setEditingSalaryId(null);
+                  setCalculatedSalary(null);
+                  return;
+                } else {
+                  const body = await resp2.text();
+                  setError(`Fallback update failed (${resp2.status}). Server response: ${body}`);
+                }
+              } catch (err) {
+                setError(`Fallback update error: ${err.message}`);
+              }
+            }
+          } else {
+            setError(`Failed to update salary record: ${errText}`);
+          }
+        }
+        return;
+      }
+
+      // Otherwise create new record
       const response = await fetch("https://backenderp.tarstech.in/api/salary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -714,10 +932,12 @@ const IncomeTax = () => {
       });
 
       if (response.ok) {
+        const savedRecord = await response.json();
         alert(
           `✅ Salary record saved successfully for ${salaryInputs.employeeName}!`
         );
-        await fetchSalaryData(); // Refresh salary data
+        // Refresh both salary data and history so the table shows the new entry immediately
+        await Promise.all([fetchSalaryData(), fetchSalaryHistory()]);
 
         // Clear the form
         setSalaryInputs({
@@ -728,14 +948,24 @@ const IncomeTax = () => {
           medicalAllowance: "",
           transportAllowance: "",
           claAllowance: "",
+          conveyanceAllowance: "",
+          specialAllowance: "",
           otherAllowances: "",
           tdsDeduction: "",
           epfDeduction: "",
+          esiDeduction: "",
+          // loanDeduction: "",
+          insuranceDeduction: "",
           professionalTax: "",
+          otherDeductions: "",
+          advance: "",
           workingDays: "",
           totalMonthDays: "",
         });
         setCalculatedSalary(null);
+
+        // Optional: focus/notify user that history is refreshed
+        console.log('Salary history refreshed after save. New record id:', savedRecord._id || savedRecord.id || 'unknown');
       } else {
         const errorData = await response.json();
         setError(
@@ -762,7 +992,7 @@ const IncomeTax = () => {
       } else {
         const grade = parseFloat(salaryInputs.gradePay) || 0;
         const basicPlusGrade = basic + grade;
-        return (basicPlusGrade * 90) / 100; // 90% DA for Non-Teaching Staff
+        return (basicPlusGrade * 164) / 100; // 164% DA for Non-Teaching Staff
       }
     }
     return 0;
@@ -776,11 +1006,11 @@ const IncomeTax = () => {
       if (staffType === "teaching") {
         const agp = parseFloat(salaryInputs.agp) || 0;
         const basicPlusAGP = basic + agp;
-        return basicPlusAGP * hraRate; // 15% HRA
+        return Math.round(basicPlusAGP * hraRate); // 15% HRA
       } else {
         const grade = parseFloat(salaryInputs.gradePay) || 0;
         const basicPlusGrade = basic + grade;
-        return basicPlusGrade * hraRate; // 15% HRA
+        return Math.round(basicPlusGrade * hraRate); // 15% HRA
       }
     }
     return 0;
@@ -804,7 +1034,7 @@ const IncomeTax = () => {
       } else {
         const grade = parseFloat(salaryInputs.gradePay) || 0;
         const basicPlusGrade = basic + grade;
-        const da = (basicPlusGrade * 90) / 100; // 90% DA for Non-Teaching Staff
+        const da = (basicPlusGrade * 164) / 100; // 164% DA for Non-Teaching Staff
         const hra = calculateRealTimeHRA();
         const ta = parseFloat(salaryInputs.transportAllowance) || 800;
         const cla = parseFloat(salaryInputs.claAllowance) || 120;
@@ -822,6 +1052,25 @@ const IncomeTax = () => {
     fetchSalaryHistory();
     fetchEmployees();
   }, []);
+
+  // Prevent mouse wheel from changing number inputs when focused
+  useEffect(() => {
+    const onWheel = (e) => {
+      const active = document.activeElement;
+      if (active && active.tagName === 'INPUT' && active.type === 'number') {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => window.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // When staff type changes, clear selected employee and suggestions so dropdown shows correct list
+  useEffect(() => {
+    setSalaryInputs(prev => ({ ...prev, employeeName: "" }));
+    setSalarySlipEmployee("");
+    setEmployeeSuggestions([]);
+  }, [staffType]);
 
   // Fetch employees from API
   const fetchEmployees = async () => {
@@ -869,20 +1118,52 @@ const IncomeTax = () => {
         })
         .filter((name) => name && name.trim() !== "");
 
+      // Build type-specific lists
+      const teachingNames = [];
+      const nonTeachingNames = [];
+      allFaculties.forEach((faculty) => {
+        const name =
+          faculty.personalInfo?.fullName ||
+          faculty.fullName ||
+          `${faculty.personalInfo?.firstName || faculty.firstName || ""} ${
+            faculty.personalInfo?.lastName || faculty.lastName || ""
+          }`.trim() ||
+          faculty.email ||
+          faculty.employeeId ||
+          "";
+        if (!name) return;
+        const t = String(faculty.type || "").toLowerCase();
+        if (t === "teaching" || t === "faculty" || t === "hod" || t === "principal" || t === "cc") {
+          teachingNames.push(name);
+        } else if (t === "non-teaching" || t.includes("non") || t.includes("admin") || t.includes("management")) {
+          nonTeachingNames.push(name);
+        } else {
+          // Default to teaching
+          teachingNames.push(name);
+        }
+      });
+
+      // Deduplicate
+      const dedupe = (arr) => Array.from(new Set(arr));
+
       setAvailableEmployees(employeeNames);
-      console.log("Fetched employees (all pages):", employeeNames.length);
+      setAvailableTeaching(dedupe(teachingNames));
+      setAvailableNonTeaching(dedupe(nonTeachingNames));
+
+      console.log("Fetched employees (all pages):", employeeNames.length, "teaching:", teachingNames.length, "non-teaching:", nonTeachingNames.length);
       return employeeNames;
     } catch (error) {
       console.error("Error fetching employees:", error);
       // Fallback to mock data if API fails
-      const fallback = [
+      const fallbackTeaching = [
         "Dr. John Smith",
         "Prof. Jane Doe",
-        "Dr. Mike Johnson",
-        "Prof. Sarah Wilson",
       ];
-      setAvailableEmployees(fallback);
-      return fallback;
+      const fallbackNonTeaching = ["Mike Admin", "Sarah Admin"];
+      setAvailableEmployees([...fallbackTeaching, ...fallbackNonTeaching]);
+      setAvailableTeaching(fallbackTeaching);
+      setAvailableNonTeaching(fallbackNonTeaching);
+      return [...fallbackTeaching, ...fallbackNonTeaching];
     }
   };
 
@@ -910,11 +1191,22 @@ const IncomeTax = () => {
         year: new Date(record.paymentDate).getFullYear(),
         basicSalary: record.basicSalary || 0,
         hra: record.hra || 0,
+        gradePay: record.gradePay || 0,
+        advance: record.advance || 0,
         da: record.da || 0,
         grossSalary: record.grossSalary || 0,
         incomeTax: record.taxDeduction || 0,
         pf: record.pfDeduction || 0,
-        netSalary: record.netSalary || 0,
+        netSalary: (function() {
+          const getNum = (v) => Number(v) || 0;
+          if (record.netSalary !== undefined && record.netSalary !== null) return getNum(record.netSalary);
+          const gross = getNum(record.grossSalary || record.amount || 0) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+          const totalDed = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.pfDeduction || record.pf || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.incomeTax || record.incomeTax || 0) + getNum(record.deductions?.advance || record.advance || 0) + getNum(record.deductions?.loanDeduction || record.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+          return gross - totalDed;
+        })(),
+        medicalAllowance: record.medicalAllowance || 0,
+        transportAllowance: record.transportAllowance || 0,
+        claAllowance: record.claAllowance || 0,
         calculatedOn: record.createdAt
           ? new Date(record.createdAt).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0],
@@ -1026,19 +1318,30 @@ const IncomeTax = () => {
       );
       if (response.ok) {
         const data = await response.json();
-        const suggestions = (data.data?.faculties || data.faculties || []).map(f =>
+        const faculties = (data.data?.faculties || data.faculties || []);
+        // Filter based on selected staff type
+        const filteredFacs = faculties.filter(f => {
+          const t = String(f.type || '').toLowerCase();
+          if (staffType === 'teaching') {
+            return !(t.includes('non') || t.includes('admin') || t.includes('management'));
+          }
+          return (t.includes('non') || t.includes('admin') || t.includes('management'));
+        });
+        const suggestions = filteredFacs.map(f =>
           f.personalInfo?.fullName || f.fullName || `${f.personalInfo?.firstName || f.firstName || ""} ${f.personalInfo?.lastName || f.lastName || ""}`.trim() || f.email || f.employeeId || ""
         ).filter(name => name);
         setEmployeeSuggestions(suggestions);
       } else {
-        // Fallback to availableEmployees
-        const filtered = availableEmployees.filter(emp => emp.toLowerCase().includes(term.toLowerCase()));
+        // Fallback to available employees filtered by selected staff type
+        const source = staffType === 'teaching' ? availableTeaching : availableNonTeaching;
+        const filtered = source.filter(emp => emp.toLowerCase().includes(term.toLowerCase()));
         setEmployeeSuggestions(filtered);
       }
     } catch (error) {
       console.error("Search error:", error);
       // Fallback
-      const filtered = availableEmployees.filter(emp => emp.toLowerCase().includes(term.toLowerCase()));
+      const source = staffType === 'teaching' ? availableTeaching : availableNonTeaching;
+      const filtered = source.filter(emp => emp.toLowerCase().includes(term.toLowerCase()));
       setEmployeeSuggestions(filtered);
     } finally {
       setSuggestionsLoading(false);
@@ -1065,7 +1368,7 @@ const IncomeTax = () => {
     return Array.from(map.values());
   }, [salaryHistory, historyFilters]);
 
-  // Generate salary slip from history record - Modified to fetch specific faculty data
+  // Generate salary slip from history record - Modified to fetch latest data from database
   const generateSlipFromHistory = async (record) => {
     try {
       setGeneratingSlip(true);
@@ -1073,9 +1376,48 @@ const IncomeTax = () => {
 
       console.log("Generating slip for record:", record);
 
+      // Fetch the latest salary record from database to ensure we have updated data
+      let latestRecord = record;
+      if (record._id) {
+        try {
+          const recordRes = await fetch(`https://backenderp.tarstech.in/api/salary/byId/${record._id}`);
+          if (recordRes.ok) {
+            const freshData = await recordRes.json();
+            console.log("Fetched fresh salary record:", freshData);
+            // Transform the fresh data to match expected format
+            latestRecord = {
+              ...record,
+              employeeId: freshData.employeeId,
+              employeeName: freshData.name,
+              basicSalary: freshData.basicSalary || 0,
+              agp: freshData.agp || 0,
+              gradePay: freshData.gradePay || 0,
+              hra: freshData.hra || 0,
+              da: freshData.da || 0,
+              transportAllowance: freshData.transportAllowance || 0,
+              claAllowance: freshData.claAllowance || 0,
+              medicalAllowance: freshData.medicalAllowance || 0,
+              otherAllowances: freshData.otherAllowances || 0,
+              grossSalary: freshData.grossSalary || 0,
+              incomeTax: freshData.taxDeduction || 0,
+              pf: freshData.pfDeduction || 0,
+              professionalTax: freshData.taxDeduction || 0,
+              totalDeductions: freshData.totalDeductions || 0,
+              netSalary: freshData.netSalary || 0,
+              month: freshData.month || record.month,
+              year: freshData.year || record.year,
+              status: freshData.status || record.status,
+              salaryType: freshData.salaryType || record.salaryType,
+            };
+          }
+        } catch (err) {
+          console.warn("Could not fetch fresh record, using cached data:", err);
+        }
+      }
+
       // Try to fetch faculty by employeeId first, then by name
       const employeeIdentifier =
-        record.employeeId || record.employeeName || record.name;
+        latestRecord.employeeId || latestRecord.employeeName || latestRecord.name;
 
       if (!employeeIdentifier) {
         throw new Error("No employee identifier found in record");
@@ -1106,15 +1448,15 @@ const IncomeTax = () => {
             // Find faculty in User collection
             const userFaculty = users.find(
               (u) =>
-                u.employeeId === record.employeeId ||
-                u.name === record.employeeName ||
+                u.employeeId === latestRecord.employeeId ||
+                u.name === latestRecord.employeeName ||
                 `${u.firstName || ""} ${u.lastName || ""}`.trim() ===
-                  record.employeeName
+                  latestRecord.employeeName
             );
 
             if (userFaculty) {
               console.log("Found faculty in User collection:", userFaculty);
-              const slip = createSalarySlipObject(record, userFaculty);
+              const slip = createSalarySlipObject(latestRecord, userFaculty);
               printSalarySlipAuto(slip);
               return;
             }
@@ -1152,11 +1494,11 @@ const IncomeTax = () => {
         // Find the specific faculty member
         const facultyMember = allFaculty.find(
           (f) =>
-            f.employeeId === record.employeeId ||
-            f.name === record.employeeName ||
-            f.firstName === record.employeeName ||
+            f.employeeId === latestRecord.employeeId ||
+            f.name === latestRecord.employeeName ||
+            f.firstName === latestRecord.employeeName ||
             `${f.firstName || ""} ${f.lastName || ""}`.trim() ===
-              record.employeeName
+              latestRecord.employeeName
         );
 
         if (!facultyMember) {
@@ -1168,16 +1510,17 @@ const IncomeTax = () => {
         console.log("Found faculty (fallback):", facultyMember);
 
         // Create salary slip object with the specific faculty data
-        const slip = createSalarySlipObject(record, facultyMember);
+        const slip = createSalarySlipObject(latestRecord, facultyMember);
         printSalarySlipAuto(slip);
         return;
       }
-
+      
       const facultyData = await facultyRes.json();
       console.log("Found specific faculty:", facultyData);
-
-      // Create salary slip object with the specific faculty data
-      const slip = createSalarySlipObject(record, facultyData);
+      
+      // Create salary slip object with the specific faculty data (use latestRecord for updated values)
+      const slip = createSalarySlipObject(latestRecord, facultyData);
+      console.log("Generated slip with latest data:", slip);
 
       // Auto-print the salary slip
       printSalarySlipAuto(slip);
@@ -1190,8 +1533,89 @@ const IncomeTax = () => {
     }
   };
 
+  // Load a saved record into calculator for editing
+  const handleEditRecord = (record) => {
+    try {
+      // Determine numeric month if record.month is a label
+      const monthValue = months.find((m) => m.label === record.month)?.value || salaryInputs.salaryMonth;
+
+      setSalaryInputs((prev) => ({
+        ...prev,
+        employeeName: record.employeeName || prev.employeeName,
+        salaryMonth: monthValue,
+        salaryYear: record.year || prev.salaryYear,
+        basicSalary: record.basicSalary || prev.basicSalary,
+        daRate: record.da || prev.daRate,
+        hraRate: record.hra || prev.hraRate,
+        transportAllowance: record.transportAllowance || prev.transportAllowance,
+        claAllowance: record.claAllowance || prev.claAllowance,
+        medicalAllowance: record.medicalAllowance || prev.medicalAllowance,
+        otherAllowances: record.otherAllowances || prev.otherAllowances,
+        tdsDeduction: record.incomeTax || prev.tdsDeduction,
+        epfDeduction: record.pf || prev.epfDeduction,
+        advance: record.advance || prev.advance,
+        professionalTax: record.professionalTax || prev.professionalTax,
+      }));
+
+      // Load main calculated values so UI shows them for editing
+      setCalculatedSalary({
+        type: record.salaryType || "Saved",
+        basic: record.basicSalary || 0,
+        agp: record.agp || 0,
+        gradePay: record.gradePay || 0,
+        da: record.da || 0,
+        hra: record.hra || 0,
+        ta: record.transportAllowance || 0,
+        cla: record.claAllowance || 0,
+        medical: record.medicalAllowance || 0,
+        others: record.otherAllowances || 0,
+        tds: record.incomeTax || 0,
+        epf: record.pf || 0,
+        advance: record.advance || 0,
+        pt: record.professionalTax || 0,
+        gross: record.grossSalary || 0,
+        netSalary: (record.netSalary !== undefined && record.netSalary !== null) ? parseFloat(record.netSalary) : (function() { const getNum=(v)=>Number(v)||0; const gross = getNum(record.grossSalary||record.amount||0) || (getNum(record.basicSalary)+getNum(record.allowances?.hra)+getNum(record.allowances?.gradePay)+getNum(record.allowances?.da)+getNum(record.allowances?.medical)+getNum(record.allowances?.transport)+getNum(record.allowances?.cla)+getNum(record.allowances?.others)); const total = getNum(record.totalDeductions) || (getNum(record.deductions?.epf||record.pfDeduction||record.pf||0) + getNum(record.deductions?.esi||0) + getNum(record.deductions?.professionalTax||0) + getNum(record.deductions?.tds||0) + getNum(record.deductions?.incomeTax||record.incomeTax||0) + getNum(record.deductions?.advance||record.advance||0) + getNum(record.deductions?.loanDeduction||record.loanDeduction||0) + getNum(record.deductions?.insuranceDeduction||record.insuranceDeduction||0) + getNum(record.deductions?.otherDeductions||0)); return gross - total; })(),
+        totalDeductions: record.totalDeductions || 0,
+      });
+
+      setEditingSalaryId(record._id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // eslint-disable-next-line no-alert
+      alert('Loaded record into calculator. Make your changes and click Save (this will update the existing record).');
+    } catch (err) {
+      console.error('Error loading record for edit', err);
+      setError('Failed to load record for editing');
+    }
+  };
+
+  // Delete a saved salary record by database _id
+  const handleDeleteRecord = async (record) => {
+    if (!record || !record._id) return setError('Invalid record');
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Are you sure you want to delete salary record for ${record.employeeName} (${record.month}/${record.year})?`)) return;
+    try {
+      const res = await fetch(`https://backenderp.tarstech.in/api/salary/byId/${record._id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        // eslint-disable-next-line no-alert
+        alert('Record deleted successfully');
+        await fetchSalaryHistory();
+        setSelectedRecords((prev) => prev.filter((id) => id !== record._id));
+      } else {
+        const err = await res.json();
+        setError(err.message || 'Failed to delete record');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setError('Failed to delete record');
+    }
+  };
+
   // Helper function to create salary slip object
   const createSalarySlipObject = (record, facultyMember) => {
+console.log(record)
+
     return {
       faculty: {
         personalInfo: {
@@ -1215,31 +1639,42 @@ const IncomeTax = () => {
         record.month,
       year: record.year,
       basicSalary: parseFloat(record.basicSalary || 0),
+      agp: parseFloat(record.agp || 0),
       allowances: {
         hra: parseFloat(record.allowances?.hra || record.hra || 0),
         da: parseFloat(record.allowances?.da || record.da || 0),
-        medical: parseFloat(record.allowances?.medicalAllowance || 0),
-        transport: parseFloat(record.allowances?.transportAllowance || 0),
-        cla: parseFloat(record.allowances?.claAllowance || 0),
-        others: parseFloat(record.allowances?.otherAllowances || 0),
+        medical: parseFloat(record.allowances?.medical || record.medicalAllowance || 0),
+        transport: parseFloat(record.allowances?.transport || record.transportAllowance || 0),
+        conveyance: parseFloat(record.allowances?.conveyance || record.conveyanceAllowance || 0),
+        special: parseFloat(record.allowances?.special || record.specialAllowance || 0),
+        cla: parseFloat(record.allowances?.cla || record.claAllowance || 0),
+        others: parseFloat(record.allowances?.others || record.otherAllowances || 0),
+        gradePay: parseFloat(record.allowances?.gradePay || record.gradePay || 0),
       },
       deductions: {
         pf: parseFloat(
-          record.deductions?.epf || record.deductions?.pf || record.pf || 0
+          record.deductions?.epf || record.deductions?.pf || record.pfDeduction || record.pf || 0
         ),
-        esi: parseFloat(record.deductions?.esi || 0),
-        professionalTax: parseFloat(record.deductions?.professionalTax || 0),
-        tds: parseFloat(record.deductions?.tds || 0),
+        esi: parseFloat(record.deductions?.esi || record.esiDeduction || 0),
+        professionalTax: parseFloat(record.deductions?.professionalTax || record.professionalTax || 0),
+        tds: parseFloat(record.deductions?.tds || record.tds || 0),
+        advance: parseFloat(record.deductions?.advance || record.advance || 0),
+        loanDeduction: parseFloat(record.deductions?.loanDeduction || record.loanDeduction || 0),
+        insuranceDeduction: parseFloat(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0),
         incomeTax: parseFloat(
-          record.deductions?.incomeTax || record.incomeTax || 0
+          record.deductions?.incomeTax || record.incomeTax || record.taxDeduction || 0
         ),
-        others: parseFloat(record.deductions?.otherDeductions || 0),
+        otherDeductions: parseFloat(record.deductions?.otherDeductions || record.otherDeductions || 0),
       },
       grossSalary: parseFloat(record.grossSalary || record.amount || 0),
       totalDeductions: parseFloat(
-        record.totalDeductions || (record.pf || 0) + (record.incomeTax || 0)
+        record.totalDeductions || (record.taxDeduction || record.incomeTax || record.deductions?.incomeTax || 0) + (record.pfDeduction || record.pf || record.deductions?.epf || 0) + (record.deductions?.advance || record.advance || 0) + (record.deductions?.loanDeduction || record.loanDeduction || 0) + (record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) + (record.otherDeductions || 0)
       ),
-      netSalary: parseFloat(record.netSalary || 0),
+      netSalary: parseFloat(
+        record.netSalary !== undefined && record.netSalary !== null
+          ? record.netSalary
+          : (parseFloat(record.grossSalary || record.amount || 0) - (parseFloat(record.totalDeductions || 0) || (parseFloat(record.deductions?.epf || record.pfDeduction || record.pf || 0) + parseFloat(record.deductions?.esi || 0) + parseFloat(record.deductions?.professionalTax || 0) + parseFloat(record.deductions?.tds || 0) + parseFloat(record.deductions?.incomeTax || record.incomeTax || 0) + parseFloat(record.deductions?.advance || 0) + parseFloat(record.deductions?.loanDeduction || record.loanDeduction || 0) + parseFloat(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) + parseFloat(record.deductions?.otherDeductions || 0))))
+      ),
       salaryStatus: record.status || "Calculated",
       paymentId: record._id || record.id,
       paymentDate: record.paymentDate,
@@ -1298,10 +1733,32 @@ const IncomeTax = () => {
       (sum, r) => sum + parseFloat(r.totalDeductions || 0),
       0
     );
-    const totalNet = records.reduce(
-      (sum, r) => sum + parseFloat(r.netSalary || 0),
-      0
-    );
+    const totalNet = records.reduce((sum, r) => {
+      const getNum = (v) => Number(v) || 0;
+      const gross =
+        getNum(r.grossSalary || r.amount) ||
+        (getNum(r.basicSalary) +
+          getNum(r.allowances?.hra) +
+          getNum(r.allowances?.gradePay) +
+          getNum(r.allowances?.da) +
+          getNum(r.allowances?.medical) +
+          getNum(r.allowances?.transport) +
+          getNum(r.allowances?.cla) +
+          getNum(r.allowances?.others) +
+          getNum(r.allowances?.conveyance) +
+          getNum(r.allowances?.special));
+      const totalD=
+        getNum(r.totalDeductions) ||
+        (getNum(r.deductions?.pf) +
+          getNum(r.deductions?.esi) +
+          getNum(r.deductions?.professionalTax) +
+          getNum(r.deductions?.tds) +
+          getNum(r.deductions?.incomeTax) +
+          getNum(r.deductions?.advance) +
+          getNum(r.deductions?.others));
+      const net = gross - totalD;
+      return sum + net;
+    }, 0);
     const paidRecords = records.filter((r) => r.status === "Paid").length;
 
     return `
@@ -1411,7 +1868,7 @@ const IncomeTax = () => {
                 <div class="summary-label">Total Gross Salary</div>
               </div>
               <div class="summary-card green">
-                <div class="summary-value">₹${totalNet.toLocaleString()}</div>
+                <div class="summary-value">₹${Math.abs(totalNet).toLocaleString()}</div>
                 <div class="summary-label">Total Net Salary</div>
               </div>
               <div class="summary-card red">
@@ -1462,9 +1919,33 @@ const IncomeTax = () => {
                     <td class="amount">₹${parseFloat(
                       record.totalDeductions || 0
                     ).toLocaleString()}</td>
-                    <td class="amount" style="font-weight: bold;">₹${parseFloat(
-                      record.netSalary || 0
-                    ).toLocaleString()}</td>
+                    <td class="amount" style="font-weight: bold;">₹${(() => {
+                      const getNum = (v) => Number(v) || 0;
+                      const gross =
+                        getNum(record.grossSalary || record.amount) ||
+                        (getNum(record.basicSalary) +
+                          getNum(record.allowances?.hra) +
+                          getNum(record.allowances?.gradePay) +
+                          getNum(record.allowances?.da) +
+                          getNum(record.allowances?.medical) +
+                          getNum(record.allowances?.transport) +
+                          getNum(record.allowances?.cla) +
+                          getNum(record.allowances?.others) +
+                          getNum(record.allowances?.conveyance) +
+                          getNum(record.allowances?.special));
+                      const total =
+                        getNum(record.totalDeductions) ||
+                        (getNum(record.deductions?.pf || record.pfDeduction || record.pf || 0) +
+                          getNum(record.deductions?.esi || 0) +
+                          getNum(record.deductions?.professionalTax || 0) +
+                          getNum(record.deductions?.tds || 0) +
+                          getNum(record.deductions?.incomeTax || record.incomeTax || 0) +
+                          getNum(record.deductions?.advance || record.advance || 0) +
+                          getNum(record.deductions?.loanDeduction || record.loanDeduction || 0) +
+                          getNum(record.deductions?.insuranceDeduction || record.insuranceDeduction || 0) +
+                          getNum(record.deductions?.otherDeductions || 0));
+                      return Math.abs(gross - total).toLocaleString();
+                    })()}</td>
                     <td class="status">
                       <span class="status-${
                         record.status?.toLowerCase() || "calculated"
@@ -1482,7 +1963,7 @@ const IncomeTax = () => {
 
             <div class="footer">
               <p><strong>Generated by NIETM HR Management System</strong></p>
-              <p>Report generated on ${new Date().toLocaleString()} | Total Amount: ₹${totalNet.toLocaleString()}</p>
+              <p>Report generated on ${new Date().toLocaleString()} | Total Amount: ₹${Math.abs(totalNet).toLocaleString()}</p>
               <p>This is a computer-generated report and does not require a signature</p>
             </div>
           </div>
@@ -1509,6 +1990,7 @@ const IncomeTax = () => {
       others: 0,
       gross: 0,
       pf: 0,
+      advance: 0,
       esi: 0,
       pt: 0,
       tds: 0,
@@ -1527,12 +2009,18 @@ const IncomeTax = () => {
       totals.others += parseFloat(record.allowances?.otherAllowances || 0);
       totals.gross += parseFloat(record.grossSalary || record.amount || 0);
       totals.pf += parseFloat(record.deductions?.epf || record.deductions?.pf || 0);
+      totals.advance += parseFloat(record.deductions?.advance || 0);
       totals.esi += parseFloat(record.deductions?.esi || 0);
       totals.pt += parseFloat(record.deductions?.professionalTax || 0);
       totals.tds += parseFloat(record.deductions?.tds || 0);
       totals.otherDed += parseFloat(record.deductions?.otherDeductions || 0);
       totals.totalDed += parseFloat(record.totalDeductions || 0);
-      totals.net += parseFloat(record.netSalary || 0);
+      {
+        const getNum = (v) => Number(v) || 0;
+        const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+        const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+        totals.net += gross - totalD;
+      }
     });
 
     return `
@@ -1593,6 +2081,7 @@ const IncomeTax = () => {
                   <th>Others</th>
                   <th>Gross</th>
                   <th>PF</th>
+                  <th>Advance</th>
                   <th>ESI</th>
                   <th>PT</th>
                   <th>TDS</th>
@@ -1639,6 +2128,9 @@ const IncomeTax = () => {
                       record.deductions?.epf || record.deductions?.pf || 0
                     ).toLocaleString()}</td>
                     <td class="amount">₹${parseFloat(
+                      record.deductions?.advance || 0
+                    ).toLocaleString()}</td>
+                    <td class="amount">₹${parseFloat(
                       record.deductions?.esi || 0
                     ).toLocaleString()}</td>
                     <td class="amount">₹${parseFloat(
@@ -1653,9 +2145,30 @@ const IncomeTax = () => {
                     <td class="amount" style="background: #ffebee;">₹${parseFloat(
                       record.totalDeductions || 0
                     ).toLocaleString()}</td>
-                    <td class="amount" style="background: #e8f5e8; font-weight: bold;">₹${parseFloat(
-                      record.netSalary || 0
-                    ).toLocaleString()}</td>
+                    <td class="amount" style="background: #e8f5e8; font-weight: bold;">₹${(() => {
+                      const getNum = (v) => Number(v) || 0;
+                      const gross =
+                        getNum(record.grossSalary || record.amount) ||
+                        (getNum(record.basicSalary) +
+                          getNum(record.allowances?.hra) +
+                          getNum(record.allowances?.gradePay) +
+                          getNum(record.allowances?.da) +
+                          getNum(record.allowances?.medical) +
+                          getNum(record.allowances?.transport) +
+                          getNum(record.allowances?.cla) +
+                          getNum(record.allowances?.others) +
+                          getNum(record.allowances?.conveyance) +
+                          getNum(record.allowances?.special));
+                      const total =
+                        getNum(record.totalDeductions) ||
+                        (getNum(record.deductions?.epf || record.deductions?.pf || 0) +
+                          getNum(record.deductions?.advance || 0) +
+                          getNum(record.deductions?.esi || 0) +
+                          getNum(record.deductions?.professionalTax || 0) +
+                          getNum(record.deductions?.tds || 0) +
+                          getNum(record.deductions?.otherDeductions || 0));
+                      return Math.abs(gross - total).toLocaleString();
+                    })()}</td>
                     <td style="text-align: center;">${
                       record.status || "Calculated"
                     }</td>
@@ -1675,12 +2188,13 @@ const IncomeTax = () => {
                   <td class="amount">₹${totals.others.toLocaleString()}</td>
                   <td class="amount">₹${totals.gross.toLocaleString()}</td>
                   <td class="amount">₹${totals.pf.toLocaleString()}</td>
+                  <td class="amount">₹${totals.advance.toLocaleString()}</td>
                   <td class="amount">₹${totals.esi.toLocaleString()}</td>
                   <td class="amount">₹${totals.pt.toLocaleString()}</td>
                   <td class="amount">₹${totals.tds.toLocaleString()}</td>
                   <td class="amount">₹${totals.otherDed.toLocaleString()}</td>
                   <td class="amount">₹${totals.totalDed.toLocaleString()}</td>
-                  <td class="amount">₹${totals.net.toLocaleString()}</td>
+                  <td class="amount">₹${Math.abs(totals.net).toLocaleString()}</td>
                   <td style="text-align: center;">-</td>
                 </tr>
               </tfoot>
@@ -1718,7 +2232,12 @@ const IncomeTax = () => {
       monthlyData[monthYear].totalGross += parseFloat(
         record.grossSalary || record.amount || 0
       );
-      monthlyData[monthYear].totalNet += parseFloat(record.netSalary || 0);
+      {
+        const getNum = (v) => Number(v) || 0;
+        const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+        const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+        monthlyData[monthYear].totalNet += gross - totalD;
+      }
       monthlyData[monthYear].totalDeductions += parseFloat(
         record.totalDeductions || 0
       );
@@ -1796,9 +2315,9 @@ const IncomeTax = () => {
                   <div class="summary-label">Total Deductions</div>
                 </div>
                 <div class="summary-item">
-                  <div class="summary-value">₹${monthlyData[
+                  <div class="summary-value">₹${Math.abs(monthlyData[
                     monthYear
-                  ].totalNet.toLocaleString()}</div>
+                  ].totalNet).toLocaleString()}</div>
                   <div class="summary-label">Total Net</div>
                 </div>
               </div>
@@ -1833,9 +2352,12 @@ const IncomeTax = () => {
                       <td class="amount">₹${parseFloat(
                         record.totalDeductions || 0
                       ).toLocaleString()}</td>
-                      <td class="amount" style="font-weight: bold;">₹${parseFloat(
-                        record.netSalary || 0
-                      ).toLocaleString()}</td>
+                      <td class="amount" style="font-weight: bold;">₹${(() => {
+                        const getNum = (v) => Number(v) || 0;
+                        const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+                        const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || 0));
+                        return Math.abs(gross - totalD).toLocaleString();
+                      })()}</td>
                       <td style="text-align: center;">${
                         record.status || "Calculated"
                       }</td>
@@ -2128,89 +2650,176 @@ Please:
       const incomeTaxAmount = parseFloat(
         deductions.incomeTax || monthlyIncomeTax || 0
       );
+      const advanceAmount = parseFloat(deductions.advance || 0);
       const otherDeductionsAmount = parseFloat(deductions.otherDeductions || 0);
 
       // Use saved total deductions and net salary from calculator
       const totalDeductions = parseFloat(salaryRecord.totalDeductions || 0);
       const netSalary = parseFloat(salaryRecord.netSalary || 0);
 
-      // Create salary slip object with saved calculator data
-      const slip = {
-        faculty: facultyMember,
-        month: months.find((m) => m.value === parseInt(salarySlipMonth))?.label,
-        year: salarySlipYear,
-        basicSalary: basicSalary,
-        allowances: {
-          hra: hraAmount,
-          da: daAmount,
-          medical: medicalAmount,
-          transport: transportAmount,
-          cla: claAmount,
-          others: otherAllowancesAmount,
-        },
-        deductions: {
-          pf: pfAmount,
-          esi: esiAmount,
-          professionalTax: professionalTaxAmount,
-          tds: tdsAmount,
-          incomeTax: incomeTaxAmount,
-          others: otherDeductionsAmount,
-        },
-        totalAllowances: totalAllowances,
-        grossSalary: grossSalary,
-        totalDeductions: totalDeductions,
-        netSalary: netSalary,
-        salaryStatus: salaryRecord.status || "Calculated",
-        paymentId: salaryRecord._id,
-        paymentDate: salaryRecord.paymentDate,
-        generatedOn: new Date().toLocaleDateString(),
-        salaryType: salaryRecord.salaryType || "Calculated Salary",
-        hraRate: salaryRecord.hraRate || "15%",
-        city: salaryRecord.city || "N/A",
-        incomeTaxData: incomeTaxData,
-        // Complete income tax details for display in salary slip
-        taxDetails: incomeTaxData
-          ? {
-              employeeId: incomeTaxData.employeeId,
-              panNumber: incomeTaxData.panNumber,
-              financialYear: incomeTaxData.financialYear,
-              assessmentYear: incomeTaxData.assessmentYear,
-              incomeBreakdown: {
-                basicSalary: parseFloat(incomeTaxData.basicSalary || 0),
-                hra: parseFloat(incomeTaxData.hra || 0),
-                allowances: parseFloat(incomeTaxData.allowances || 0),
-                bonuses: parseFloat(incomeTaxData.bonuses || 0),
-                otherIncome: parseFloat(incomeTaxData.otherIncome || 0),
-                grossIncome: parseFloat(incomeTaxData.grossIncome || 0),
-              },
-              deductions: {
-                ppf: parseFloat(incomeTaxData.ppf || 0),
-                elss: parseFloat(incomeTaxData.elss || 0),
-                lifeInsurance: parseFloat(incomeTaxData.lifeInsurance || 0),
-                housingLoan: parseFloat(incomeTaxData.housingLoan || 0),
-                tuitionFees: parseFloat(incomeTaxData.tuitionFees || 0),
-                totalSection80C: parseFloat(incomeTaxData.totalSection80C || 0),
-                section80D: parseFloat(incomeTaxData.section80D || 0),
-                section80G: parseFloat(incomeTaxData.section80G || 0),
-                section24: parseFloat(incomeTaxData.section24 || 0),
-                professionalTax: parseFloat(incomeTaxData.professionalTax || 0),
-                employerPF: parseFloat(incomeTaxData.employerPF || 0),
-              },
-              taxCalculation: {
-                taxableIncome: parseFloat(incomeTaxData.taxableIncome || 0),
-                totalTax: parseFloat(
-                  incomeTaxData.totalTax || incomeTaxData.taxLiability || 0
-                ),
-                tdsDeducted: parseFloat(incomeTaxData.tdsDeducted || 0),
-                refundDue: parseFloat(incomeTaxData.refundDue || 0),
-                taxLiability: parseFloat(incomeTaxData.taxLiability || 0),
-              },
-              complianceStatus: incomeTaxData.complianceStatus || "N/A",
-              notes: incomeTaxData.notes || "",
-              remarks: incomeTaxData.remarks || "",
-            }
-          : null,
-      };
+      // If current in-memory calculated salary matches the selected employee and month/year, prefer it for printing
+      const useCalculated =
+        calculatedSalary &&
+        salaryInputs.employeeName &&
+        salaryInputs.employeeName === selectedFacultyName &&
+        parseInt(salaryInputs.salaryMonth) === parseInt(salarySlipMonth) &&
+        parseInt(salaryInputs.salaryYear) === parseInt(salarySlipYear);
+
+      const slip = useCalculated
+        ? {
+            faculty: facultyMember,
+            month: months.find((m) => m.value === parseInt(salarySlipMonth))?.label,
+            year: salarySlipYear,
+            basicSalary: calculatedSalary.basic || 0,
+            agp: calculatedSalary.agp || 0,
+            allowances: {
+              hra: calculatedSalary.hra || 0,
+              da: calculatedSalary.da || 0,
+              medical: calculatedSalary.medical || 0,
+              transport: calculatedSalary.ta || calculatedSalary.transportAllowance || 0,
+              cla: calculatedSalary.cla || 0,
+              others: calculatedSalary.others || 0,
+            },
+            deductions: {
+              pf: calculatedSalary.epf || calculatedSalary.pf || 0,
+              esi: calculatedSalary.esi || 0,
+              professionalTax: calculatedSalary.pt || 0,
+              tds: calculatedSalary.tds || 0,
+              incomeTax: calculatedSalary.tds || 0,
+              advance: calculatedSalary.advance || 0,
+              others: calculatedSalary.otherDed || 0,
+            },
+            totalAllowances: calculatedSalary.totalAllowances || calculatedSalary.totalAllow || 0,
+            grossSalary: calculatedSalary.gross || 0,
+            totalDeductions: calculatedSalary.totalDeductions || 0,
+            netSalary: calculatedSalary.netSalary || 0,
+            salaryStatus: salaryRecord.status || "Calculated",
+            paymentId: salaryRecord._id,
+            paymentDate: salaryRecord.paymentDate,
+            generatedOn: new Date().toLocaleDateString(),
+            salaryType: salaryRecord.salaryType || "Calculated Salary",
+            hraRate: salaryRecord.hraRate || "15%",
+            city: salaryRecord.city || "N/A",
+            incomeTaxData: incomeTaxData,
+            // Complete income tax details for display in salary slip
+            taxDetails: incomeTaxData
+              ? {
+                  employeeId: incomeTaxData.employeeId,
+                  panNumber: incomeTaxData.panNumber,
+                  financialYear: incomeTaxData.financialYear,
+                  assessmentYear: incomeTaxData.assessmentYear,
+                  incomeBreakdown: {
+                    basicSalary: parseFloat(incomeTaxData.basicSalary || 0),
+                    hra: parseFloat(incomeTaxData.hra || 0),
+                    allowances: parseFloat(incomeTaxData.allowances || 0),
+                    bonuses: parseFloat(incomeTaxData.bonuses || 0),
+                    otherIncome: parseFloat(incomeTaxData.otherIncome || 0),
+                    grossIncome: parseFloat(incomeTaxData.grossIncome || 0),
+                  },
+                  deductions: {
+                    ppf: parseFloat(incomeTaxData.ppf || 0),
+                    elss: parseFloat(incomeTaxData.elss || 0),
+                    lifeInsurance: parseFloat(incomeTaxData.lifeInsurance || 0),
+                    housingLoan: parseFloat(incomeTaxData.housingLoan || 0),
+                    tuitionFees: parseFloat(incomeTaxData.tuitionFees || 0),
+                    totalSection80C: parseFloat(incomeTaxData.totalSection80C || 0),
+                    section80D: parseFloat(incomeTaxData.section80D || 0),
+                    section24: parseFloat(incomeTaxData.section24 || 0),
+                    professionalTax: parseFloat(incomeTaxData.professionalTax || 0),
+                    employerPF: parseFloat(incomeTaxData.employerPF || 0),
+                  },
+                  taxCalculation: {
+                    taxableIncome: parseFloat(incomeTaxData.taxableIncome || 0),
+                    totalTax: parseFloat(
+                      incomeTaxData.totalTax || incomeTaxData.taxLiability || 0
+                    ),
+                    tdsDeducted: parseFloat(incomeTaxData.tdsDeducted || 0),
+                    refundDue: parseFloat(incomeTaxData.refundDue || 0),
+                    taxLiability: parseFloat(incomeTaxData.taxLiability || 0),
+                  },
+                  complianceStatus: incomeTaxData.complianceStatus || "N/A",
+                  notes: incomeTaxData.notes || "",
+                  remarks: incomeTaxData.remarks || "",
+                }
+              : null
+          }
+        : {
+            faculty: facultyMember,
+            month: months.find((m) => m.value === parseInt(salarySlipMonth))?.label,
+            year: salarySlipYear,
+            basicSalary: basicSalary,
+            agp: salaryRecord.agp || 0,
+            allowances: {
+              hra: hraAmount,
+              da: daAmount,
+              medical: medicalAmount,
+              transport: transportAmount,
+              cla: claAmount,
+              others: otherAllowancesAmount,
+            },
+            deductions: {
+              pf: pfAmount,
+              esi: esiAmount,
+              professionalTax: professionalTaxAmount,
+              tds: tdsAmount,
+              incomeTax: incomeTaxAmount,
+              advance: advanceAmount,
+              others: otherDeductionsAmount,
+            },
+            totalAllowances: totalAllowances,
+            grossSalary: grossSalary,
+            totalDeductions: totalDeductions,
+            netSalary: netSalary,
+            salaryStatus: salaryRecord.status || "Calculated",
+            paymentId: salaryRecord._id,
+            paymentDate: salaryRecord.paymentDate,
+            generatedOn: new Date().toLocaleDateString(),
+            salaryType: salaryRecord.salaryType || "Calculated Salary",
+            hraRate: salaryRecord.hraRate || "15%",
+            city: salaryRecord.city || "N/A",
+            incomeTaxData: incomeTaxData,
+            // Complete income tax details for display in salary slip
+            taxDetails: incomeTaxData
+              ? {
+                  employeeId: incomeTaxData.employeeId,
+                  panNumber: incomeTaxData.panNumber,
+                  financialYear: incomeTaxData.financialYear,
+                  assessmentYear: incomeTaxData.assessmentYear,
+                  incomeBreakdown: {
+                    basicSalary: parseFloat(incomeTaxData.basicSalary || 0),
+                    hra: parseFloat(incomeTaxData.hra || 0),
+                    allowances: parseFloat(incomeTaxData.allowances || 0),
+                    bonuses: parseFloat(incomeTaxData.bonuses || 0),
+                    otherIncome: parseFloat(incomeTaxData.otherIncome || 0),
+                    grossIncome: parseFloat(incomeTaxData.grossIncome || 0),
+                  },
+                  deductions: {
+                    ppf: parseFloat(incomeTaxData.ppf || 0),
+                    elss: parseFloat(incomeTaxData.elss || 0),
+                    lifeInsurance: parseFloat(incomeTaxData.lifeInsurance || 0),
+                    housingLoan: parseFloat(incomeTaxData.housingLoan || 0),
+                    tuitionFees: parseFloat(incomeTaxData.tuitionFees || 0),
+                    totalSection80C: parseFloat(incomeTaxData.totalSection80C || 0),
+                    section80D: parseFloat(incomeTaxData.section80D || 0),
+                    section24: parseFloat(incomeTaxData.section24 || 0),
+                    professionalTax: parseFloat(incomeTaxData.professionalTax || 0),
+                    employerPF: parseFloat(incomeTaxData.employerPF || 0),
+                  },
+                  taxCalculation: {
+                    taxableIncome: parseFloat(incomeTaxData.taxableIncome || 0),
+                    totalTax: parseFloat(
+                      incomeTaxData.totalTax || incomeTaxData.taxLiability || 0
+                    ),
+                    tdsDeducted: parseFloat(incomeTaxData.tdsDeducted || 0),
+                    refundDue: parseFloat(incomeTaxData.refundDue || 0),
+                    taxLiability: parseFloat(incomeTaxData.taxLiability || 0),
+                  },
+                  complianceStatus: incomeTaxData.complianceStatus || "N/A",
+                  notes: incomeTaxData.notes || "",
+                  remarks: incomeTaxData.remarks || "",
+                }
+              : null,
+          };
 
       setSalarySlip(slip);
 
@@ -2348,6 +2957,7 @@ Please:
       return result.trim();
     };
 
+    console.log("Printing salary slip for:", slip);
     // Helper function to generate a single slip HTML
     const generateSlipHTML = (copyLabel) => `
       <div class="slip-copy">
@@ -2355,10 +2965,21 @@ Please:
         <div class="slip-container">
           <div class="header-strip"></div>
           <div class="institute-header">
-            <div class="institute-name">NAGARJUNA Institute of Engineering, Technology & Management</div>
-            <div class="institute-subtitle">Village Satnavri, Amravati Road, Nagpur 440023</div>
+            <div class="header-content">
+              <img src="/logo1.png" alt="B++ NAAC Logo" class="header-logo-left" />
+              <div class="header-text-center">
+                <div class="society-name">Maitrey Educational Society's</div>
+                <div class="institute-name">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+                <div class="institute-subtitle">Nagpur - 440023</div>
+              </div>
+              <img src="/logo.png" alt="NIETM Logo" class="header-logo-right" />
+            </div>
           </div>
           
+          <div style="text-align: center; padding: 8px 0; background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+            <span class="salary-slip-title" style="background: none; padding: 0; margin: 0; color: #000; font-size: 14px; font-weight: bold; text-decoration: underline;">SALARY SLIP</span>
+            <div style="font-size: 11px; margin-top: 3px; color: #495057;">Month: ${slip.month} ${slip.year}</div>
+          </div>
          
           
           <div class="slip-content">
@@ -2370,7 +2991,7 @@ Please:
                   <span class="info-value">${employeeId}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Employee Name:</span>
+                  <span class="info-label"> :</span>
                   <span class="info-value">${facultyName}</span>
                 </div>
                 <div class="info-item">
@@ -2404,6 +3025,10 @@ Please:
                       <span class="salary-amount">₹${(slip.basicSalary || 0).toLocaleString()}</span>
                     </div>
                     <div class="salary-item">
+                      <span class="salary-label">AGP</span>
+                      <span class="salary-amount">₹${(slip.allowances?.gradePay || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
                       <span class="salary-label">HRA</span>
                       <span class="salary-amount">₹${(slip.allowances?.hra || 0).toLocaleString()}</span>
                     </div>
@@ -2427,7 +3052,21 @@ Please:
                   <div class="total-row">
                     <div class="salary-item" style="border: none;">
                       <span>GROSS SALARY</span>
-                      <span>₹${(slip.grossSalary || 0).toLocaleString()}</span>
+                      <span>₹${(() => {
+                        const getNum = (v) => Number(v) || 0;
+                        const gross =
+                          getNum(slip.basicSalary) +
+                          getNum(slip.allowances?.gradePay) +
+                          getNum(slip.allowances?.hra) +
+                          getNum(slip.allowances?.da) +
+                          getNum(slip.allowances?.medical) +
+                          getNum(slip.allowances?.transport) +
+                          getNum(slip.allowances?.cla) +
+                          getNum(slip.allowances?.others) +
+                          getNum(slip.allowances?.conveyance) +
+                          getNum(slip.allowances?.special);
+                        return gross.toLocaleString();
+                      })()}</span>
                     </div>
                   </div>
                 </div>
@@ -2457,6 +3096,10 @@ Please:
                       <span class="salary-amount">₹${(slip.deductions?.incomeTax || 0).toLocaleString()}</span>
                     </div>
                     <div class="salary-item">
+                      <span class="salary-label">Advance</span>
+                      <span class="salary-amount">₹${(slip.deductions?.advance || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="salary-item">
                       <span class="salary-label">Other Deductions</span>
                       <span class="salary-amount">₹${(slip.deductions?.others || 0).toLocaleString()}</span>
                     </div>
@@ -2464,7 +3107,18 @@ Please:
                   <div class="total-row">
                     <div class="salary-item" style="border: none;">
                       <span>TOTAL DEDUCTIONS</span>
-                      <span>₹${(slip.totalDeductions || 0).toLocaleString()}</span>
+                      <span>₹${(() => {
+                        const getNum = (v) => Number(v) || 0;
+                        const total =
+                          getNum(slip.deductions?.pf) +
+                          getNum(slip.deductions?.esi) +
+                          getNum(slip.deductions?.professionalTax) +
+                          getNum(slip.deductions?.tds) +
+                          getNum(slip.deductions?.incomeTax) +
+                          getNum(slip.deductions?.advance) +
+                          getNum(slip.deductions?.others);
+                        return total.toLocaleString();
+                      })()}</span>
                     </div>
                   </div>
                 </div>
@@ -2473,12 +3127,56 @@ Please:
               <!-- Net Salary -->
               <div class="net-salary-section">
                 <h3 class="net-salary-title">NET SALARY</h3>
-                <p class="net-salary-amount">₹${(slip.netSalary || 0).toLocaleString()}</p>
+                <p class="net-salary-amount">₹${(() => {
+                  const getNum = (v) => Number(v) || 0;
+                  const gross =
+                    getNum(slip.basicSalary) +
+                    getNum(slip.allowances?.hra) +
+                    getNum(slip.allowances?.gradePay) +
+                    getNum(slip.allowances?.da) +
+                    getNum(slip.allowances?.medical) +
+                    getNum(slip.allowances?.transport) +
+                    getNum(slip.allowances?.cla) +
+                    getNum(slip.allowances?.others) +
+                    getNum(slip.allowances?.conveyance) +
+                    getNum(slip.allowances?.special);
+                  const total =
+                    getNum(slip.deductions?.pf) +
+                    getNum(slip.deductions?.esi) +
+                    getNum(slip.deductions?.professionalTax) +
+                    getNum(slip.deductions?.tds) +
+                    getNum(slip.deductions?.incomeTax) +
+                    getNum(slip.deductions?.advance) +
+                    getNum(slip.deductions?.others);
+                  return Math.abs(gross - total).toLocaleString();
+                })()}</p>
               </div>
               
               <!-- Salary in Words -->
               <div class="salary-words">
-                <strong>Net Salary in Words:</strong> ${numberToWords(slip.netSalary || 0)} Rupees Only
+                <strong>Net Salary in Words:</strong> ${numberToWords(Math.abs(slip.netSalary) || (() => {
+                    const getNum = (v) => Number(v) || 0;
+                    const gross =
+                      getNum(slip.basicSalary) +
+                      getNum(slip.allowances?.hra) +
+                      getNum(slip.allowances?.gradePay) +
+                      getNum(slip.allowances?.da) +
+                      getNum(slip.allowances?.medical) +
+                      getNum(slip.allowances?.transport) +
+                      getNum(slip.allowances?.cla) +
+                      getNum(slip.allowances?.others) +
+                      getNum(slip.allowances?.conveyance) +
+                      getNum(slip.allowances?.special);
+                    const total =
+                      getNum(slip.deductions?.pf) +
+                      getNum(slip.deductions?.esi) +
+                      getNum(slip.deductions?.professionalTax) +
+                      getNum(slip.deductions?.tds) +
+                      getNum(slip.deductions?.incomeTax) +
+                      getNum(slip.deductions?.advance) +
+                      getNum(slip.deductions?.others);
+                    return Math.abs(gross - total);
+                  })())} Rupees Only
               </div>
               
               <!-- Footer -->
@@ -2559,23 +3257,46 @@ Please:
               background: linear-gradient(90deg, #007bff, #28a745, #ffc107, #dc3545);
             }
             .institute-header {
-              padding: 10px 15px;
-              background: #f8f9fa;
+              padding: 15px 20px;
+              background: #ffffff;
               color: #333;
-              border-bottom: 1px solid #dee2e6;
+              border-bottom: 2px solid #000;
+              border-top: 2px solid #000;
+            }
+            .header-content {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 15px;
+            }
+            .header-logo-left, .header-logo-right {
+              width: 70px;
+              height: 70px;
+              object-fit: contain;
+              flex-shrink: 0;
+            }
+            .header-text-center {
+              flex: 1;
               text-align: center;
             }
+            .society-name {
+              font-size: 11px;
+              font-weight: normal;
+              margin: 0 0 5px 0;
+              color: #333;
+            }
             .institute-name {
-              font-size: 18px;
+              font-size: 16px;
               font-weight: bold;
-              margin: 0 0 3px 0;
-              color: #495057;
+              margin: 0 0 5px 0;
+              color: #000;
+              letter-spacing: 0.5px;
             }
             .institute-subtitle {
-              color: #6c757d;
+              color: #333;
               font-weight: 500;
-              margin: 0 0 5px 0;
-              font-size: 12px;
+              margin: 0;
+              font-size: 11px;
             }
             .salary-slip-title {
               background: linear-gradient(45deg, #28a745, #20c997);
@@ -2727,6 +3448,19 @@ Please:
                 max-width: 100%;
                 page-break-inside: avoid;
               }
+              .header-logo-left, .header-logo-right {
+                width: 60px !important;
+                height: 60px !important;
+              }
+              .society-name {
+                font-size: 9px !important;
+              }
+              .institute-name {
+                font-size: 14px !important;
+              }
+              .institute-subtitle {
+                font-size: 9px !important;
+              }
               .salary-grid { 
                 break-inside: avoid; 
                 page-break-inside: avoid;
@@ -2816,26 +3550,93 @@ Please:
         );
       }
 
-      // Create salary slip object
-      const slip = {
-        faculty: salaryData.data.faculty,
-        month: salaryData.data.month,
-        year: salaryData.data.year,
-        basicSalary: salaryData.data.basicSalary,
-        allowances: salaryData.data.allowances,
-        deductions: salaryData.data.deductions,
-        grossSalary: salaryData.data.grossSalary,
-        totalDeductions: salaryData.data.totalDeductions,
-        netSalary: salaryData.data.netSalary,
-        salaryStatus: salaryData.data.salaryStatus,
-        salaryType: salaryData.data.salaryType,
-        hraRate: salaryData.data.hraRate,
-        city: salaryData.data.city,
-        taxDetails: taxDetails,
-        generatedOn: new Date().toLocaleDateString(),
-        paymentId: salaryData.data.paymentId,
-        paymentDate: salaryData.data.paymentDate,
-      };
+      // If we have an in-memory calculated salary that matches the requested employee/month/year, prefer it
+      let slip;
+      const calcMatches =
+        calculatedSalary &&
+        ((salaryInputs.employeeName && salaryInputs.employeeName === employeeName) ||
+          (calculatedSalary.employeeName && calculatedSalary.employeeName === employeeName)) &&
+        (parseInt(salaryInputs.salaryMonth) === parseInt(month) || parseInt(calculatedSalary.month) === parseInt(month)) &&
+        (parseInt(salaryInputs.salaryYear) === parseInt(year) || parseInt(calculatedSalary.year) === parseInt(year));
+
+      if (calcMatches) {
+        console.log("Using in-memory calculated salary for printing:", calculatedSalary);
+        slip = {
+          faculty: salaryData.data.faculty || null,
+          month: month,
+          year: year,
+          basicSalary: calculatedSalary.basic || 0,
+          agp: calculatedSalary.agp || 0,
+          allowances: {
+            hra: calculatedSalary.hra || 0,
+            da: calculatedSalary.da || 0,
+            transport: calculatedSalary.ta || calculatedSalary.transportAllowance || 0,
+            cla: calculatedSalary.cla || calculatedSalary.claAllowance || 0,
+            medical: calculatedSalary.medical || 0,
+            conveyance: calculatedSalary.conveyance || calculatedSalary.conveyanceAllowance || 0,
+            special: calculatedSalary.special || 0,
+            others: calculatedSalary.others || 0,
+          },
+          deductions: {
+            pf: calculatedSalary.epf || calculatedSalary.pf || 0,
+            tds: calculatedSalary.tds || 0,
+            incomeTax: calculatedSalary.tax || 0,
+            professionalTax: calculatedSalary.pt || 0,
+            esi: calculatedSalary.esi || 0,
+            advance: calculatedSalary.advance || 0,
+            otherDeductions: calculatedSalary.otherDed || 0,
+          },
+          grossSalary: calculatedSalary.gross || 0,
+          totalDeductions: calculatedSalary.totalDeductions || 0,
+          netSalary: calculatedSalary.netSalary || 0,
+          salaryStatus: "Calculated",
+          salaryType: calculatedSalary.type || "Calculated Salary",
+          hraRate: calculatedSalary.hraRate || "15%",
+          city: calculatedSalary.city || "N/A",
+          taxDetails: taxDetails,
+          generatedOn: new Date().toLocaleDateString(),
+        };
+      } else {
+        // Create salary slip object (normalize allowances keys so printing shows all fields)
+        const slip = {
+          faculty: salaryData.data.faculty,
+          month: salaryData.data.month,
+          year: salaryData.data.year,
+          basicSalary: salaryData.data.basicSalary,
+          allowances: {
+            hra: salaryData.data.allowances?.hra || salaryData.data.hra || 0,
+            da: salaryData.data.allowances?.da || salaryData.data.da || 0,
+            transport: salaryData.data.allowances?.transportAllowance || salaryData.data.transportAllowance || salaryData.data.allowances?.transport || salaryData.data.transport || 0,
+            cla: salaryData.data.allowances?.claAllowance || salaryData.data.claAllowance || salaryData.data.allowances?.cla || salaryData.data.cla || 0,
+            medical: salaryData.data.allowances?.medicalAllowance || salaryData.data.medicalAllowance || salaryData.data.allowances?.medical || salaryData.data.medical || 0,
+            conveyance: salaryData.data.allowances?.conveyanceAllowance || salaryData.data.conveyanceAllowance || salaryData.data.allowances?.conveyance || salaryData.data.conveyance || 0,
+            special: salaryData.data.allowances?.specialAllowance || salaryData.data.specialAllowance || salaryData.data.allowances?.special || salaryData.data.special || 0,
+            others: salaryData.data.allowances?.otherAllowances || salaryData.data.otherAllowances || salaryData.data.allowances?.other || salaryData.data.other || 0,
+          },
+          deductions: {
+            ...(salaryData.data.deductions || {}),
+            tds: (salaryData.data.deductions?.tds || salaryData.data.tds || 0),
+            pf: (salaryData.data.deductions?.epf || salaryData.data.deductions?.pf || salaryData.data.pfDeduction || salaryData.data.pf || 0),
+            incomeTax: (salaryData.data.deductions?.incomeTax || salaryData.data.incomeTax || salaryData.data.taxDeduction || 0),
+            esi: (salaryData.data.deductions?.esi || salaryData.data.esiDeduction || 0),
+            advance: (salaryData.data.deductions?.advance || salaryData.data.advance || 0),
+            loanDeduction: (salaryData.data.deductions?.loanDeduction || salaryData.data.loanDeduction || 0),
+            insuranceDeduction: (salaryData.data.deductions?.insuranceDeduction || salaryData.data.insuranceDeduction || 0),
+            otherDeductions: (salaryData.data.deductions?.otherDeductions || salaryData.data.otherDeductions || 0)
+          },
+          grossSalary: salaryData.data.grossSalary,
+          totalDeductions: salaryData.data.totalDeductions,
+          netSalary: salaryData.data.netSalary,
+          salaryStatus: salaryData.data.salaryStatus,
+          salaryType: salaryData.data.salaryType,
+          hraRate: salaryData.data.hraRate,
+          city: salaryData.data.city,
+          taxDetails: taxDetails,
+          generatedOn: new Date().toLocaleDateString(),
+          paymentId: salaryData.data.paymentId,
+          paymentDate: salaryData.data.paymentDate,
+        };
+      }
 
       console.log("Generated slip for printing:", slip);
 
@@ -2854,7 +3655,7 @@ Please:
 
   const printSalarySlip = () => {
     if (!salarySlip) {
-      alert("कृपया पहले salary slip generate करें!");
+      alert("!");
       return;
     }
 
@@ -2988,6 +3789,21 @@ Please:
                 background: #f8f9fa;
                 color: #333;
                 border-bottom: 2px solid #dee2e6;
+              }
+              .header-content {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 15px;
+              }
+              .header-logo-left, .header-logo-right {
+                width: 70px;
+                height: 70px;
+                object-fit: contain;
+                flex-shrink: 0;
+              }
+              .header-text-center {
+                flex: 1;
                 text-align: center;
               }
               .institute-name {
@@ -3138,14 +3954,20 @@ Please:
               
               <!-- Institute Header -->
               <div class="institute-header">
-                <h1 class="institute-name">NAGARJUNA Institute of Engineering, Technology & Management</h1>
-                <p class="institute-subtitle">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</p>
-                <div class="salary-slip-title">
-                  SALARY SLIP
+                <div class="header-content">
+                  <img src="/logo.png" alt="Logo" class="header-logo-left" />
+                  <div class="header-text-center">
+                    <h1 class="institute-name">NAGARJUNA Institute of Engineering, Technology & Management</h1>
+                    <p class="institute-subtitle">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</p>
+                    <div class="salary-slip-title">
+                      SALARY SLIP
+                    </div>
+                    <p style="margin: 8px 0 0 0; font-size: 13px; color: #6c757d;">For the month of ${
+                      salarySlip.month
+                    } ${salarySlip.year}</p>
+                  </div>
+                  <img src="/logo1.png" alt="Logo" class="header-logo-right" />
                 </div>
-                <p style="margin: 8px 0 0 0; font-size: 13px; color: #6c757d;">For the month of ${
-                  salarySlip.month
-                } ${salarySlip.year}</p>
               </div>
               
               <!-- Employee Information --> 
@@ -3205,6 +4027,12 @@ Please:
                         ).toLocaleString()}</span>
                       </div>
                       <div class="salary-item">
+                        <span class="salary-label">AGP</span>
+                        <span class="salary-amount">₹${(
+                          salarySlip.agp || 0
+                        ).toLocaleString()}</span>
+                      </div>
+                      <div class="salary-item">
                         <span class="salary-label">HRA</span>
                         <span class="salary-amount">₹${(
                           salarySlip.allowances?.hra || 0
@@ -3240,7 +4068,8 @@ Please:
                         <span>GROSS SALARY</span>
                         <span>₹${(
                           salarySlip.grossSalary || 0
-                        ).toLocaleString()}</span>
+                        ).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -3307,9 +4136,7 @@ Please:
                 
                 <!-- Salary in Words -->
                 <div class="salary-words">
-                  <strong>Net Salary in Words:</strong> ${numberToWords(
-                    salarySlip.netSalary || 0
-                  )} Rupees Only
+                  <strong>Net Salary in Words:</strong> ${numberToWords(printNetSalary || 0)} Rupees Only
                 </div>
                 
                 <!-- Footer -->
@@ -3408,7 +4235,7 @@ Please:
                   </h4>
                   <div className="flex gap-4 mb-4">
                     <button
-                      onClick={() => setStaffType("teaching")}
+                      onClick={() => { setStaffType("teaching"); setSalaryInputs({ ...salaryInputs, employeeName: "" }); setSalarySlipEmployee(""); }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         staffType === "teaching"
                           ? "bg-green-600 text-white"
@@ -3418,7 +4245,7 @@ Please:
                       👨‍🏫 Teaching Staff
                     </button>
                     <button
-                      onClick={() => setStaffType("non-teaching")}
+                      onClick={() => { setStaffType("non-teaching"); setSalaryInputs({ ...salaryInputs, employeeName: "" }); setSalarySlipEmployee(""); }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         staffType === "non-teaching"
                           ? "bg-orange-600 text-white"
@@ -3438,11 +4265,11 @@ Please:
                     </span>
                     Employee & Salary Period
                   </h4>
-                  <div className="">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Employee Name
-                        {availableEmployees.length === 0 && (
+                        {(staffType === 'teaching' ? availableTeaching : availableNonTeaching).length === 0 && (
                           <span className="ml-2 text-xs text-red-500">
                             (Loading employees...)
                           </span>
@@ -3457,13 +4284,13 @@ Please:
                           })
                         }
                         className={`w-full px-3 py-2 border ${
-                          availableEmployees.length === 0
+                          (staffType === 'teaching' ? availableTeaching : availableNonTeaching).length === 0
                             ? "border-yellow-300 bg-yellow-50"
                             : "border-gray-300"
                         } rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                       >
                         <option value="">Select Employee</option>
-                        {availableEmployees.map((employee, index) => (
+                        {(staffType === 'teaching' ? availableTeaching : availableNonTeaching).map((employee, index) => (
                           <option key={index} value={employee}>
                             {employee}
                           </option>
@@ -3715,6 +4542,26 @@ Please:
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Advance
+                        </label>
+                        <input
+                          type="number"
+                          value={salaryInputs.advance || ""}
+                          onChange={(e) =>
+                            setSalaryInputs({
+                              ...salaryInputs,
+                              advance: e.target.value,
+                              loanDeduction: e.target.value,
+                            })
+                          }
+                          placeholder="Advance deduction"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Professional Tax (Manual)
@@ -3940,6 +4787,26 @@ Please:
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Advance
+                        </label>
+                        <input
+                          type="number"
+                          value={salaryInputs.advance || ""}
+                          onChange={(e) =>
+                            setSalaryInputs({
+                              ...salaryInputs,
+                              advance: e.target.value,
+                              loanDeduction: e.target.value,
+                            })
+                          }
+                          placeholder="Advance deduction"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Professional Tax (Manual)
@@ -3979,7 +4846,7 @@ Please:
                   </h6>
                   <div className="flex gap-4">
                     <button
-                      onClick={() => setStaffType("teaching")}
+                      onClick={() => { setStaffType("teaching"); setSalaryInputs({ ...salaryInputs, employeeName: "" }); setSalarySlipEmployee(""); }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         staffType === "teaching"
                           ? "bg-green-600 text-white"
@@ -3989,7 +4856,7 @@ Please:
                       👨‍🏫 Teaching Staff (No DA)
                     </button>
                     <button
-                      onClick={() => setStaffType("non-teaching")}
+                      onClick={() => { setStaffType("non-teaching"); setSalaryInputs({ ...salaryInputs, employeeName: "" }); setSalarySlipEmployee(""); }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         staffType === "non-teaching"
                           ? "bg-orange-600 text-white"
@@ -4092,10 +4959,12 @@ Please:
                                 otherAllowances: 0, // No auto others breakdown
                               });
                             } else {
-                              // Non-teaching staff - Proper component breakdown with correct DA calculation
+                              // Non-teaching staff - Proper component breakdown with DA/HRA computed from (basic + grade)
                               const basic = Math.round(decided * 0.4); // 40% basic
-                              const da = Math.round(basic * 0.9); // 90% of basic as DA (correct DA rate)
-                              const hra = Math.round(basic * 0.15); // 15% of basic as HRA
+                              const gradeVal = parseFloat(salaryInputs.gradePay) || 0;
+                              const baseForAllowancesNT = basic + gradeVal;
+                              const da = Math.round((baseForAllowancesNT * 164) / 100); // DA = (basic + grade) * 164%
+                              const hra = Math.round((baseForAllowancesNT * 15) / 100); // HRA = (basic + grade) * 15%
                               const ta = Math.round(decided * 0.05); // 5% as TA
                               const cla = Math.round(decided * 0.03); // 3% as CLA
                               const medical = Math.round(decided * 0.02); // 2% as Medical
@@ -4180,12 +5049,12 @@ Please:
                 <div>
                   {staffType === "teaching" && (
                     <div>
-                      <div className="">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Employee Name */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Employee Name *
-                            {availableEmployees.length === 0 && (
+                            {availableTeaching.length === 0 && (
                               <span className="ml-2 text-xs text-red-500">
                                 (Loading employees...)
                               </span>
@@ -4200,13 +5069,13 @@ Please:
                               })
                             }
                             className={`w-full px-3 py-2 border ${
-                              availableEmployees.length === 0
+                              availableTeaching.length === 0
                                 ? "border-yellow-300 bg-yellow-50"
                                 : "border-gray-300"
                             } rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                           >
                             <option value="">Select Employee</option>
-                            {availableEmployees.map((employee, index) => (
+                            {availableTeaching.map((employee, index) => (
                               <option key={index} value={employee}>
                                 {employee}
                               </option>
@@ -4367,6 +5236,7 @@ Please:
                                 professionalTax: e.target.value,
                               })
                             }
+                            onWheel={(e) => e.currentTarget.blur()}
                             placeholder="PT amount"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
@@ -4398,10 +5268,11 @@ Please:
                           </label>
                           <input
                             type="number"
-                            value={salaryInputs.loanDeduction || ""}
+                            value={salaryInputs.advance || salaryInputs.loanDeduction || ""}
                             onChange={(e) =>
                               setSalaryInputs({
                                 ...salaryInputs,
+                                advance: e.target.value,
                                 loanDeduction: e.target.value,
                               })
                             }
@@ -4454,7 +5325,7 @@ Please:
                               let epf =
                                 parseFloat(salaryInputs.epfDeduction) || 0;
                               let advance =
-                                parseFloat(salaryInputs.loanDeduction) || 0;
+                                parseFloat(salaryInputs.advance || salaryInputs.loanDeduction) || 0;
                               let tds =
                                 parseFloat(salaryInputs.tdsDeduction) || 0;
 
@@ -4566,7 +5437,7 @@ Please:
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Employee Name
-                        {availableEmployees.length === 0 && (
+                        {availableNonTeaching.length === 0 && (
                           <span className="ml-2 text-xs text-red-500">
                             (Loading employees...)
                           </span>
@@ -4581,13 +5452,13 @@ Please:
                           })
                         }
                         className={`w-full px-3 py-2 border ${
-                          availableEmployees.length === 0
+                          availableNonTeaching.length === 0
                             ? "border-yellow-300 bg-yellow-50"
                             : "border-gray-300"
                         } rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                       >
                         <option value="">Select Employee</option>
-                        {availableEmployees.map((employee, index) => (
+                        {availableNonTeaching.map((employee, index) => (
                           <option key={index} value={employee}>
                             {employee}
                           </option>
@@ -4830,7 +5701,7 @@ Please:
                           } rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                         >
                           <option value="">Select Employee</option>
-                          {availableEmployees.map((employee, index) => (
+                          {(staffType === 'teaching' ? availableTeaching : availableNonTeaching).map((employee, index) => (
                             <option key={index} value={employee}>
                               {employee}
                             </option>
@@ -4918,6 +5789,25 @@ Please:
                             })
                           }
                           placeholder="e.g., 20000"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      {/* AGP */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          AGP (Academic Grade Pay)
+                        </label>
+                        <input
+                          type="number"
+                          value={salaryInputs.agp}
+                          onChange={(e) =>
+                            setSalaryInputs({
+                              ...salaryInputs,
+                              agp: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., 6000"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
@@ -5088,6 +5978,7 @@ Please:
                               professionalTax: e.target.value,
                             })
                           }
+                          onWheel={(e) => e.currentTarget.blur()}
                           placeholder="e.g., 200"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
@@ -5096,18 +5987,19 @@ Please:
                       {/* Loan/Advance Deduction */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Loan/Advance Deduction
+                          Advance
                         </label>
                         <input
                           type="number"
-                          value={salaryInputs.loanDeduction}
+                          value={salaryInputs.advance || salaryInputs.loanDeduction || ""}
                           onChange={(e) =>
                             setSalaryInputs({
                               ...salaryInputs,
+                              advance: e.target.value,
                               loanDeduction: e.target.value,
                             })
                           }
-                          placeholder="e.g., 0"
+                          placeholder="Advance amount"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
@@ -5230,7 +6122,7 @@ Please:
                             let epf =
                               parseFloat(salaryInputs.epfDeduction) || 0;
                             let advance =
-                              parseFloat(salaryInputs.loanDeduction) || 0;
+                              parseFloat(salaryInputs.advance || salaryInputs.loanDeduction) || 0;
                             let tds =
                               parseFloat(salaryInputs.tdsDeduction) || 0;
 
@@ -5284,8 +6176,10 @@ Please:
                                   parseFloat(input.value) || 0;
                                 if (totalSalary > 0) {
                                   const basic = Math.round(totalSalary * 0.4); // 40% basic
-                                  const da = Math.round(basic * 0.9); // 90% of basic as DA
-                                  const hra = Math.round(basic * 0.15); // 15% of basic as HRA
+                                  const gradeVal = parseFloat(salaryInputs.gradePay) || 0;
+                                  const baseForAllowancesQC = basic + gradeVal;
+                                  const da = Math.round((baseForAllowancesQC * 164) / 100); // DA = (basic + grade) * 164%
+                                  const hra = Math.round((baseForAllowancesQC * 15) / 100); // HRA = (basic + grade) * 15%
                                   const ta = Math.round(totalSalary * 0.05); // 5% as TA
                                   const cla = Math.round(totalSalary * 0.03); // 3% as CLA
                                   const medical = Math.round(
@@ -5623,10 +6517,18 @@ Please:
                     onClick={saveSalaryRecord}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    💾 Save Salary Record
+                    {editingSalaryId ? '🔁 Update Salary Record' : '💾 Save Salary Record'}
                   </button>
+                  {editingSalaryId && (
+                    <button
+                      onClick={() => { setEditingSalaryId(null); setCalculatedSalary(null); /* keep inputs so user can start fresh if needed */ }}
+                      className="px-6 py-2 bg-yellow-400 text-white rounded-lg hover:bg-yellow-500 transition-colors"
+                    >
+                      ✖ Cancel Edit
+                    </button>
+                  )}
                   <button
-                    onClick={() => setCalculatedSalary(null)}
+                    onClick={() => { setCalculatedSalary(null); setEditingSalaryId(null); }}
                     className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     Clear Results
@@ -5642,6 +6544,27 @@ Please:
               <h5 className="font-semibold text-green-800 mb-3">
                 💰 {calculatedSalary.type} - Calculation Results
               </h5>
+
+              {/* Debug panel: shows Gross / Total Deductions / Net using user formula */}
+              {calcDebug && (
+                <div className="mb-3 p-3 bg-white rounded-md border border-gray-200 text-sm">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Gross (formula):</span>
+                    <span className="font-medium">₹{calcDebug.grossByFormula.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Total Deductions (formula):</span>
+                    <span className="font-medium">₹{calcDebug.totalDeductionsByFormula.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Net (formula):</span>
+                    <span className="font-medium">₹{calcDebug.netByFormula.toLocaleString()}</span>
+                  </div>
+                  {(!calcDebug.match.gross || !calcDebug.match.total || !calcDebug.match.net) && (
+                    <div className="mt-2 text-red-700 font-medium">⚠️ Mismatch detected — see console for details</div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -5768,14 +6691,6 @@ Please:
                       </span>
                     </div>
                   )}
-                  {calculatedSalary.loan > 0 && (
-                    <div className="flex justify-between">
-                      <span>Loan/Advance:</span>
-                      <span className="font-medium">
-                        ₹{calculatedSalary.loan.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
                   {calculatedSalary.insurance > 0 && (
                     <div className="flex justify-between">
                       <span>Insurance:</span>
@@ -5784,6 +6699,7 @@ Please:
                       </span>
                     </div>
                   )}
+                  {/*  */}
                   {calculatedSalary.otherDed > 0 && (
                     <div className="flex justify-between">
                       <span>Other Deductions:</span>
@@ -5806,7 +6722,7 @@ Please:
                         Net Salary:
                       </span>
                       <span className="font-bold text-blue-800 text-lg">
-                        ₹{calculatedSalary.netSalary.toLocaleString()}
+                        ₹{Math.abs(calculatedSalary.netSalary).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -5871,7 +6787,7 @@ Please:
                 <p className="text-blue-800 text-sm">
                   <span className="font-semibold">💡 Annual Calculation:</span>{" "}
                   Monthly Net × 12 = ₹
-                  {(calculatedSalary.netSalary * 12).toLocaleString()} per year
+                  {(Math.abs(calculatedSalary.netSalary) * 12).toLocaleString()} per year
                 </p>
               </div>
             </div>
@@ -5917,7 +6833,7 @@ Please:
                           <label class="block text-sm font-medium text-gray-700 mb-2">Employee Name</label>
                           <select id="quickEmployee" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
                             <option value="">Select Employee</option>
-                            ${availableEmployees
+                            ${ (staffType === 'teaching' ? availableTeaching : availableNonTeaching)
                               .map(
                                 (emp) =>
                                   `<option value="${emp}">${emp}</option>`
@@ -6046,7 +6962,7 @@ Please:
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Choose employee...</option>
-                    {availableEmployees.map((employee, index) => (
+                    {(staffType === 'teaching' ? availableTeaching : availableNonTeaching).map((employee, index) => (
                       <option key={index} value={employee}>
                         {employee}
                       </option>
@@ -6111,6 +7027,8 @@ Please:
                     setShowSalarySlipModal(false);
                     setSalaryCalculationType("actual");
                     setStaffType("teaching");
+                    setSalaryInputs({ ...salaryInputs, employeeName: "" });
+                    setSalarySlipEmployee("");
                     // Scroll to top
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
@@ -6321,11 +7239,11 @@ Please:
                       setActiveSuggestionIndex(-1);
                     }}
                     onFocus={() => {
-                      if (availableEmployees.length === 0) {
+                      if ((staffType === 'teaching' ? availableTeaching : availableNonTeaching).length === 0) {
                         fetchEmployees();
                       }
                       setShowSuggestions(true);
-                      setEmployeeSuggestions(availableEmployees);
+                      setEmployeeSuggestions(staffType === 'teaching' ? availableTeaching : availableNonTeaching);
                       setActiveSuggestionIndex(-1);
                     }}
                     onBlur={() => {
@@ -6540,8 +7458,11 @@ Please:
                         Date
                       </th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                        Edit / Delete
                       </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th> 
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -6609,7 +7530,16 @@ Please:
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">
                             ₹
-                            {parseFloat(record.netSalary || 0).toLocaleString()}
+                            {(() => {
+                              const getNum = (v) => Number(v) || 0;
+                              // Prefer the stored netSalary (from saved slip) when available
+                              if (record.netSalary !== undefined && record.netSalary !== null) {
+                                return Math.abs(getNum(record.netSalary)).toLocaleString();
+                              }
+                              const gross = getNum(record.grossSalary || record.amount) || (getNum(record.basicSalary) + getNum(record.allowances?.hra) + getNum(record.allowances?.gradePay) + getNum(record.allowances?.da) + getNum(record.allowances?.medical) + getNum(record.allowances?.transport) + getNum(record.allowances?.cla) + getNum(record.allowances?.others) + getNum(record.allowances?.conveyance) + getNum(record.allowances?.special));
+                              const totalD = getNum(record.totalDeductions) || (getNum(record.deductions?.epf || record.deductions?.pf || 0) + getNum(record.deductions?.esi || 0) + getNum(record.deductions?.professionalTax || 0) + getNum(record.deductions?.tds || 0) + getNum(record.deductions?.incomeTax || 0) + getNum(record.deductions?.advance || 0) + getNum(record.deductions?.loanDeduction || 0) + getNum(record.deductions?.insuranceDeduction || 0) + getNum(record.deductions?.otherDeductions || record.deductions?.others || 0));
+                              return Math.abs(gross - totalD).toLocaleString();
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span
@@ -6628,6 +7558,22 @@ Please:
                             {new Date(
                               record.calculatedOn || record.paymentDate
                             ).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditRecord(record)}
+                              className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 flex items-center gap-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4h6M7 20l10-10M16 4l4 4"/></svg>
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecord(record)}
+                              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 flex items-center gap-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7v12a2 2 0 002 2h2a2 2 0 002-2V7"/></svg>
+                              Delete
+                            </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <button

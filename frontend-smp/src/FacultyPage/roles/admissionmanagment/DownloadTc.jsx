@@ -235,8 +235,8 @@ const DownloadTc = () => {
             .society-name {
               font-size: 11px;
               margin-bottom: 2px;
-              text-transform: lowercase;
-              font-style: italic;
+              text-transform: none;
+              font-style: none;
             }
             .institute-main {
               font-size: 28px;
@@ -246,22 +246,26 @@ const DownloadTc = () => {
               letter-spacing: 2px;
             }
             .institute-full {
-              font-size: 16px;
-              margin: 2px 0;
+              font-size: 19px;
+              margin: -5px 0;
               font-weight: 600;
+              font-weight: bold;
             }
             .institute-details {
-              font-size: 10px;
-              margin: 1px 0;
+              font-size: 13px;
+              margin: 4px 0;
               font-style: italic;
+              font-weight: bold;
             }
             .institute-address {
-              font-size: 10px;
-              margin: 1px 0;
+              font-size: 14px;
+              margin: -5px 0;
+              font-weight: bold;
             }
             .institute-contact {
-              font-size: 9px;
-              margin: 1px 0;
+              font-size: 15px;
+              margin: 3px 0;
+              font-weight: bold;
             }
             .title {
               font-size: 20px;
@@ -396,12 +400,12 @@ const DownloadTc = () => {
                 <img src="/logo.png" alt="NAAC Logo" style="height: 80px;" />
               </div>
               <div class="header-content">
-                <div class="society-name">maitrey education society</div>
+                <div class="society-name">Maitrey Education Society</div>
                 <div class="institute-main">NAGARJUNA</div>
-                <div class="institute-full">Institute of Engineering, Technology & Management</div>
-                <div class="institute-details">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                <div class="institute-contact">Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</div>
+                <div class="institute-full" style="font-weight: bold;">Institute of Engineering, Technology & Management</div>
+                <div class="institute-details" style="font-weight: bold;">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
+                <div class="institute-address" style="font-weight: bold;">Village Satnavri, Amravati Road, Nagpur 440023</div>
+                <div class="institute-contact" style="font-weight: bold;">Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</div>
               </div>
             </div>
             

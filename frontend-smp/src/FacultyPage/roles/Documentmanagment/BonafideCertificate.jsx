@@ -26,33 +26,34 @@ const BC = ({ studentId, studentData }) => {
       <div className="border-2 border-gray-300 p-8 bg-white" style={{ minHeight: '800px' }}>
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">NAGARJUNA</h1>
-          <h2 className="text-lg font-semibold text-gray-700 mb-1">
+          <h1 className="text-3xl font-extrabold text-black mb-2 font-rammetto">Maitreya Educational Society</h1>
+          <h2 className="text-2xl font-extrabold text-black mb-1 font-rammetto">Nagarjuna</h2>
+          <h3 className="text-lg font-extrabold text-black mb-1 font-rammetto">
             Institute of Engineering, Technology & Management
-          </h2>
-          <p className="text-sm text-gray-600 mb-1">
+          </h3>
+          <p className="text-sm font-extrabold text-black mb-1 font-rammetto">
             (AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)
           </p>
-          <p className="text-sm text-gray-600 mb-1">
+          <p className="text-sm font-extrabold text-black mb-1 font-rammetto">
             Village Satnavri, Amravati Road, Nagpur - 440023
           </p>
-          <p className="text-sm text-gray-600">
-            Email: maitrey.ngp@gmail.com, Website: www.maitrey.in, Phone No. 07118 322211, 322212
+          <p className="text-sm font-extrabold text-black font-rammetto">
+            Email: maitrey.ngp@gmail.com, Website: www.nietm.in, Phone No. 07118 322211, 12
           </p>
         </div>
 
         {/* College Code */}
         <div className="mb-4">
-          <p className="text-sm text-gray-700">College Code: 4192</p>
+          <p className="text-sm font-bold text-black">College Code: 4192</p>
         </div>
 
         {/* Divider Line */}
-        <hr className="border-gray-400 mb-6" />
+        <hr className="border-gray-400 mb-6 border-4" />
 
         {/* Reference and Date */}
         <div className="flex justify-between mb-8">
-          <p className="text-sm text-gray-700">Ref No.: NIETM / 2025-26</p>
-          <p className="text-sm text-gray-700">Date: {formData.dateOfIssue}</p>
+          <p className="text-sm font-bold text-gray-700">Ref No.: NIETM / 2025-26</p>
+          <p className="text-sm font-bold text-gray-700">Date: {formData.dateOfIssue}</p>
         </div>
 
         {/* Certificate Title */}
@@ -76,13 +77,13 @@ const BC = ({ studentId, studentData }) => {
         {/* Footer */}
         <div className="flex justify-between items-end mt-24">
           <div>
-            <p className="text-sm text-gray-700">Date: {formData.dateOfIssue}</p>
+            <p className="text-sm font-bold text-black">Date: {formData.dateOfIssue}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-700">Checked by</p>
+            <p className="text-sm font-bold text-black">Checked by</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-700">Principal/Vice-Principal</p>
+            <p className="text-sm font-bold text-black">Principal/Vice-Principal</p>
           </div>
         </div>
       </div>

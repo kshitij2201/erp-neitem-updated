@@ -4,6 +4,8 @@ import {
   getSalaryRecordById,
   addSalaryRecord,
   updateSalaryRecord,
+  updateSalaryById,
+  deleteSalaryById,
   getTotalSalary
 } from '../controllers/salaryController.js';
 
@@ -23,5 +25,11 @@ router.post('/', addSalaryRecord);
 
 // Update a salary record by employeeId
 router.put('/:id', updateSalaryRecord);
+
+// Update a salary record by document _id (used by frontend edit)
+router.put('/byId/:id', updateSalaryById);
+
+// Delete a salary record by document _id
+router.delete('/byId/:id', deleteSalaryById);
 
 export default router;

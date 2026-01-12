@@ -195,6 +195,7 @@ router.get('/stats/overview', async (req, res) => {
 router.get('/financial-summary', async (req, res) => {
   try {
     console.log('[routes/accounts] GET /financial-summary called');
+    console.time('[routes/accounts] financial-summary');
     
     // Import Payment model
     const Payment = (await import('../models/Payment.js')).default;
@@ -303,6 +304,7 @@ router.get('/financial-summary', async (req, res) => {
     const netBalanceStudentFees = paymentData.totalFeesCollected - pendingData.totalPendingFees;
     const pendingCollection = pendingData.totalPendingFees;
     
+    console.timeEnd('[routes/accounts] financial-summary');
     res.json({
       totalFeesCollected: paymentData.totalFeesCollected,
       pendingFees: pendingData.totalPendingFees,
@@ -314,6 +316,7 @@ router.get('/financial-summary', async (req, res) => {
       facultySalaries: salaryData.facultySalaries
     });
   } catch (err) {
+    console.timeEnd('[routes/accounts] financial-summary');
     console.error('Financial summary fetch error:', err);
     // Fallback to zero values
     res.json({

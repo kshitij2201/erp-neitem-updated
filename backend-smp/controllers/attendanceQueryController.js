@@ -122,15 +122,25 @@ const queryAttendance = async (req, res) => {
       
     console.log(`Found ${logs.length} attendance logs`); // Debug log
     
+    // Transform logs to include studentName and studentId
+    const transformedLogs = logs.map(log => {
+      const logObj = log.toObject();
+      if (logObj.student) {
+        logObj.studentName = `${logObj.student.firstName || ''} ${logObj.student.middleName || ''} ${logObj.student.lastName || ''}`.trim();
+        logObj.studentId = logObj.student._id;
+      }
+      return logObj;
+    });
+    
     const total = await Attendance.countDocuments(filter);
 
     res.json({
       success: true,
-      count: logs.length,
+      count: transformedLogs.length,
       total,
       page: pageNum,
       pages: Math.ceil(total / limitNum),
-      data: logs,
+      data: transformedLogs,
     });
   } catch (err) {
     console.error("Error in queryAttendance:", err);

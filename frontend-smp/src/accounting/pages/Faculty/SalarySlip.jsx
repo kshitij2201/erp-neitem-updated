@@ -793,14 +793,11 @@ export default function SalarySlip() {
               <div class="header-border"></div>
               <div class="header-content">
                 <div class="institute-details">
-                  <img src="/logo1.png" alt="NIETM Logo" class="left-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
+                  <img src="/logo1.png" alt="B++ NAAC Logo" class="left-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
                   <div class="institute-content">
-                    <div class="society-name">maitrey education society</div>
-                    <div class="institute-name">NAGARJUNA</div>
-                    <div class="institute-subname">Institute of Engineering, Technology & Management</div>
-                    <div class="institute-affiliation">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                    <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                    <div class="institute-contact">Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</div>
+                    <div class="society-name">Maitrey Educational Society's</div>
+                    <div class="institute-name">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+                    <div class="institute-subname">Nagpur - 440023</div>
                   </div>
                   <img src="/logo.png" alt="NIETM Logo" class="right-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
                 </div>
@@ -1368,8 +1365,8 @@ export default function SalarySlip() {
                 print-color-adjust: exact;
               }
               .left-logo, .right-logo {
-                width: 30px;
-                height: 30px;
+                width: 60px;
+                height: 60px;
               }
             }
           </style>
@@ -1386,16 +1383,13 @@ export default function SalarySlip() {
     ).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}</div>
               <div class="header-content">
                 <div class="institute-details">
-                  <img src="/logo1.png" alt="NIETM Logo" class="left-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
+                  <img src="/logo1.png" alt="B++ NAAC Logo" class="left-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
                   <div class="institute-content">
-                    <div class="society-name">maitrey education society</div>
-                    <div class="institute-name">NAGARJUNA</div>
-                    <div class="institute-subname">Institute of Engineering, Technology & Management</div>
-                    <div class="institute-affiliation">(AICTE, DTE Approved & Affiliated to R.T.M. Nagpur University, Nagpur)</div>
-                    <div class="institute-address">Village Satnavri, Amravati Road, Nagpur 440023</div>
-                    <div class="institute-contact">Email: maitrey.ngp@gmail.com | Website: www.nietm.in | Phone: 07118 322211, 12</div>
+                    <div class="society-name">Maitrey Educational Society's</div>
+                    <div class="institute-name">NAGARJUNA INSTITUTE OF ENGINEERING, TECHNOLOGY & MANAGEMENT</div>
+                    <div class="institute-subname">Nagpur - 440023</div>
                   </div>
-                  <img src="./logo.png" alt="NIETM Logo" class="right-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
+                  <img src="/logo.png" alt="NIETM Logo" class="right-logo" style="background-color: white; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);" />
                 </div>
                 <div class="header-separator"></div>
                 <div class="receipt-title">SALARY PAYMENT RECEIPT</div>
