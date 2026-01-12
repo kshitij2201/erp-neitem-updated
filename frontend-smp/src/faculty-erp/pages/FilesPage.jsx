@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const API_BASE = "/api/files"; // Adjust if your backend route is different
+const API_BASE = "https://backenderp.tarstech.in/api/files"; // Adjust if your backend route is different
 
 const FilesPage = () => {
   const [files, setFiles] = useState([]);
