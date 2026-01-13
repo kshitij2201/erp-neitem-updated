@@ -53,7 +53,7 @@ const registerUser = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      plainPassword: cleanPassword, // ⚠️ DEVELOPMENT ONLY - SECURITY RISK
+      // plainPassword: cleanPassword, // ⚠️ DEVELOPMENT ONLY - SECURITY RISK
       role,
       firstName,
       lastName,
@@ -518,20 +518,42 @@ const changePassword = async (req, res) => {
     }
 
     console.log("Looking for user with ID:", userId);
-    // Find user
-    const user = await User.findById(userId);
-    console.log("User found:", !!user);
 
-    if (!user) {
-      console.log("User not found in database");
+    // Try to find the user document across possible user collections and ensure we include the password
+    let userDoc = null;
+    let modelName = null;
+
+    // Order of precedence: User, Faculty, Driver, Conductor
+    userDoc = await User.findById(userId).select("+password");
+    modelName = userDoc ? 'User' : null;
+
+    if (!userDoc) {
+      userDoc = await Faculty.findById(userId).select("+password");
+      modelName = userDoc ? 'Faculty' : modelName;
+    }
+
+    if (!userDoc) {
+      userDoc = await Driver.findById(userId).select("+password");
+      modelName = userDoc ? 'Driver' : modelName;
+    }
+
+    if (!userDoc) {
+      userDoc = await Conductor.findById(userId).select("+password");
+      modelName = userDoc ? 'Conductor' : modelName;
+    }
+
+    if (!userDoc) {
+      console.log("User not found in any model");
       return res.status(404).json({ message: "User not found" });
     }
+
+    console.log(`User found in model: ${modelName}`);
 
     console.log("Verifying current password...");
     // Verify current password
     const isCurrentPasswordValid = await bcrypt.compare(
       currentPassword,
-      user.password
+      userDoc.password
     );
     console.log("Current password valid:", isCurrentPasswordValid);
 
@@ -541,7 +563,7 @@ const changePassword = async (req, res) => {
 
     console.log("Checking if new password is same as current...");
     // Check if new password is same as current
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    const isSamePassword = await bcrypt.compare(newPassword, userDoc.password);
     console.log("Is same password:", isSamePassword);
 
     if (isSamePassword) {
@@ -555,17 +577,19 @@ const changePassword = async (req, res) => {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     console.log("New password hashed successfully");
 
-    console.log("Updating user password...");
-    // ⚠️ SECURITY WARNING: Storing plain password for development only
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        password: hashedNewPassword,
-        plainPassword: newPassword, // ⚠️ REMOVE IN PRODUCTION
-      },
-      { runValidators: false }
-    );
-    console.log("Password updated successfully");
+    console.log("Updating user password on document and removing any plainPassword...");
+
+    // Update the fetched document and remove any plain password stored
+    userDoc.password = hashedNewPassword;
+    if (userDoc.plainPassword) {
+      userDoc.plainPassword = undefined;
+      // If plainPassword exists, also explicitly unset it in the DB when saving
+      userDoc.markModified('plainPassword');
+    }
+
+    await userDoc.save();
+
+    console.log("Password updated successfully on model:", modelName);
 
     res.json({
       message: "Password changed successfully",

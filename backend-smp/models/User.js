@@ -4,7 +4,6 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  plainPassword: { type: String, default: "" }, // ⚠️ DEVELOPMENT ONLY - SECURITY RISK
   role: {
     type: String,
     enum: [
