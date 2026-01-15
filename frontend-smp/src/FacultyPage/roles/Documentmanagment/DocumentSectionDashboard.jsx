@@ -436,8 +436,10 @@ const DocumentManagementDashboard = () => {
         { align: "center" }
       );
       y += 8;
-      doc.setLineWidth(0.5);
-      doc.line(marginLeft + 5, y, pageWidth - marginRight - 5, y);
+      // Thicker and slightly longer separator line for better visibility
+      // Increased thickness per request
+      doc.setLineWidth(1.1);
+      doc.line(marginLeft, y, pageWidth - marginRight, y);
       y += 8;
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
@@ -451,7 +453,8 @@ const DocumentManagementDashboard = () => {
       y += 15;
       const titleWidth = 70;
       const titleX = (pageWidth - titleWidth) / 2;
-      doc.setLineWidth(0.2);
+      // Slightly increase border thickness for the title box
+      doc.setLineWidth(1.4);
       doc.roundedRect(titleX, y, titleWidth, 10, 2, 2, "S");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
