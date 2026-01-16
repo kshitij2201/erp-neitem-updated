@@ -104,28 +104,32 @@ const CCClassStudents = ({ userData }) => {
         });
         
         let studentsResponse = null;
-        
+
+        // Determine department name (handles both object and string departments)
+        const departmentName = (assignment && (assignment.department?.name || assignment.department)) || (userData && (userData.department?.name || userData.department)) || "";
+        const deptEncoded = encodeURIComponent(departmentName);
+
         // Try the attendance endpoint first for real attendance data
         try {
-          console.log("Trying Mechancial department with attendance endpoint");
+          console.log(`Trying department (${departmentName}) attendance endpoint`);
           studentsResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/faculty/students-attendance/department/Mechancial`,
+            `https://backenderp.tarstech.in/api/faculty/students-attendance/department/${deptEncoded}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
-          console.log("✓ Successfully fetched from Mechancial department with attendance");
+          console.log(`✓ Successfully fetched from ${departmentName} department with attendance`);
         } catch (error) {
-          console.log("✗ Mechancial attendance endpoint failed, trying regular endpoint");
+          console.log(`✗ ${departmentName} attendance endpoint failed, trying regular endpoint`);
           
           // Fallback to regular department endpoint
           studentsResponse = await axios.get(
-            `https://backenderp.tarstech.in/api/faculty/students/department/Mechancial`,
+            `https://backenderp.tarstech.in/api/faculty/students/department/${deptEncoded}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
-          console.log("✓ Successfully fetched from Mechancial department (fallback)");
+          console.log(`✓ Successfully fetched from ${departmentName} department (fallback)`);
         }
         
         if (!studentsResponse) {
@@ -419,7 +423,7 @@ const CCClassStudents = ({ userData }) => {
                       CC Assignment: <span className="font-semibold text-indigo-600">
                         Semester {ccAssignment.semester && typeof ccAssignment.semester === 'object' 
                           ? ccAssignment.semester.number 
-                          : ccAssignment.semester || ccAssignment.year} {ccAssignment.section} - {ccAssignment.department}
+                          : ccAssignment.semester || ccAssignment.year} {ccAssignment.section} - {(ccAssignment.department && ccAssignment.department.name) || ccAssignment.department}
                       </span>
                     </span>
                   ) : (

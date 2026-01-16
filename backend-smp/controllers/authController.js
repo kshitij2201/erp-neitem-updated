@@ -53,7 +53,7 @@ const registerUser = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      plainPassword: cleanPassword, // ⚠️ DEVELOPMENT ONLY - SECURITY RISK
+      // plainPassword: cleanPassword, // ⚠️ DEVELOPMENT ONLY - SECURITY RISK
       role,
       firstName,
       lastName,
@@ -493,8 +493,25 @@ const changePassword = async (req, res) => {
   console.log("User from auth middleware:", req.user);
 
   try {
-    const { currentPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    // Defensive: ensure we have a parsed body before destructuring
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log("Validation failed: request body missing or empty");
+      return res.status(400).json({ message: "Request body is missing or empty" });
+    }
+
+    const { currentPassword, newPassword } = req.body || {};
+
+    // Ensure we have a user attached by auth middleware
+    if (!req.user) {
+      console.log("Authentication failed: req.user missing");
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    // Support different token payload shapes (decoded id, userId, or mongoose doc)
+    // If req.user is a mongoose document, prefer its _id
+    const userId = (req.user && (req.user._id || req.user.id || req.user.userId))
+      ? (req.user._id || req.user.id || req.user.userId).toString()
+      : null;
 
     console.log("Extracted data:", {
       currentPassword: currentPassword ? "***provided***" : "***missing***",
@@ -517,22 +534,60 @@ const changePassword = async (req, res) => {
       });
     }
 
-    console.log("Looking for user with ID:", userId);
-    // Find user
-    const user = await User.findById(userId);
-    console.log("User found:", !!user);
+    if (!userId) {
+      console.log("Validation failed: user id not available on req.user");
+      return res.status(401).json({ message: "Not authorized" });
+    }
 
-    if (!user) {
-      console.log("User not found in database");
+    console.log("Looking for user with ID:", userId);
+
+    // Try to find the user document across possible user collections and ensure we include the password
+    let userDoc = null;
+    let modelName = null;
+
+    // Order of precedence: User, Faculty, Driver, Conductor
+    userDoc = await User.findById(userId).select("+password");
+    modelName = userDoc ? 'User' : null;
+
+    if (!userDoc) {
+      userDoc = await Faculty.findById(userId).select("+password");
+      modelName = userDoc ? 'Faculty' : modelName;
+    }
+
+    if (!userDoc) {
+      userDoc = await Driver.findById(userId).select("+password");
+      modelName = userDoc ? 'Driver' : modelName;
+    }
+
+    if (!userDoc) {
+      userDoc = await Conductor.findById(userId).select("+password");
+      modelName = userDoc ? 'Conductor' : modelName;
+    }
+
+    if (!userDoc) {
+      console.log("User not found in any model");
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log(`User found in model: ${modelName}`);
+
+    // Ensure userDoc has a password field
+    if (!userDoc.password) {
+      console.log("User record does not have a password set");
+      return res.status(400).json({ message: "User has no password set" });
+    }
+
     console.log("Verifying current password...");
+
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(
-      currentPassword,
-      user.password
-    );
+    let isCurrentPasswordValid = false;
+    try {
+      isCurrentPasswordValid = await bcrypt.compare(currentPassword, userDoc.password);
+    } catch (compareErr) {
+      console.error("bcrypt compare error (current password):", compareErr);
+      return res.status(500).json({ message: "Server error" });
+    }
+
     console.log("Current password valid:", isCurrentPasswordValid);
 
     if (!isCurrentPasswordValid) {
@@ -541,7 +596,14 @@ const changePassword = async (req, res) => {
 
     console.log("Checking if new password is same as current...");
     // Check if new password is same as current
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    let isSamePassword = false;
+    try {
+      isSamePassword = await bcrypt.compare(newPassword, userDoc.password);
+    } catch (compareErr) {
+      console.error("bcrypt compare error (new password check):", compareErr);
+      return res.status(500).json({ message: "Server error" });
+    }
+
     console.log("Is same password:", isSamePassword);
 
     if (isSamePassword) {
@@ -555,23 +617,52 @@ const changePassword = async (req, res) => {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
     console.log("New password hashed successfully");
 
-    console.log("Updating user password...");
-    // ⚠️ SECURITY WARNING: Storing plain password for development only
-    await User.findByIdAndUpdate(
-      userId,
-      {
-        password: hashedNewPassword,
-        plainPassword: newPassword, // ⚠️ REMOVE IN PRODUCTION
-      },
-      { runValidators: false }
-    );
-    console.log("Password updated successfully");
+    console.log("Updating user password on document and removing any plainPassword...");
 
-    res.json({
-      message: "Password changed successfully",
-    });
+    // Prepare update data
+    const updateData = { password: hashedNewPassword };
+    if (userDoc.plainPassword !== undefined) {
+      updateData.$unset = { plainPassword: "" };
+    }
+
+    // First try to save the loaded document (convenient when shape is complete)
+    try {
+      userDoc.password = hashedNewPassword;
+      if (userDoc.plainPassword !== undefined) {
+        userDoc.plainPassword = undefined;
+        userDoc.markModified('plainPassword');
+      }
+      await userDoc.save();
+
+      console.log("Password updated successfully on model:", modelName);
+      return res.json({ message: "Password changed successfully" });
+    } catch (saveErr) {
+      // If save fails due to validation (e.g., missing required fields on the schema), fall back to a direct update
+      console.warn("Save failed, falling back to direct update to avoid validation issues:", saveErr.message);
+
+      const modelForUpdate =
+        modelName === 'User' ? User :
+        modelName === 'Faculty' ? Faculty :
+        modelName === 'Driver' ? Driver :
+        modelName === 'Conductor' ? Conductor : null;
+
+      if (!modelForUpdate) {
+        console.error("No model available to perform fallback update");
+        console.error("Original save error:", saveErr);
+        return res.status(500).json({ message: "Server error" });
+      }
+
+      try {
+        await modelForUpdate.findByIdAndUpdate(userDoc._id, updateData, { new: true });
+        console.log("Password updated via fallback update on model:", modelName);
+        return res.json({ message: "Password changed successfully" });
+      } catch (updateErr) {
+        console.error("Fallback update failed:", updateErr);
+        return res.status(500).json({ message: "Server error" });
+      }
+    }
   } catch (error) {
-    console.error("Change password error:", error);
+    console.error("Change password error:", error.stack || error);
     res.status(500).json({ message: "Server error" });
   }
 };

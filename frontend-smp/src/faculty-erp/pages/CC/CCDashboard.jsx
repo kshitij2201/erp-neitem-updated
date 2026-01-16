@@ -135,6 +135,10 @@ const CCDashboard = ({ userData }) => {
   });
   const [fetchError, setFetchError] = useState(null);
 
+  // Helper: normalized assigned department name for display (handles object or string and fixes typo)
+  const assignedDepartmentName = (ccAssignment && (ccAssignment.department?.name || ccAssignment.department)) || (userData && (userData.department?.name || userData.department)) || '';
+  const assignedDepartmentDisplay = assignedDepartmentName.replace('Mechancial', 'Mechanical');
+
   // Todo List State
   const [todos, setTodos] = useState([
     {
@@ -289,26 +293,29 @@ const CCDashboard = ({ userData }) => {
       let studentsResponse = null;
 
       // Try the attendance endpoint first for real attendance data
+      const departmentName = (assignment && (assignment.department?.name || assignment.department)) || (userData && (userData.department?.name || userData.department)) || '';
+      const deptEncoded = encodeURIComponent(departmentName);
+
       try {
-        console.log("Trying Mechancial department with attendance endpoint");
+        console.log(`Trying department (${departmentName}) attendance endpoint`);
         studentsResponse = await axios.get(
-          `https://backenderp.tarstech.in/api/faculty/students-attendance/department/Mechancial`,
+          `https://backenderp.tarstech.in/api/faculty/students-attendance/department/${deptEncoded}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        console.log("✓ Successfully fetched from Mechancial department with attendance");
+        console.log(`✓ Successfully fetched from ${departmentName} department with attendance`);
       } catch (error) {
-        console.log("✗ Mechancial attendance endpoint failed, trying regular endpoint");
+        console.log(`✗ ${departmentName} attendance endpoint failed, trying regular endpoint`);
         
         // Fallback to regular department endpoint
         studentsResponse = await axios.get(
-          `https://backenderp.tarstech.in/api/faculty/students/department/Mechancial`,
+          `https://backenderp.tarstech.in/api/faculty/students/department/${deptEncoded}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        console.log("✓ Successfully fetched from Mechancial department (fallback)");
+        console.log(`✓ Successfully fetched from ${departmentName} department (fallback)`);
       }
 
       if (!studentsResponse) {
@@ -725,7 +732,7 @@ const CCDashboard = ({ userData }) => {
                 {ccAssignment ? (
                   <span className="block mt-1">
                     Managing <span className="font-semibold text-indigo-600">
-                      Semester {ccAssignment.year || ccAssignment.semester} {ccAssignment.section} - {ccAssignment.department.replace('Mechancial', 'Mechanical')}
+                      Semester {ccAssignment.year || ccAssignment.semester} {ccAssignment.section} - {assignedDepartmentDisplay}
                     </span> ({realStats.totalStudents} students)
                   </span>
                 ) : (
@@ -774,7 +781,7 @@ const CCDashboard = ({ userData }) => {
             icon={Users}
             color="bg-gradient-to-r from-green-500 to-green-600"
             trend={8}
-            description={ccAssignment ? `Sem ${ccAssignment.year || ccAssignment.semester} ${ccAssignment.section} - ${ccAssignment.department.replace('Mechancial', 'Mechanical')}` : "Assigned class"}
+            description={ccAssignment ? `Sem ${ccAssignment.year || ccAssignment.semester} ${ccAssignment.section} - ${assignedDepartmentDisplay}` : "Assigned class"}
           />
           <StatCard
             title="Avg Attendance"
@@ -1016,7 +1023,7 @@ const CCDashboard = ({ userData }) => {
                 👥 Class Students - Semester {ccAssignment.year || ccAssignment.semester} {ccAssignment.section}
               </h2>
               <div className="text-sm text-gray-500">
-                Department: {ccAssignment.department.replace('Mechancial', 'Mechanical')} | Total: {classStudents.length} students
+                Department: {assignedDepartmentDisplay} | Total: {classStudents.length} students
               </div>
             </div>
 
@@ -1034,7 +1041,7 @@ const CCDashboard = ({ userData }) => {
                       <p><strong>CC Assignment Found:</strong></p>
                       <p>• Semester: {ccAssignment.year || ccAssignment.semester || 'undefined'}</p>
                       <p>• Section: {ccAssignment.section || 'undefined'}</p>
-                      <p>• Department: {(ccAssignment.department || 'undefined').replace('Mechancial', 'Mechanical')}</p>
+                      <p>• Department: {assignedDepartmentDisplay || (ccAssignment.department || 'undefined')}</p>
                       <p>• Faculty ID: {ccAssignment.facultyId || 'undefined'}</p>
                       <p>• Assignment ID: {ccAssignment._id || 'undefined'}</p>
                       <details className="mt-2">
